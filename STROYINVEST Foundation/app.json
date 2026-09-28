@@ -1,0 +1,32 @@
+{
+  "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+  "name": "STROYINVEST Foundation",
+  "publisher": "STROYINVEST",
+  "version": "1.0.0.59",
+  "brief": "",
+  "description": "",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "",
+  "dependencies": [],
+  "screenshots": [],
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "idRanges": [
+    {
+      "from": 50100,
+      "to": 50999
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "17.0",
+  "features": [
+    "NoImplicitWith"
+  ]
+}

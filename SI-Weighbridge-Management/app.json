@@ -1,0 +1,51 @@
+{
+  "id": "58a85b5e-f773-4028-925f-22280382c67e",
+  "name": "SI Weighbridge Management",
+  "publisher": "STROYINVEST",
+  "version": "1.1.1.12",
+  "brief": "STROYINVEST weighbridge management",
+  "description": "Business Central application for processing physical weighbridge facts received through STROYINVEST Foundation EDS.",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "",
+  "dependencies": [
+    {
+      "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+      "name": "STROYINVEST Foundation",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.59"
+    },
+    {
+      "id": "39320ea1-c92d-4838-b833-4080842bc10e",
+      "name": "SI Master Data Toolkit",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.23"
+    },
+    {
+      "id": "3eb7e01e-4653-4f7d-873e-a4a1f62f7692",
+      "name": "SI Product Configurator",
+      "publisher": "STROYINVEST",
+      "version": "1.5.0.47"
+    }
+  ],
+  "screenshots": [],
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "idRanges": [
+    {
+      "from": 59000,
+      "to": 59999
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "17.0",
+  "features": [
+    "NoImplicitWith"
+  ]
+}

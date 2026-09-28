@@ -1,0 +1,206 @@
+page 54060 "SI BP Projection Card"
+{
+    PageType = Card;
+    SourceTable = "SI BP ERP Projection";
+
+    Caption = 'ERP-проєкція ролі контрагента';
+    ApplicationArea = All;
+
+    Editable = false;
+    InsertAllowed = false;
+    DeleteAllowed = false;
+
+    layout
+    {
+        area(Content)
+        {
+            group(General)
+            {
+                Caption = 'Загальні дані';
+
+                field("Role Code"; Rec."Role Code")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Business Partner Name"; Rec."Business Partner Name")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Role Type"; Rec."Role Type")
+                {
+                    ApplicationArea = All;
+                }
+
+                field(Status; Rec.Status)
+                {
+                    ApplicationArea = All;
+                }
+
+                field("ERP No."; Rec."ERP No.")
+                {
+                    ApplicationArea = All;
+                }
+            }
+
+            group(Identity)
+            {
+                Caption = 'Дані контрагента';
+
+                field(Name; Rec.Name)
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Registration No."; Rec."Registration No.")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Tax Registration No."; Rec."Tax Registration No.")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Country/Region Code"; Rec."Country/Region Code")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Currency Code"; Rec."Currency Code")
+                {
+                    ApplicationArea = All;
+                }
+            }
+
+            group(Address)
+            {
+                Caption = 'Юридична адреса';
+
+                field("Address Region/State"; Rec."Address Region/State")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Address District"; Rec."Address District")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Address City"; Rec."Address City")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Address Post Code"; Rec."Address Post Code")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Address Street"; Rec."Address Street")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Address Building No."; Rec."Address Building No.")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Address Office/Apartment"; Rec."Address Office/Apartment")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Address Details"; Rec."Address Details")
+                {
+                    ApplicationArea = All;
+                    MultiLine = true;
+                }
+            }
+
+            group(Setup)
+            {
+                Caption = 'Облікові налаштування';
+
+                field("Role Posting Group"; Rec."Role Posting Group")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Gen. Bus. Posting Group"; Rec."Gen. Bus. Posting Group")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("VAT Bus. Posting Group"; Rec."VAT Bus. Posting Group")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Payment Terms Code"; Rec."Payment Terms Code")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Payment Method Code"; Rec."Payment Method Code")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Shipment Method Code"; Rec."Shipment Method Code")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Location Code"; Rec."Location Code")
+                {
+                    ApplicationArea = All;
+                }
+            }
+
+            part(Banks; "SI BP ERP Proj. Banks")
+            {
+                ApplicationArea = All;
+                SubPageLink = "Role Code" = field("Role Code");
+            }
+
+            group(Audit)
+            {
+                Caption = 'Службові дані';
+
+                field("Generated At"; Rec."Generated At")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Generated By"; Rec."Generated By")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Validated At"; Rec."Validated At")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Error Message"; Rec."Error Message")
+                {
+                    ApplicationArea = All;
+                    MultiLine = true;
+                }
+
+                field("Materialized At"; Rec."Materialized At")
+                {
+                    ApplicationArea = All;
+                }
+
+                field("Materialized By"; Rec."Materialized By")
+                {
+                    ApplicationArea = All;
+                }
+            }
+        }
+    }
+}

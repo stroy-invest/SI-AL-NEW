@@ -1,0 +1,6 @@
+**/.alpackages/
+**/.snapshots/
+**/.alcache/
+**/*.app
+**/Translations/*.g.xlf
+*.zip

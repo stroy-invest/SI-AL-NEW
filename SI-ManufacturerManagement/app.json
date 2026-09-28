@@ -1,0 +1,38 @@
+{
+  "id": "45971d06-dc61-4835-b650-7d5c297d2bf0",
+  "name": "SI Manufacturer Management",
+  "publisher": "STROYINVEST",
+  "version": "1.0.0.11",
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "idRanges": [
+    {
+      "from": 55000,
+      "to": 55999
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "3eb7e01e-4653-4f7d-873e-a4a1f62f7692",
+      "name": "SI Product Configurator",
+      "publisher": "STROYINVEST",
+      "version": "1.5.0.47"
+    },
+    {
+      "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+      "name": "STROYINVEST Foundation",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.59"
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "17.0",
+  "features": [
+    "NoImplicitWith",
+    "TranslationFile"
+  ]
+}

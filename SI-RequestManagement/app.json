@@ -1,0 +1,31 @@
+{
+  "id": "955f2add-f717-4b1e-a32e-12bfb43e5948",
+  "name": "SI Request Management",
+  "publisher": "STROYINVEST",
+  "version": "1.0.0.4",
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "idRanges": [
+    {
+      "from": 52000,
+      "to": 52999
+    }
+  ],
+"dependencies": [
+    {
+        "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+        "publisher": "STROYINVEST",
+        "name": "STROYINVEST Foundation",
+        "version": "1.0.0.20"
+    }
+],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "17.0",
+  "features": [
+    "NoImplicitWith"
+  ]
+}

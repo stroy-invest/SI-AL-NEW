@@ -1,0 +1,24 @@
+﻿# Business Central AL
+.alpackages/
+.snapshots/
+.output/
+.packagecache/
+
+# Generated AL packages
+*.app
+
+# VS Code
+.vscode/settings.json
+.vscode/.alcache/
+
+# User and local files
+*.user
+*.tmp
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+*.zip

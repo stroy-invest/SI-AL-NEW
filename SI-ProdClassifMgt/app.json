@@ -1,0 +1,32 @@
+{
+    "id": "9f7472a1-62e9-4595-ac66-0ff6d2f759fb",
+    "name": "SI Product Classification Management",
+    "publisher": "STROYINVEST",
+    "version": "1.0.0.0",
+    "brief": "Керування класифікаційними системами продукції",
+    "description": "Універсальний компонент для ведення класифікаційних систем, мапінгу продукції, інтеграції з конфігуратором і формування регламентованої звітності.",
+    "privacyStatement": "",
+    "EULA": "",
+    "help": "",
+    "url": "",
+    "logo": "",
+    "dependencies": [],
+    "screenshots": [],
+    "platform": "1.0.0.0",
+    "application": "28.0.0.0",
+    "idRanges": [
+        {
+            "from": 56000,
+            "to": 56599
+        }
+    ],
+    "resourceExposurePolicy": {
+        "allowDebugging": true,
+        "allowDownloadingSource": true,
+        "includeSourceInSymbolFile": true
+    },
+    "runtime": "17.0",
+    "features": [
+        "NoImplicitWith"
+    ]
+}

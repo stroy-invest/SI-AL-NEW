@@ -1,0 +1,32 @@
+{
+  "id": "f53b19c4-75c9-4351-b2bb-ac84112997da",
+  "name": "SI Business Partner",
+  "publisher": "STROYINVEST",
+  "version": "1.1.2.2",
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "idRanges": [
+    {
+      "from": 54000,
+      "to": 54999
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+      "name": "STROYINVEST Foundation",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.59"
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "17.0",
+  "features": [
+    "NoImplicitWith",
+    "TranslationFile"
+  ]
+}

@@ -1,0 +1,18 @@
+#controlAddIn { font-family: "Segoe UI", sans-serif; font-size: 13px; width: 100%; box-sizing: border-box; }
+.si-pr-grid-viewport { width: 100%; max-height: 132px; overflow-y: auto; overflow-x: hidden; }
+.si-pr-toolbar { margin: 0 0 5px 0; }
+.si-pr-add, .si-pr-lookup, .si-pr-delete { font: inherit; }
+.si-pr-add { border: 0; background: transparent; padding: 3px 8px 3px 0; cursor: pointer; font-weight: 600; }
+.si-pr-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.si-pr-table th { text-align: left; font-weight: 600; padding: 3px 6px; border-bottom: 1px solid #d2d2d2; }
+.si-pr-table td { padding: 2px 6px; border-bottom: 1px solid #ededed; vertical-align: middle; }
+.si-pr-table th:nth-child(1) { width: 20%; }
+.si-pr-table th:nth-child(2) { width: 30%; }
+.si-pr-table th:nth-child(3), .si-pr-table th:nth-child(4) { width: 15%; }
+.si-pr-primary { width: 70px; text-align: center !important; }
+.si-pr-actions { width: 28px; text-align: center; }
+.si-pr-lookup { border: 0; background: transparent; padding: 2px 0; cursor: pointer; text-align: left; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-pr-lookup:hover { text-decoration: underline; }
+.si-pr-date { width: 100%; box-sizing: border-box; border: 1px solid #c8c8c8; padding: 2px 4px; font: inherit; }
+.si-pr-delete { border: 0; background: transparent; cursor: pointer; font-size: 18px; line-height: 18px; }
+.si-pr-empty { padding: 5px 0; opacity: .72; }

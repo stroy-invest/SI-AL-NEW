@@ -1,0 +1,125 @@
+permissionset 50199 "SI FOUNDATION ADMIN"
+{
+    Assignable = true;
+    Caption = 'SI Foundation: Адміністратор';
+
+    Permissions =
+        tabledata "SI Address Parse Log" = RIMD,
+        tabledata "SI Country Currency" = RIMD,
+        tabledata "SI Category Attribute Buffer" = RIMD,
+        tabledata "SI Location Type" = RIMD,
+        tabledata "SI Location Setup" = RIMD,
+
+        tabledata "SI Legal Form Group" = RIMD,
+        tabledata "SI Legal Form" = RIMD,
+        tabledata "SI Legal Form Foreign" = RIMD,
+        tabledata "SI Country Legal Form" = RIMD,
+
+        table "SI Address Parse Log" = X,
+        table "SI Country Currency" = X,
+        table "SI Category Attribute Buffer" = X,
+        table "SI Location Type" = X,
+        table "SI Location Setup" = X,
+        page "SI Location Types" = X,
+        page "SI Location Setup" = X,
+        codeunit "SI Location Seed" = X,
+
+        table "SI Legal Form Group" = X,
+        table "SI Legal Form" = X,
+        table "SI Legal Form Foreign" = X,
+        table "SI Country Legal Form" = X,
+
+        page "SI Country Currencies" = X,
+
+        page "SI Legal Form Groups" = X,
+        page "SI Legal Forms" = X,
+        page "SI Foreign Legal Forms" = X,
+        page "SI Country Legal Forms" = X,
+
+        codeunit "SI Address Parser Mgt." = X,
+        tabledata "SI EDS Service" = RIMD,
+        tabledata "SI EDS Operation" = RIMD,
+        tabledata "SI EDS Provider" = RIMD,
+        tabledata "SI EDS Endpoint" = RIMD,
+        tabledata "SI Bank Directory" = RIMD,
+
+        table "SI EDS Service" = X,
+        table "SI EDS Operation" = X,
+        table "SI EDS Provider" = X,
+        table "SI EDS Endpoint" = X,
+        table "SI Bank Directory" = X,
+
+        tabledata "SI EDS Provider Route" = RIMD,
+        tabledata "SI EDS Exec. Log" = RIMD,
+
+        tabledata "SI EDS Request Buffer" = RIMD,
+        tabledata "SI EDS Response Buffer" = RIMD,
+
+        table "SI EDS Provider Route" = X,
+        table "SI EDS Request Buffer" = X,
+        table "SI EDS Response Buffer" = X,
+        table "SI EDS Exec. Log" = X,
+
+        codeunit "SI EDS HTTP Transport" = X,
+        codeunit "SI EDS Orchestrator" = X,
+        codeunit "SI EDS Provider Context" = X,
+        codeunit "SI NBU Bank Resolver" = X,
+        codeunit "SI NBU Bank Sync Mgt." = X,
+
+        tabledata "SI EDS Operation Group" = RIMD,
+        table "SI EDS Operation Group" = X,
+        page "SI EDS Operation Groups" = X,
+
+        tabledata "SI EDS Parameter" = RIMD,
+        table "SI EDS Parameter" = X,
+        table "SI EDS Runtime Param" = X,
+        page "SI EDS Services" = X,
+        page "SI EDS Operations" = X,
+        page "SI EDS Providers" = X,
+        page "SI EDS Provider Routes" = X,
+        page "SI EDS Endpoints" = X,
+        page "SI EDS Parameters" = X,
+        page "SI EDS Exec. Log" = X,
+        page "SI EDS Exec. Log Card" = X,
+        page "SI EDS Exec Log Cleanup" = X,
+        page "SI EDS Exec Log Export Filter" = X,
+        codeunit "SI EDS Exec Log Excel Export" = X,
+        codeunit "SI IBAN Mgt." = X,
+        codeunit "SI Bank Resolver" = X,
+        page "SI IBAN Test Dialog" = X,
+        page "SI Bank Directory" = X,
+        tabledata "SI EDS Credential" = RIMD,
+        table "SI EDS Credential" = X,
+        page "SI EDS Credentials" = X,
+        page "SI EDS Secret Dialog" = X,
+        codeunit "SI EDS Secret Mgt." = X,
+        codeunit "SI EDS Credential Mgt." = X,
+
+        // Organizational Identity.
+        tabledata "SI User Employee Link" = RIMD,
+        table "SI User Employee Link" = X,
+        page "SI User Employee Links" = X,
+        codeunit "SI Org. Identity Mgt." = X,
+        codeunit "SI Country Currency Mgt." = X,
+        tabledata "SI EDS Inbound Event" = RIMD,
+        table "SI EDS Inbound Event" = X,
+
+        tabledata "SI EDS Inbound Evidence" = RIMD,
+        table "SI EDS Inbound Evidence" = X,
+
+        tabledata "SI EDS Inb. Evid. Content Buf." = RIMD,
+        table "SI EDS Inb. Evid. Content Buf." = X,
+
+        codeunit "SI EDS Inbound API" = X,
+        codeunit "SI EDS Inbound Mgt." = X,
+        codeunit "SI EDS Inbound Evidence Mgt." = X,
+
+        page "SI EDS Inbound Events" = X,
+        page "SI EDS Inbound Evidence API" = X,
+        page "SI EDS Inb. Evid. Content API" = X,
+        page "SI Product Selector" = X,
+        page "SI Product Selector Test" = X,
+        codeunit "SI Product Selector Mgt." = X,
+        page "SI Category Selector" = X,
+        codeunit "SI Category Selector Mgt." = X;
+}
