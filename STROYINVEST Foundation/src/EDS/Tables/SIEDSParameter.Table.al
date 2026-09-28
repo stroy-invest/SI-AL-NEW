@@ -46,6 +46,12 @@ table 50418 "SI EDS Parameter"
         field(7; Source; Enum "SI EDS Param. Source")
         {
             Caption = 'Джерело значення';
+
+            trigger OnValidate()
+            begin
+                if Source = Source::Fixed then
+                    Clear("Runtime Key");
+            end;
         }
 
         field(8; Format; Enum "SI EDS Param. Format")
@@ -71,7 +77,13 @@ table 50418 "SI EDS Parameter"
         field(12; Enabled; Boolean)
         {
             Caption = 'Увімкнено';
-            InitValue = true;
+            InitValue = false;
+
+            trigger OnValidate()
+            begin
+                if Enabled then
+                    ValidateSetup();
+            end;
         }
 
         field(13; "External Name"; Text[100])
@@ -92,16 +104,6 @@ table 50418 "SI EDS Parameter"
         }
     }
 
-    trigger OnInsert()
-    begin
-        ValidateSetup();
-    end;
-
-    trigger OnModify()
-    begin
-        ValidateSetup();
-    end;
-
     procedure GetExternalName(): Text
     begin
         if "External Name" = '' then
@@ -117,16 +119,23 @@ table 50418 "SI EDS Parameter"
 
     local procedure ValidateSetup()
     begin
-        if Enabled and ("External Name" = '') then
-            Error('Для увімкненого параметра %1 необхідно вказати зовнішнє ім''я.', Code);
+        TestField("Service Code");
+        TestField("Operation Code");
+        TestField("Provider Code");
+        TestField(Code);
+
+        if "External Name" = '' then
+            Error(
+                'Для увімкненого параметра %1 необхідно вказати зовнішнє ім''я.',
+                Code);
 
         if (Source = Source::Runtime) and ("Runtime Key" = '') then
-            Error('Для runtime-параметра %1 необхідно вказати Runtime Key.', Code);
-
-        if (Source = Source::Fixed) and ("Runtime Key" <> '') then
-            "Runtime Key" := '';
+            Error(
+                'Для runtime-параметра %1 необхідно вказати Runtime Key.',
+                Code);
 
         if (Format = Format::"Name Only") and (Location <> Location::Query) then
-            Error('Формат Name Only підтримується лише для Query-параметрів.');
+            Error(
+                'Формат Name Only підтримується лише для Query-параметрів.');
     end;
 }

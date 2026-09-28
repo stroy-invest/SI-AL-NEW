@@ -365,6 +365,43 @@ page 54004 "SI Business Partner Card"
                     CurrPage.Update(false);
                 end;
             }
+
+            action(TestRegistryEDS)
+            {
+                ApplicationArea = All;
+                Caption = 'Тест Registry EDS';
+                ToolTip = 'Діагностичний виклик реєстру контрагентів через Foundation EDS без зміни даних Business Partner.';
+                Image = TestDatabase;
+                Enabled = CanCheckEDRPOU;
+
+                trigger OnAction()
+                var
+                    EDRPOURegistryMgt: Codeunit "SI EDRPOU Registry Mgt.";
+                    RegistryResult: Record "SI Registry Result" temporary;
+                    ResultMsg: Label 'Provider: %1\ЄДРПОУ: %2\ІПН: %3\Назва: %4\Юридична форма: %5\Повна назва: %6\Коротка назва реєстру: %7\Адреса: %8\Керівник: %9';
+                begin
+                    CurrPage.SaveRecord();
+
+                    EDRPOURegistryMgt.ResolveViaEDS(
+                        Rec,
+                        RegistryResult);
+
+                    if not RegistryResult.FindFirst() then
+                        Error('Registry resolver не повернув результат.');
+
+                    Message(
+                        ResultMsg,
+                        RegistryResult."Provider Code",
+                        RegistryResult."Registration No.",
+                        RegistryResult."Tax Registration No.",
+                        RegistryResult."Core Name",
+                        RegistryResult."Legal Form Short",
+                        RegistryResult."Legal Name",
+                        RegistryResult."Registry Short Name",
+                        RegistryResult.Address,
+                        RegistryResult.Director);
+                end;
+            }
         }
 
         area(Navigation)

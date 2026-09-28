@@ -45,6 +45,56 @@ codeunit 54013 "SI EDRPOU Registry Mgt."
         ValidateRegistrationNo(BusinessPartner."Registration No.");
     end;
 
+    procedure ResolveViaEDS(
+        BusinessPartner: Record "SI Business Partner";
+        var RegistryResult: Record "SI Registry Result" temporary)
+    var
+        EDSOrchestrator: Codeunit "SI EDS Orchestrator";
+        AdmToolsResolver: Codeunit "SI AdmTools Reg. Resolver";
+        RuntimeParam: Record "SI EDS Runtime Param" temporary;
+        ResponseBuffer: Record "SI EDS Response Buffer" temporary;
+        ResponseText: Text;
+    begin
+        ValidateRequest(BusinessPartner);
+
+        RuntimeParam.Add(
+            EDRPOURuntimeKeyLbl,
+            BusinessPartner."Registration No.");
+
+        EDSOrchestrator.Execute(
+            CompanyRegistryServiceLbl,
+            GetCompanyOperationLbl,
+            RuntimeParam,
+            ResponseBuffer);
+
+        if ResponseBuffer."Result Type" <>
+        ResponseBuffer."Result Type"::Success
+        then
+            Error(
+                RegistryRequestFailedErr,
+                ResponseBuffer."Provider Code",
+                ResponseBuffer."HTTP Status Code",
+                ResponseBuffer."Error Message");
+
+        ResponseText := ResponseBuffer.GetBodyText();
+
+        if ResponseText = '' then
+            Error(EmptyRegistryResponseErr);
+
+        case UpperCase(ResponseBuffer."Provider Code") of
+            AdmToolsProviderLbl:
+                AdmToolsResolver.Resolve(
+                    ResponseText,
+                    ResponseBuffer."Provider Code",
+                    BusinessPartner."Country/Region Code",
+                    RegistryResult);
+            else
+                Error(
+                    UnsupportedRegistryProviderErr,
+                    ResponseBuffer."Provider Code");
+        end;
+    end;
+
     local procedure RequestRegistryData(RegistrationNo: Text; var ResultBuffer: Record "SI EDRPOU Check Buffer" temporary)
     var
         HttpClient: HttpClient;
@@ -318,4 +368,13 @@ codeunit 54013 "SI EDRPOU Registry Mgt."
         RegistryUrlLbl: Label 'https://adm.tools/action/gov/api/?egrpou=', Locked = true;
         ResponseReadFailedErr: Label 'The response from the EDRPOU registry service could not be read.';
         UkraineCountryCodeLbl: Label 'UA', Locked = true;
+
+        CompanyRegistryServiceLbl: Label 'COMPANY-REGISTRY', Locked = true;
+        GetCompanyOperationLbl: Label 'GET-COMPANY', Locked = true;
+        EDRPOURuntimeKeyLbl: Label 'EDRPOU', Locked = true;
+        AdmToolsProviderLbl: Label 'ADM-TOOLS', Locked = true;
+
+        EmptyRegistryResponseErr: Label 'The registry provider returned an empty response.';
+        RegistryRequestFailedErr: Label 'Registry request failed. Provider: %1, HTTP status: %2, error: %3.';
+        UnsupportedRegistryProviderErr: Label 'Registry provider %1 is not supported by SI Business Partner.';
 }
