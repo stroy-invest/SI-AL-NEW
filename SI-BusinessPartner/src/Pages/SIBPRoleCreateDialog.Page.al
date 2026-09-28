@@ -16,17 +16,7 @@ page 54034 "SI BP Role Create Dialog"
                     ApplicationArea = All;
                     Caption = 'Контрагент';
                     TableRelation = "SI Business Partner"."No.";
-                }
-
-                field(RoleTypeField; RoleType)
-                {
-                    ApplicationArea = All;
-                    Caption = 'Тип ролі';
-
-                    trigger OnValidate()
-                    begin
-                        ERPTemplateCode := '';
-                    end;
+                    Editable = false;
                 }
 
                 field(ERPTemplateField; ERPTemplateCode)

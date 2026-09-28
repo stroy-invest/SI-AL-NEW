@@ -2,6 +2,8 @@ table 54011 "SI BP Vendor Setup"
 {
     Caption = 'Business Partner Vendor Setup';
     DataClassification = CustomerContent;
+    ObsoleteState = Pending;
+    ObsoleteReason = 'Legacy prototype role setup. ERP role configuration is owned by SI BP Role and standard BC Customer/Vendor Templates.';
 
     fields
     {

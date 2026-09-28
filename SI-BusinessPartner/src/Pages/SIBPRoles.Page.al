@@ -64,34 +64,5 @@ page 54030 "SI BP Roles"
 
     actions
     {
-        area(Processing)
-        {
-            action(CreateRole)
-            {
-                Caption = 'Створити роль';
-                ApplicationArea = All;
-                Image = New;
-
-                trigger OnAction()
-                var
-                    CreateDialog: Page "SI BP Role Create Dialog";
-                    RoleMgt: Codeunit "SI BP Role Mgt.";
-                    NewRole: Record "SI BP Role";
-                begin
-                    if CreateDialog.RunModal() <> Action::OK then
-                        exit;
-
-                    RoleMgt.CreateRole(
-                        CreateDialog.GetBusinessPartnerNo(),
-                        CreateDialog.GetRoleType(),
-                        CreateDialog.GetERPTemplateCode(),
-                        NewRole);
-
-                    Page.Run(
-                        Page::"SI BP Role Card",
-                        NewRole);
-                end;
-            }
-        }
     }
 }

@@ -33,6 +33,7 @@ permissionset 54031 "SI BP ROLE USER"
         table "SI BP ERP Proj. Bank" = X,
 
         page "SI BP Projection Card" = X,
+        page "SI BP ERP Projection Part" = X,
         page "SI BP ERP Proj. Banks" = X,
 
         codeunit "SI BP Projection Mgt." = X,

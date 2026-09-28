@@ -1,4 +1,4 @@
-page 54004 "SI Business Partner Card"
+﻿page 54004 "SI Business Partner Card"
 {
     PageType = Card;
     SourceTable = "SI Business Partner";
@@ -156,69 +156,6 @@ page 54004 "SI Business Partner Card"
                 }
             }
 
-            group(Roles)
-            {
-                Caption = 'Roles';
-
-                field("Is Customer"; Rec."Is Customer")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies whether the business partner is intended to have the customer role.';
-                    Editable = IsDraft;
-
-                    trigger OnValidate()
-                    begin
-                        RefreshRoleParts();
-                    end;
-                }
-
-                field("Is Vendor"; Rec."Is Vendor")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies whether the business partner is intended to have the vendor role.';
-                    Editable = IsDraft;
-
-                    trigger OnValidate()
-                    begin
-                        RefreshRoleParts();
-                    end;
-                }
-            }
-
-            part(CustomerSetup; "SI BP Customer Setup Part")
-            {
-                ApplicationArea = All;
-                Caption = 'Customer Settings';
-                SubPageLink = "Business Partner No." = field("No.");
-                Visible = Rec."Is Customer";
-            }
-
-            part(VendorSetup; "SI BP Vendor Setup Part")
-            {
-                ApplicationArea = All;
-                Caption = 'Vendor Settings';
-                SubPageLink = "Business Partner No." = field("No.");
-                Visible = Rec."Is Vendor";
-            }
-
-            group(ERPProjections)
-            {
-                Caption = 'ERP Projections';
-
-                field("Customer No."; Rec."Customer No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the related Business Central customer number.';
-                    Editable = false;
-                }
-
-                field("Vendor No."; Rec."Vendor No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the related Business Central vendor number.';
-                    Editable = false;
-                }
-            }
         }
     }
 
@@ -226,9 +163,6 @@ page 54004 "SI Business Partner Card"
     {
         area(Processing)
         {
-            // New role-based architecture.
-            // The legacy role setup remains below until the next
-            // refactoring phase.
             group(RoleManagement)
             {
                 Caption = 'Ролі';
@@ -238,6 +172,7 @@ page 54004 "SI Business Partner Card"
                     Caption = 'Створити роль покупця';
                     ApplicationArea = All;
                     ToolTip = 'Створює для поточного контрагента роль покупця.';
+                    Enabled = CanCreateCustomerRole;
 
                     trigger OnAction()
                     var
@@ -272,6 +207,7 @@ page 54004 "SI Business Partner Card"
                     Caption = 'Створити роль постачальника';
                     ApplicationArea = All;
                     ToolTip = 'Створює для поточного контрагента роль постачальника.';
+                    Enabled = CanCreateVendorRole;
 
                     trigger OnAction()
                     var
@@ -325,81 +261,26 @@ page 54004 "SI Business Partner Card"
                 }
             }
 
-            action(ConfigureRoles)
-            {
-                ApplicationArea = All;
-                Caption = 'Налаштувати ролі';
-                ToolTip = 'Створює або оновлює налаштування ролей покупця та постачальника.';
-                Image = Setup;
-                Enabled = Rec."Is Customer" or Rec."Is Vendor";
-
-                trigger OnAction()
-                var
-                    BPRoleSetupMgt: Codeunit "SI BP Role Setup Mgt.";
-                begin
-                    CurrPage.SaveRecord();
-
-                    BPRoleSetupMgt.SynchronizeRoleSetups(Rec);
-
-                    RefreshRoleParts();
-                end;
-            }
-
             action(CheckEDRPOURegistry)
             {
                 ApplicationArea = All;
                 Caption = 'Перевірити реєстр. №';
-                ToolTip = 'Перевірити реєстраційний номер українського контрагента через сервіс adm.tools.';
+                ToolTip = 'Отримує актуальні дані українського контрагента з реєстру та оновлює дані Business Partner.';
                 Image = Check;
                 Enabled = CanCheckEDRPOU;
 
                 trigger OnAction()
                 var
                     EDRPOURegistryMgt: Codeunit "SI EDRPOU Registry Mgt.";
+                    SuccessMsg: Label 'Дані контрагента успішно отримано з реєстру та матеріалізовано.';
                 begin
                     CurrPage.SaveRecord();
-                    Commit();
 
-                    EDRPOURegistryMgt.CheckAndShow(Rec);
+                    EDRPOURegistryMgt.CheckAndMaterialize(Rec);
 
                     CurrPage.Update(false);
-                end;
-            }
 
-            action(TestRegistryEDS)
-            {
-                ApplicationArea = All;
-                Caption = 'Тест Registry EDS';
-                ToolTip = 'Діагностичний виклик реєстру контрагентів через Foundation EDS без зміни даних Business Partner.';
-                Image = TestDatabase;
-                Enabled = CanCheckEDRPOU;
-
-                trigger OnAction()
-                var
-                    EDRPOURegistryMgt: Codeunit "SI EDRPOU Registry Mgt.";
-                    RegistryResult: Record "SI Registry Result" temporary;
-                    ResultMsg: Label 'Provider: %1\ЄДРПОУ: %2\ІПН: %3\Назва: %4\Юридична форма: %5\Повна назва: %6\Коротка назва реєстру: %7\Адреса: %8\Керівник: %9';
-                begin
-                    CurrPage.SaveRecord();
-
-                    EDRPOURegistryMgt.ResolveViaEDS(
-                        Rec,
-                        RegistryResult);
-
-                    if not RegistryResult.FindFirst() then
-                        Error('Registry resolver не повернув результат.');
-
-                    Message(
-                        ResultMsg,
-                        RegistryResult."Provider Code",
-                        RegistryResult."Registration No.",
-                        RegistryResult."Tax Registration No.",
-                        RegistryResult."Core Name",
-                        RegistryResult."Legal Form Short",
-                        RegistryResult."Legal Name",
-                        RegistryResult."Registry Short Name",
-                        RegistryResult.Address,
-                        RegistryResult.Director);
+                    Message(SuccessMsg);
                 end;
             }
         }
@@ -429,6 +310,20 @@ page 54004 "SI Business Partner Card"
         {
             actionref(CheckEDRPOURegistryPromoted; CheckEDRPOURegistry)
             {
+            }
+
+            group(CreateRolePromoted)
+            {
+                Caption = 'Створити роль';
+                ShowAs = SplitButton;
+
+                actionref(CreateCustomerRolePromoted; CreateCustomerRole)
+                {
+                }
+
+                actionref(CreateVendorRolePromoted; CreateVendorRole)
+                {
+                }
             }
 
             actionref(CountryLegalFormsPromoted; CountryLegalForms)
@@ -465,25 +360,17 @@ page 54004 "SI Business Partner Card"
         UpdatePageState();
     end;
 
-    local procedure RefreshRoleParts()
-    begin
-        CurrPage.SaveRecord();
-        CurrPage.Update(false);
-
-        if Rec."Is Customer" then
-            CurrPage.CustomerSetup.Page.Update(false);
-
-        if Rec."Is Vendor" then
-            CurrPage.VendorSetup.Page.Update(false);
-    end;
-
     local procedure UpdatePageState()
     var
         EDRPOURegistryMgt: Codeunit "SI EDRPOU Registry Mgt.";
+        BPRole: Record "SI BP Role";
     begin
         IsDraft := Rec.Status = Rec.Status::Draft;
         CanCheckEDRPOU :=
             EDRPOURegistryMgt.IsCheckAvailable(Rec);
+
+        CanCreateCustomerRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Customer);
+        CanCreateVendorRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Vendor);
 
         case Rec.Status of
             Rec.Status::Draft:
@@ -500,8 +387,24 @@ page 54004 "SI Business Partner Card"
         end;
     end;
 
+    local procedure HasRole(
+        var BPRole: Record "SI BP Role";
+        RoleType: Enum "SI BP Role Type"): Boolean
+    begin
+        if Rec."No." = '' then
+            exit(false);
+
+        BPRole.Reset();
+        BPRole.SetRange("Business Partner No.", Rec."No.");
+        BPRole.SetRange("Role Type", RoleType);
+
+        exit(not BPRole.IsEmpty());
+    end;
+
     var
         CanCheckEDRPOU: Boolean;
+        CanCreateCustomerRole: Boolean;
+        CanCreateVendorRole: Boolean;
         IsDraft: Boolean;
         StatusStyle: Text;
 }

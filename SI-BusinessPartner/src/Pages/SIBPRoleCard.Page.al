@@ -61,20 +61,27 @@ page 54031 "SI BP Role Card"
                 }
             }
 
-            group(Projection)
+            group(CreatedCustomer)
             {
-                Caption = 'ERP-проєкція';
+                Caption = 'Створений клієнт';
+                Visible = IsCustomerRole and HasMaterializedERP;
 
-                field("Customer No."; Rec."Customer No.")
+                part(CustomerProjectionSummary; "SI BP ERP Projection Part")
                 {
                     ApplicationArea = All;
-                    Editable = false;
+                    SubPageLink = Code = field(Code);
                 }
+            }
 
-                field("Vendor No."; Rec."Vendor No.")
+            group(CreatedVendor)
+            {
+                Caption = 'Створений постачальник';
+                Visible = IsVendorRole and HasMaterializedERP;
+
+                part(VendorProjectionSummary; "SI BP ERP Projection Part")
                 {
                     ApplicationArea = All;
-                    Editable = false;
+                    SubPageLink = Code = field(Code);
                 }
             }
 
@@ -608,6 +615,11 @@ page 54031 "SI BP Role Card"
             Projection.Get(
                 Rec.Code);
 
+        HasMaterializedERP :=
+            HasProjection and
+            (Projection.Status = Projection.Status::Materialized) and
+            (Projection."ERP No." <> '');
+
         CanCreateProjection :=
             (Rec.Status =
              Rec.Status::Active) and
@@ -761,6 +773,7 @@ page 54031 "SI BP Role Card"
         CanEditBanking: Boolean;
 
         HasProjection: Boolean;
+        HasMaterializedERP: Boolean;
         CanCreateProjection: Boolean;
         CanViewProjection: Boolean;
         CanDeleteProjection: Boolean;

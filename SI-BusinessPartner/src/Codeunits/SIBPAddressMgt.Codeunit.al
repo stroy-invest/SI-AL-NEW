@@ -43,6 +43,58 @@ codeunit 54020 "SI BP Address Mgt."
         exit(false);
     end;
 
+    procedure UpsertCurrentRegistryLegalAddress(
+        BusinessPartner: Record "SI Business Partner";
+        RegistryAddress: Text;
+        VerificationSource: Code[30])
+    var
+        BPAddress: Record "SI BP Address";
+        ParsedAddress: Record "SI Parsed Address Buffer" temporary;
+        AddressParserMgt: Codeunit "SI Address Parser Mgt.";
+        NormalizedRawAddress: Text;
+    begin
+        NormalizedRawAddress := RegistryAddress.Trim();
+        if NormalizedRawAddress = '' then
+            exit;
+
+        AddressParserMgt.ParseAddress(
+            NormalizedRawAddress,
+            BusinessPartner."Country/Region Code",
+            VerificationSource,
+            BusinessPartner."No.",
+            ParsedAddress);
+
+        if GetCurrentLegalAddress(
+            BusinessPartner."No.",
+            WorkDate(),
+            BPAddress)
+        then begin
+            ApplyRegistryAddress(
+                BPAddress,
+                BusinessPartner,
+                NormalizedRawAddress,
+                VerificationSource,
+                ParsedAddress);
+
+            BPAddress.Modify(true);
+            exit;
+        end;
+
+        BPAddress.Init();
+        BPAddress."Business Partner No." := BusinessPartner."No.";
+        BPAddress."Address Type" := BPAddress."Address Type"::Legal;
+        BPAddress."Is Primary" := true;
+
+        ApplyRegistryAddress(
+            BPAddress,
+            BusinessPartner,
+            NormalizedRawAddress,
+            VerificationSource,
+            ParsedAddress);
+
+        BPAddress.Insert(true);
+    end;
+
     procedure UpsertRegistryLegalAddress(
         BusinessPartner: Record "SI Business Partner";
         RegistryAddress: Text;

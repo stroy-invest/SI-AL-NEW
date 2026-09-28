@@ -24,6 +24,13 @@ page 54021 "SI BP Addresses Part"
                     ApplicationArea = All;
                     ShowMandatory = true;
                 }
+                field("Raw Address"; Rec."Raw Address")
+                {
+                    ApplicationArea = All;
+                    Caption = 'Адреса з реєстру';
+                    ToolTip = 'Повна адреса, отримана із зовнішнього реєстру без структурного розбору.';
+                    Editable = false;
+                }
                 field("Region/State"; Rec."Region/State")
                 {
                     ApplicationArea = All;

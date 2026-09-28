@@ -57,29 +57,6 @@ page 54005 "SI Business Partners"
                     ToolTip = 'Specifies the business partner tax registration number.';
                 }
 
-                field("Is Customer"; Rec."Is Customer")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies whether the business partner has the customer role.';
-                }
-
-                field("Is Vendor"; Rec."Is Vendor")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies whether the business partner has the vendor role.';
-                }
-
-                field("Customer No."; Rec."Customer No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the related Business Central customer number.';
-                }
-
-                field("Vendor No."; Rec."Vendor No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the related Business Central vendor number.';
-                }
             }
         }
     }

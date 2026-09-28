@@ -44,65 +44,8 @@ codeunit 54021 "SI BP Currency Mgt."
         var BusinessPartner: Record "SI Business Partner";
         OldBusinessPartner: Record "SI Business Partner")
     begin
-        UpdateCustomerCurrency(
-            BusinessPartner,
-            OldBusinessPartner."Currency Code");
-
-        UpdateVendorCurrency(
-            BusinessPartner,
-            OldBusinessPartner."Currency Code");
-    end;
-
-    local procedure UpdateCustomerCurrency(
-        BusinessPartner: Record "SI Business Partner";
-        OldCurrencyCode: Code[10])
-    var
-        CustomerSetup: Record "SI BP Customer Setup";
-    begin
-        if not CustomerSetup.Get(BusinessPartner."No.") then
-            exit;
-
-        if not CanReplaceRoleCurrency(
-            CustomerSetup."Currency Code",
-            OldCurrencyCode)
-        then
-            exit;
-
-        CustomerSetup.Validate(
-            "Currency Code",
-            BusinessPartner."Currency Code");
-
-        CustomerSetup.Modify(true);
-    end;
-
-    local procedure UpdateVendorCurrency(
-        BusinessPartner: Record "SI Business Partner";
-        OldCurrencyCode: Code[10])
-    var
-        VendorSetup: Record "SI BP Vendor Setup";
-    begin
-        if not VendorSetup.Get(BusinessPartner."No.") then
-            exit;
-
-        if not CanReplaceRoleCurrency(
-            VendorSetup."Currency Code",
-            OldCurrencyCode)
-        then
-            exit;
-
-        VendorSetup.Validate(
-            "Currency Code",
-            BusinessPartner."Currency Code");
-
-        VendorSetup.Modify(true);
-    end;
-
-    local procedure CanReplaceRoleCurrency(
-        RoleCurrencyCode: Code[10];
-        OldBPCurrencyCode: Code[10]): Boolean
-    begin
-        exit(
-            (RoleCurrencyCode = '') or
-            (RoleCurrencyCode = OldBPCurrencyCode));
+        // Compatibility hook intentionally kept while the BP field contract is stable.
+        // Role-specific ERP configuration is owned by SI BP Role + standard BC templates.
+        // Legacy SI BP Customer/Vendor Setup records are no longer synchronized.
     end;
 }
