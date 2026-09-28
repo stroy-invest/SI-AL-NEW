@@ -205,17 +205,24 @@ page 61011 "SI Supply Allocations"
             action(CreateExecutionDocument)
             {
                 ApplicationArea = All;
-                Caption = 'Створити документ виконання';
+                Caption = 'Передати до виконання';
                 Image = CreateDocument;
 
                 trigger OnAction()
                 var
                     ExecutionMgt: Codeunit "SI Supply Execution Mgt.";
                 begin
-                    if Rec."Supply Method" <> Rec."Supply Method"::Production then
-                        Error('На цьому етапі створення документа виконання реалізовано лише для способу Виробництво.');
+                    CurrPage.SaveRecord();
 
-                    ExecutionMgt.ExecuteProduction(Rec);
+                    case Rec."Supply Method" of
+                        Rec."Supply Method"::Production:
+                            ExecutionMgt.ExecuteProduction(Rec);
+                        Rec."Supply Method"::Purchase:
+                            ExecutionMgt.ExecutePurchase(Rec);
+                        else
+                            Error(UnsupportedExecutionMethodErr, Format(Rec."Supply Method"));
+                    end;
+
                     CurrPage.Update(false);
                 end;
             }
@@ -287,7 +294,7 @@ page 61011 "SI Supply Allocations"
         RecipeResolutionStatusDisplay: Text[50];
         SelectedRevisionDisplay: Text[20];
 
-    var
         MaterialsAvailableMsg: Label 'Потребу в матеріалах розраховано. Необхідні матеріали на складі %1 наявні в достатній кількості.';
 
+        UnsupportedExecutionMethodErr: Label 'Передача до виконання для способу забезпечення «%1» не підтримується.';
 }

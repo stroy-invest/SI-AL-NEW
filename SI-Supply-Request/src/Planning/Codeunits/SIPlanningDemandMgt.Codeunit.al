@@ -1,6 +1,37 @@
 codeunit 61043 "SI Planning Demand Mgt."
 {
     procedure RebuildAll()
+    begin
+        RebuildAllInternal(true);
+    end;
+
+    procedure RebuildAllSilent()
+    begin
+        RebuildAllInternal(false);
+    end;
+
+    procedure EnsurePurchaseDemand(Allocation: Record "SI Supply Allocation"): Integer
+    var
+        Demand: Record "SI Planning Demand";
+        SyncToken: Guid;
+        SyncedAt: DateTime;
+    begin
+        Allocation.TestField("Supply Method", Allocation."Supply Method"::Purchase);
+
+        if not IsPlanningEligible(Allocation) then
+            Error(AllocationNotEligibleErr);
+        if not HasValidRequestLineage(Allocation) then
+            Error(InvalidRequestLineageErr);
+
+        SyncToken := CreateGuid();
+        SyncedAt := CurrentDateTime();
+        UpsertPurchaseDemand(Allocation, SyncToken, SyncedAt);
+
+        GetOrInitDemand(Demand, Demand."Source Type"::"Purchase Allocation", Allocation, 0);
+        exit(Demand."Entry No.");
+    end;
+
+    local procedure RebuildAllInternal(ShowMessage: Boolean)
     var
         Allocation: Record "SI Supply Allocation";
         Demand: Record "SI Planning Demand";
@@ -34,10 +65,11 @@ codeunit 61043 "SI Planning Demand Mgt."
         Demand.SetFilter("Rebuild Token", '<>%1', RebuildToken);
         Demand.DeleteAll(true);
 
-        if CountSkippedOrphaned = 0 then
-            Message(RebuildDoneMsg, CountCreatedOrUpdated)
-        else
-            Message(RebuildDoneWithSkippedMsg, CountCreatedOrUpdated, CountSkippedOrphaned);
+        if ShowMessage then
+            if CountSkippedOrphaned = 0 then
+                Message(RebuildDoneMsg, CountCreatedOrUpdated)
+            else
+                Message(RebuildDoneWithSkippedMsg, CountCreatedOrUpdated, CountSkippedOrphaned);
     end;
 
 
@@ -206,4 +238,6 @@ codeunit 61043 "SI Planning Demand Mgt."
         RebuildDoneWithSkippedMsg: Label 'Єдиний реєстр планових потреб перебудовано. Створено або оновлено %1 активних рядків. Виключено %2 осиротілих або закритих розподілів.';
         DecisionNotFoundErr: Label 'Не знайдено рішення %1 для планової потреби.';
         DecisionLineNotFoundErr: Label 'Не знайдено рядок рішення %1 / %2 для планової потреби.';
+        AllocationNotEligibleErr: Label 'Розподіл ще не готовий до передачі в планування закупівель. Перевірте кількість і статус розподілу.';
+        InvalidRequestLineageErr: Label 'Розподіл не має чинного зв’язку із погодженою заявкою на забезпечення.';
 }

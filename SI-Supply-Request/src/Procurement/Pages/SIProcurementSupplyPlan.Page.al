@@ -55,6 +55,11 @@ page 61052 "SI Procurement Supply Plan"
                     Caption = 'Спосіб доставки';
                     ApplicationArea = All;
                 }
+                field(Status; Rec.Status)
+                {
+                    Caption = 'Статус';
+                    ApplicationArea = All;
+                }
                 field("Purchase Quantity"; Rec."Purchase Quantity")
                 {
                     Caption = 'Кількість';
@@ -83,11 +88,6 @@ page 61052 "SI Procurement Supply Plan"
                             if Location.Get(Snapshot."Location Code") then
                                 Page.Run(Page::"Location Card", Location);
                     end;
-                }
-                field(Status; Rec.Status)
-                {
-                    Caption = 'Статус';
-                    ApplicationArea = All;
                 }
             }
         }
@@ -124,8 +124,31 @@ page 61052 "SI Procurement Supply Plan"
                 var
                     AllocationMgt: Codeunit "SI Proc. Allocation Mgt.";
                 begin
+                    if Rec.Status = Rec.Status::Confirmed then begin
+                        Message(AlreadyConfirmedMsg);
+                        exit;
+                    end;
+
                     AllocationMgt.ConfirmAllocation(Rec);
                     CurrPage.Update(false);
+
+                    if Rec.Status = Rec.Status::Confirmed then
+                        Message(ConfirmedMsg, VendorName, Rec."Purchase Quantity", Rec."Unit of Measure Code", Rec."Expected Receipt Date");
+                end;
+            }
+            action(OpenPOPreparation)
+            {
+                Caption = 'Підготовка замовлень';
+                ApplicationArea = All;
+                Image = Purchase;
+                Promoted = true;
+                PromotedCategory = Process;
+                trigger OnAction()
+                var
+                    ProposalMgt: Codeunit "SI PO Proposal Mgt.";
+                begin
+                    ProposalMgt.RebuildCurrentRun();
+                    Page.Run(Page::"SI PO Preparation");
                 end;
             }
             action(CancelAllocation)
@@ -220,4 +243,6 @@ page 61052 "SI Procurement Supply Plan"
         CapabilityName: Text[100];
         ShipmentMethodName: Text[100];
         LocationName: Text[100];
+        ConfirmedMsg: Label 'Розподіл постачання підтверджено.\Постачальник: %1\Кількість: %2 %3\Очікувана поставка: %4';
+        AlreadyConfirmedMsg: Label 'Розподіл постачання вже підтверджено.';
 }

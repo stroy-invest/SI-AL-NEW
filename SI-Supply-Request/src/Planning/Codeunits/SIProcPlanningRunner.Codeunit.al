@@ -10,7 +10,7 @@ codeunit 61047 "SI Proc. Planning Runner"
         PlanningDemandMgt: Codeunit "SI Planning Demand Mgt.";
         PlanningForecastMgt: Codeunit "SI Planning Forecast Mgt.";
     begin
-        PlanningDemandMgt.RebuildAll();
+        PlanningDemandMgt.RebuildAllSilent();
         PlanningForecastMgt.SyncAll();
         CalculateStandardPlan();
     end;
