@@ -147,7 +147,7 @@ page 61033 "SI Supply Req Lines Grid"
 
         EnsureRequestEditable(RequestNo);
         SupplyLine.Get(RequestNo, LineNo);
-        LineEditor.SetRecord(SupplyLine);
+        LineEditor.PrepareEdit(SupplyLine);
 
         if LineEditor.RunModal() <> Action::OK then
             exit;

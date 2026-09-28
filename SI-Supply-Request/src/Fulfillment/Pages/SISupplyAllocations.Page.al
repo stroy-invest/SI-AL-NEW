@@ -74,7 +74,35 @@ page 61011 "SI Supply Allocations"
                         exit(true);
                     end;
                 }
-                field("Target Location Code"; Rec."Target Location Code") { ApplicationArea = All; }
+                field(PurchaseReceivingLocationName; TargetLocationName)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Склад приходу';
+                    Editable = PurchaseLocationEditable;
+                    Lookup = true;
+
+                    trigger OnLookup(var Text: Text): Boolean
+                    var
+                        Location: Record Location;
+                        ReceivingLocationLookup: Page "SI Purchase Receiving Locs";
+                    begin
+                        ReceivingLocationLookup.LookupMode(true);
+                        if ReceivingLocationLookup.RunModal() = Action::LookupOK then begin
+                            ReceivingLocationLookup.GetRecord(Location);
+                            Rec.Validate("Target Location Code", Location.Code);
+                            TargetLocationName := Location.Name;
+                            CurrPage.SaveRecord();
+                            CurrPage.Update(false);
+                        end;
+                        exit(true);
+                    end;
+                }
+                field(ProjectTargetLocationName; ProjectTargetLocationName)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Склад призначення';
+                    Editable = false;
+                }
                 field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; }
                 field(Status; Rec.Status) { ApplicationArea = All; }
                 field(RecipeResolutionStatusDisplay; RecipeResolutionStatusDisplay)
@@ -199,7 +227,9 @@ page 61011 "SI Supply Allocations"
     begin
         ConstructionSiteName := Rec.GetConstructionSiteName();
         SourceLocationName := Rec.GetSourceLocationName();
+        SetTargetLocationDisplay();
         AllocationEditable := IsAllocationEditable();
+        PurchaseLocationEditable := AllocationEditable and (Rec."Supply Method" = Rec."Supply Method"::Purchase);
         SetRecipeDisplayValues();
     end;
 
@@ -207,8 +237,10 @@ page 61011 "SI Supply Allocations"
     begin
         ConstructionSiteName := Rec.GetConstructionSiteName();
         SourceLocationName := Rec.GetSourceLocationName();
+        SetTargetLocationDisplay();
         AllocationEditable := IsAllocationEditable();
         SourceLocationEditable := Rec."Supply Method" <> Rec."Supply Method"::Purchase;
+        PurchaseLocationEditable := AllocationEditable and (Rec."Supply Method" = Rec."Supply Method"::Purchase);
         SetRecipeDisplayValues();
     end;
 
@@ -219,6 +251,16 @@ page 61011 "SI Supply Allocations"
         if not DecisionHeader.Get(Rec."Decision No.") then
             exit(false);
         exit(DecisionHeader.Status = DecisionHeader.Status::Draft);
+    end;
+
+    local procedure SetTargetLocationDisplay()
+    begin
+        Clear(TargetLocationName);
+        Clear(ProjectTargetLocationName);
+        if Rec."Supply Method" = Rec."Supply Method"::Purchase then
+            TargetLocationName := Rec.GetTargetLocationName()
+        else
+            ProjectTargetLocationName := Rec.GetTargetLocationName();
     end;
 
     local procedure SetRecipeDisplayValues()
@@ -237,7 +279,10 @@ page 61011 "SI Supply Allocations"
     var
         ConstructionSiteName: Text[100];
         SourceLocationName: Text[100];
+        TargetLocationName: Text[100];
+        ProjectTargetLocationName: Text[100];
         SourceLocationEditable: Boolean;
+        PurchaseLocationEditable: Boolean;
         AllocationEditable: Boolean;
         RecipeResolutionStatusDisplay: Text[50];
         SelectedRevisionDisplay: Text[20];

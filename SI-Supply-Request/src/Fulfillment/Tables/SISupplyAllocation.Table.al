@@ -29,10 +29,17 @@ table 61012 "SI Supply Allocation"
                 if "Supply Method" = "Supply Method"::Purchase then
                     Clear("Source Location Code");
 
-                if "Supply Method" = "Supply Method"::Production then
-                    ApplyProductionDefaults();
-
                 if "Supply Method" <> xRec."Supply Method" then begin
+                    case "Supply Method" of
+                        "Supply Method"::Purchase:
+                            ApplyPurchaseDefaults();
+                        "Supply Method"::Production:
+                            ApplyProductionDefaults();
+                        "Supply Method"::Transfer,
+                        "Supply Method"::Stock:
+                            ApplyProjectTargetLocation();
+                    end;
+
                     ClearRecipeResolution();
                     InvalidateMaterialRequirements();
                     RefreshAllocationReadiness();
@@ -80,7 +87,15 @@ table 61012 "SI Supply Allocation"
         {
             Caption = 'Склад призначення';
             TableRelation = Location.Code;
-            Editable = false;
+
+            trigger OnValidate()
+            var
+                ReceivingLocationMgt: Codeunit "SI Purchase Receiving Loc.";
+            begin
+                TestEditable();
+                if ("Supply Method" = "Supply Method"::Purchase) and ("Target Location Code" <> '') then
+                    ReceivingLocationMgt.ValidateReceivingLocation("Target Location Code");
+            end;
         }
         field(65; "Construction Site Code"; Code[20])
         {
@@ -221,6 +236,8 @@ table 61012 "SI Supply Allocation"
     begin
         TestEditable();
         CopyFromDecisionLine();
+        if "Supply Method" = "Supply Method"::Purchase then
+            ApplyPurchaseDefaults();
         if "Created By" = '' then
             "Created By" := CopyStr(UserId(), 1, MaxStrLen("Created By"));
         if "Created At" = 0DT then
@@ -270,7 +287,8 @@ table 61012 "SI Supply Allocation"
         "Unit of Measure Code" := DecisionLine."Unit of Measure Code";
         "Required on Site At" := DecisionLine."Required on Site At";
         "Construction Site Code" := DecisionLine."Construction Site Code";
-        "Target Location Code" := DecisionLine."Target Location Code";
+        if "Supply Method" <> "Supply Method"::Purchase then
+            "Target Location Code" := DecisionLine."Target Location Code";
 
         if Quantity = 0 then
             Quantity := DecisionLine.GetRemainingQuantity();
@@ -278,6 +296,43 @@ table 61012 "SI Supply Allocation"
         if "Supply Method" = "Supply Method"::Production then
             SetDefaultProductionLocation();
     end;
+
+
+    procedure ApplyPurchaseDefaults()
+    var
+        ReceivingLocationMgt: Codeunit "SI Purchase Receiving Loc.";
+        DefaultLocationCode: Code[10];
+    begin
+        if "Supply Method" <> "Supply Method"::Purchase then
+            exit;
+
+        Clear("Source Location Code");
+        Clear("Target Location Code");
+        DefaultLocationCode := ReceivingLocationMgt.ResolveDefault("Item No.", "Variant Code");
+        if DefaultLocationCode <> '' then
+            Validate("Target Location Code", DefaultLocationCode);
+    end;
+
+    local procedure ApplyProjectTargetLocation()
+    var
+        DecisionLine: Record "SI Supply Decision Line";
+    begin
+        if not DecisionLine.Get("Decision No.", "Decision Line No.") then
+            exit;
+        "Target Location Code" := DecisionLine."Target Location Code";
+    end;
+
+    procedure GetTargetLocationName(): Text[100]
+    var
+        Location: Record Location;
+    begin
+        if "Target Location Code" = '' then
+            exit('');
+        if not Location.Get("Target Location Code") then
+            exit("Target Location Code");
+        exit(Location.Name);
+    end;
+
 
     procedure ApplyProductionDefaults()
     begin

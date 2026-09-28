@@ -71,6 +71,22 @@ page 61031 "SI Supply Req Line Edit"
         Rec.Insert(false);
     end;
 
+    procedure PrepareEdit(SupplyLine: Record "SI Supply Req Line")
+    var
+        Header: Record "SI Supply Req Header";
+    begin
+        Header.Get(SupplyLine."Request No.");
+        Header.TestEditable();
+
+        // The dialog uses a temporary source table. SetRecord() alone does not
+        // materialize the persistent line into that temporary dataset.
+        // Copy the selected line explicitly and insert it as the current temp record.
+        Rec.Init();
+        Rec.TransferFields(SupplyLine, true);
+        Rec.Insert(false);
+        SetSiteName();
+    end;
+
     local procedure LookupRequestSite(): Boolean
     var
         RequestSite: Record "SI Supply Request Site";

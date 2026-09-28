@@ -185,6 +185,11 @@ codeunit 61010 "SI Supply Decision Mgt."
                     Allocation.TestField("Target Location Code");
 
                     case Allocation."Supply Method" of
+                        Allocation."Supply Method"::Purchase:
+                            begin
+                                Allocation.TestField("Target Location Code");
+                                Allocation.Validate("Target Location Code", Allocation."Target Location Code");
+                            end;
                         Allocation."Supply Method"::Transfer:
                             Allocation.TestField("Source Location Code");
                         Allocation."Supply Method"::Stock:

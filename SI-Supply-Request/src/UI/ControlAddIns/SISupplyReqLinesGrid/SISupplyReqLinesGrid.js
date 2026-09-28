@@ -65,7 +65,7 @@ function SetLines(data, canEdit) {
         var actions = document.createElement('td');
         actions.className = 'si-sr-actions';
 
-        var edit = btn('Ред.', function () {
+        var edit = btn('Редагувати', function () {
             Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('EditLine', [r.lineNo]);
         });
         actions.appendChild(edit);
