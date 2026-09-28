@@ -131,37 +131,37 @@ codeunit 54015 "SI AdmTools Reg. Resolver"
         RegistryResult.Insert();
     end;
 
-    local procedure ExtractCoreName(FullName: Text): Text
+    local procedure ExtractCoreName(LegalName: Text): Text
     var
-        Apostrophe: Char;
-        ClosePos: Integer;
-        OpenPos: Integer;
-        RemainingText: Text;
+        FirstApostrophePos: Integer;
+        CoreName: Text;
     begin
-        Apostrophe := 39;
+        LegalName := LegalName.Trim();
 
-        OpenPos := StrPos(FullName, Format(Apostrophe));
-        if OpenPos = 0 then
-            exit(FullName.Trim());
+        if LegalName = '' then
+            exit('');
 
-        RemainingText :=
+        FirstApostrophePos := StrPos(LegalName, '''');
+
+        if FirstApostrophePos = 0 then
+            exit(LegalName);
+
+        // adm.tools returns the business name after the first apostrophe.
+        // The name itself may contain additional apostrophes, therefore
+        // everything after the first apostrophe belongs to the business name.
+        CoreName :=
             CopyStr(
-                FullName,
-                OpenPos + 1);
+                LegalName,
+                FirstApostrophePos + 1);
 
-        ClosePos :=
-            StrPos(
-                RemainingText,
-                Format(Apostrophe));
+        // Apostrophes in the adm.tools representation are treated as
+        // presentation characters and are not part of the canonical BP name.
+        CoreName := CoreName.Replace('''', '');
 
-        if ClosePos = 0 then
-            exit(RemainingText.Trim());
+        while StrPos(CoreName, '  ') > 0 do
+            CoreName := CoreName.Replace('  ', ' ');
 
-        exit(
-            CopyStr(
-                RemainingText,
-                1,
-                ClosePos - 1).Trim());
+        exit(CoreName.Trim());
     end;
 
     local procedure ExtractLegalFormShort(ShortName: Text): Text
