@@ -1,6 +1,6 @@
 table 54020 "SI BP Address"
 {
-    Caption = 'Business Partner Address';
+    Caption = 'Адреса контрагента';
     DataClassification = CustomerContent;
     DrillDownPageId = "SI BP Addresses";
     LookupPageId = "SI BP Addresses";
@@ -9,65 +9,65 @@ table 54020 "SI BP Address"
     {
         field(1; "Entry No."; Integer)
         {
-            Caption = 'Entry No.';
+            Caption = 'Номер запису';
             AutoIncrement = true;
         }
         field(2; "Business Partner No."; Code[60])
         {
-            Caption = 'Business Partner No.';
+            Caption = 'Код контрагента';
             TableRelation = "SI Business Partner"."No.";
             NotBlank = true;
         }
         field(3; "Address Type"; Enum "SI BP Address Type")
         {
-            Caption = 'Address Type';
+            Caption = 'Тип адреси';
             NotBlank = true;
         }
         field(4; "Country/Region Code"; Code[10])
         {
-            Caption = 'Country/Region Code';
+            Caption = 'Код країни/регіону';
             TableRelation = "Country/Region".Code;
             NotBlank = true;
         }
         field(5; "Region/State"; Text[100])
         {
-            Caption = 'Region/State';
+            Caption = 'Область/регіон';
         }
         field(6; District; Text[100])
         {
-            Caption = 'District';
+            Caption = 'Район';
         }
         field(7; City; Text[100])
         {
-            Caption = 'City';
+            Caption = 'Місто';
         }
         field(8; "Post Code"; Code[20])
         {
-            Caption = 'Post Code';
+            Caption = 'Поштовий індекс';
         }
         field(9; Street; Text[150])
         {
-            Caption = 'Street';
+            Caption = 'Вулиця';
         }
         field(10; "Building No."; Text[30])
         {
-            Caption = 'Building No.';
+            Caption = 'Номер будинку';
         }
         field(11; "Office/Apartment"; Text[30])
         {
-            Caption = 'Office/Apartment';
+            Caption = 'Офіс/квартира';
         }
         field(12; "Address Details"; Text[250])
         {
-            Caption = 'Address Details';
+            Caption = 'Деталі адреси';
         }
         field(13; "Raw Address"; Text[500])
         {
-            Caption = 'Raw Address';
+            Caption = 'Адреса з джерела';
         }
         field(14; "Valid From"; Date)
         {
-            Caption = 'Valid From';
+            Caption = 'Діє з';
 
             trigger OnValidate()
             begin
@@ -76,7 +76,7 @@ table 54020 "SI BP Address"
         }
         field(15; "Valid To"; Date)
         {
-            Caption = 'Valid To';
+            Caption = 'Діє до';
 
             trigger OnValidate()
             begin
@@ -85,19 +85,19 @@ table 54020 "SI BP Address"
         }
         field(16; "Is Primary"; Boolean)
         {
-            Caption = 'Is Primary';
+            Caption = 'Основний';
         }
         field(17; Verified; Boolean)
         {
-            Caption = 'Verified';
+            Caption = 'Перевірено';
         }
         field(18; "Verification Source"; Code[30])
         {
-            Caption = 'Verification Source';
+            Caption = 'Джерело перевірки';
         }
         field(19; "Verification Date/Time"; DateTime)
         {
-            Caption = 'Verification Date/Time';
+            Caption = 'Дата й час перевірки';
         }
     }
 

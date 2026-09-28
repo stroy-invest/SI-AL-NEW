@@ -50,17 +50,17 @@ table 54070 "SI BP Materialization Run"
 
         field(11; "ERP SystemId"; Guid)
         {
-            Caption = 'ERP SystemId';
+            Caption = 'SystemId ERP';
         }
 
         field(12; "Contact No."; Code[20])
         {
-            Caption = 'Company Contact';
+            Caption = 'Контакт компанії';
         }
 
         field(13; "Contact SystemId"; Guid)
         {
-            Caption = 'Contact SystemId';
+            Caption = 'SystemId контакту';
         }
 
         field(20; "Error Message"; Text[2048])

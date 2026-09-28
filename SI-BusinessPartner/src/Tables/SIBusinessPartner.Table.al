@@ -1,6 +1,6 @@
 table 54003 "SI Business Partner"
 {
-    Caption = 'Business Partner';
+    Caption = 'Контрагент';
     DataClassification = CustomerContent;
     DrillDownPageId = "SI Business Partners";
     LookupPageId = "SI Business Partners";
@@ -10,7 +10,7 @@ table 54003 "SI Business Partner"
     {
         field(1; "No."; Code[60])
         {
-            Caption = 'No.';
+            Caption = 'Код';
             NotBlank = true;
         }
 
@@ -62,7 +62,7 @@ table 54003 "SI Business Partner"
 
         field(5; "Country/Region Code"; Code[10])
         {
-            Caption = 'Country/Region Code';
+            Caption = 'Код країни/регіону';
             NotBlank = true;
             TableRelation = "Country/Region".Code;
 
@@ -119,7 +119,7 @@ table 54003 "SI Business Partner"
 
         field(8; "Legal Form Code"; Code[20])
         {
-            Caption = 'Normalized Legal Form';
+            Caption = 'Нормалізована юридична форма';
             TableRelation = "SI Legal Form".Code;
             Editable = false;
         }
@@ -188,14 +188,14 @@ table 54003 "SI Business Partner"
 
         field(12; "Customer No."; Code[20])
         {
-            Caption = 'Customer No.';
+            Caption = 'Код покупця';
             TableRelation = Customer."No.";
             Editable = false;
         }
 
         field(13; "Vendor No."; Code[20])
         {
-            Caption = 'Vendor No.';
+            Caption = 'Код постачальника';
             TableRelation = Vendor."No.";
             Editable = false;
         }

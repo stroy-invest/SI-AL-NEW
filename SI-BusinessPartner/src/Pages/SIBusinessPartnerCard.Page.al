@@ -1,10 +1,10 @@
-﻿page 54004 "SI Business Partner Card"
+page 54004 "SI Business Partner Card"
 {
     PageType = Card;
     SourceTable = "SI Business Partner";
     ApplicationArea = All;
     UsageCategory = None;
-    Caption = 'Business Partner';
+    Caption = 'Контрагент';
     DelayedInsert = true;
 
     layout
@@ -13,7 +13,7 @@
         {
             group(General)
             {
-                Caption = 'General';
+                Caption = 'Загальні дані';
 
                 group(GeneralIdentity)
                 {
@@ -99,7 +99,7 @@
 
             group(LegalIdentity)
             {
-                Caption = 'Legal Identity';
+                Caption = 'Юридична ідентифікація';
 
                 group(LegalIdentityMain)
                 {
@@ -145,7 +145,7 @@
 
             group(Addresses)
             {
-                Caption = 'Addresses';
+                Caption = 'Адреси';
 
                 part(BPAddresses; "SI BP Addresses Part")
                 {
@@ -290,7 +290,7 @@
             action(CountryLegalForms)
             {
                 ApplicationArea = All;
-                Caption = 'Country Legal Forms';
+                Caption = 'Юридичні форми країн';
                 ToolTip = 'Open the list of country-specific legal forms.';
                 Image = List;
                 RunObject = page "SI Country Legal Forms";
@@ -299,7 +299,7 @@
             action(LegalForms)
             {
                 ApplicationArea = All;
-                Caption = 'Legal Forms';
+                Caption = 'Юридичні форми';
                 ToolTip = 'Open the list of normalized corporate legal forms.';
                 Image = List;
                 RunObject = page "SI Legal Forms";

@@ -1,7 +1,7 @@
 enum 54031 "SI BP Role Status"
 {
     Extensible = false;
-    Caption = 'BP Role Status';
+    Caption = 'Стан ролі';
 
     value(0; Draft)
     {

@@ -10,6 +10,9 @@ permissionset 54030 "SI BP ROLE ADMIN"
         table "SI BP Role" = X,
         table "SI BP Role Status Entry" = X,
 
+        table "SI BP Partner Tree Buffer" = X,
+        page "SI Business Partners Tree" = X,
+
         page "SI BP Roles" = X,
         page "SI BP Role Card" = X,
         page "SI BP Role History" = X,

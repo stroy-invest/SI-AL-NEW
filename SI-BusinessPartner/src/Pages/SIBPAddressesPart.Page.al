@@ -3,7 +3,7 @@ page 54021 "SI BP Addresses Part"
     PageType = ListPart;
     SourceTable = "SI BP Address";
     ApplicationArea = All;
-    Caption = 'Addresses';
+    Caption = 'Адреси';
     DelayedInsert = true;
     PopulateAllFields = true;
     CardPageId = "SI BP Address Card";

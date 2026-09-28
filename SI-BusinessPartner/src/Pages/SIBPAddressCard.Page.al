@@ -4,7 +4,7 @@ page 54024 "SI BP Address Card"
     SourceTable = "SI BP Address";
     ApplicationArea = All;
     UsageCategory = None;
-    Caption = 'Business Partner Address';
+    Caption = 'Адреса контрагента';
     DelayedInsert = true;
 
     layout
@@ -13,7 +13,7 @@ page 54024 "SI BP Address Card"
         {
             group(General)
             {
-                Caption = 'General';
+                Caption = 'Загальні дані';
 
                 field("Business Partner No."; Rec."Business Partner No.")
                 {
@@ -46,7 +46,7 @@ page 54024 "SI BP Address Card"
 
             group(StructuredAddress)
             {
-                Caption = 'Structured Address';
+                Caption = 'Структурована адреса';
 
                 field("Region/State"; Rec."Region/State")
                 {
@@ -90,7 +90,7 @@ page 54024 "SI BP Address Card"
 
             group(Verification)
             {
-                Caption = 'Verification';
+                Caption = 'Перевірка';
 
                 field(Verified; Rec.Verified)
                 {

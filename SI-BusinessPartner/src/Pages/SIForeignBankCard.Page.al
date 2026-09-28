@@ -11,7 +11,7 @@ page 54014 "SI Foreign Bank Card"
         {
             group(General)
             {
-                Caption = 'General';
+                Caption = 'Загальні дані';
 
                 field("SWIFT"; Rec."SWIFT")
                 {
@@ -46,7 +46,7 @@ page 54014 "SI Foreign Bank Card"
 
             group(SourceInformation)
             {
-                Caption = 'Source Information';
+                Caption = 'Дані джерела';
 
                 field("Id"; Rec."Id")
                 {

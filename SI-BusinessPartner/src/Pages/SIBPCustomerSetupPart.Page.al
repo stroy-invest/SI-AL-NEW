@@ -1,6 +1,6 @@
 page 54010 "SI BP Customer Setup Part"
 {
-    Caption = 'Customer Settings';
+    Caption = 'Налаштування покупця';
     PageType = CardPart;
     SourceTable = "SI BP Customer Setup";
 
@@ -15,7 +15,7 @@ page 54010 "SI BP Customer Setup Part"
         {
             group(Posting)
             {
-                Caption = 'Posting';
+                Caption = 'Облік';
 
                 field("Customer Posting Group"; Rec."Customer Posting Group")
                 {
@@ -38,7 +38,7 @@ page 54010 "SI BP Customer Setup Part"
 
             group(Payments)
             {
-                Caption = 'Payments';
+                Caption = 'Оплата';
 
                 field("Payment Terms Code"; Rec."Payment Terms Code")
                 {
@@ -61,7 +61,7 @@ page 54010 "SI BP Customer Setup Part"
 
             group(Sales)
             {
-                Caption = 'Sales';
+                Caption = 'Продажі';
 
                 field("Salesperson Code"; Rec."Salesperson Code")
                 {

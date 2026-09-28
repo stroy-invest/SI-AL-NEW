@@ -1,11 +1,11 @@
 enum 54072 "SI BP Mat. Step Type"
 {
     Extensible = false;
-    Caption = 'BP Materialization Step';
+    Caption = 'Крок матеріалізації контрагента';
 
     value(10; Preflight)
     {
-        Caption = 'Pre-flight validation';
+        Caption = 'Попередня перевірка';
     }
 
     value(20; "Create ERP Entity")
@@ -20,7 +20,7 @@ enum 54072 "SI BP Mat. Step Type"
 
     value(40; "Apply BP Data")
     {
-        Caption = 'Перенесення canonical BP data';
+        Caption = 'Перенесення канонічних даних контрагента';
     }
 
     value(50; "Create Bank Accounts")
@@ -30,17 +30,17 @@ enum 54072 "SI BP Mat. Step Type"
 
     value(60; "Ensure Company Contact")
     {
-        Caption = 'Створення/визначення Company Contact';
+        Caption = 'Створення/визначення контакту компанії';
     }
 
     value(70; "Link Customer")
     {
-        Caption = 'Зв''язування Customer';
+        Caption = 'Зв''язування покупця';
     }
 
     value(80; "Link Vendor")
     {
-        Caption = 'Зв''язування Vendor';
+        Caption = 'Зв''язування постачальника';
     }
 
     value(90; "Post Validate")

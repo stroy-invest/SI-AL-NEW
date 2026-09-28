@@ -3,7 +3,7 @@ page 54023 "SI BP Contact Points Part"
     PageType = ListPart;
     SourceTable = "SI BP Contact Point";
     ApplicationArea = All;
-    Caption = 'Communication';
+    Caption = 'Комунікації';
     DelayedInsert = true;
 
     layout

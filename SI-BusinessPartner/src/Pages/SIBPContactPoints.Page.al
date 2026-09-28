@@ -4,7 +4,7 @@ page 54022 "SI BP Contact Points"
     SourceTable = "SI BP Contact Point";
     ApplicationArea = All;
     UsageCategory = Lists;
-    Caption = 'Business Partner Contact Points';
+    Caption = 'Контакти контрагента';
 
     layout
     {

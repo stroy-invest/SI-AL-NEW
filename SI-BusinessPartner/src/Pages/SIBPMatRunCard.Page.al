@@ -115,7 +115,7 @@ page 54071 "SI BP Mat. Run Card"
         {
             action(RunPreflight)
             {
-                Caption = 'Запустити pre-flight';
+                Caption = 'Запустити попередню перевірку';
                 ApplicationArea = All;
                 Image = CheckRulesSyntax;
 

@@ -1,7 +1,7 @@
 enum 54060 "SI BP Projection Status"
 {
     Extensible = false;
-    Caption = 'BP ERP Projection Status';
+    Caption = 'Стан ERP-проєкції контрагента';
 
     value(0; Ready)
     {

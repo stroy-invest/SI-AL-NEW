@@ -23,7 +23,7 @@ table 54014 "SI Foreign Bank"
 
         field(30; "Source SWIFT"; Text[20])
         {
-            Caption = 'Source SWIFT';
+            Caption = 'SWIFT джерела';
 
             ObsoleteState = Pending;
             ObsoleteReason = 'Raw SWIFT value is no longer stored. SWIFT is normalized by the NBU integration service.';
@@ -32,23 +32,23 @@ table 54014 "SI Foreign Bank"
 
         field(40; "Name"; Text[250])
         {
-            Caption = 'Name';
+            Caption = 'Назва';
         }
 
         field(50; "Country Code"; Code[10])
         {
-            Caption = 'Country/Region Code';
+            Caption = 'Код країни/регіону';
             TableRelation = "Country/Region".Code;
         }
 
         field(60; "City Name"; Text[100])
         {
-            Caption = 'City Name';
+            Caption = 'Назва міста';
         }
 
         field(70; "Is Active"; Boolean)
         {
-            Caption = 'Active';
+            Caption = 'Активний';
         }
     }
 

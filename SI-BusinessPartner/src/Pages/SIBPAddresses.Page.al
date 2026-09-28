@@ -4,7 +4,7 @@ page 54020 "SI BP Addresses"
     SourceTable = "SI BP Address";
     ApplicationArea = All;
     UsageCategory = Lists;
-    Caption = 'Business Partner Addresses';
+    Caption = 'Адреси контрагента';
     CardPageId = "SI BP Address Card";
 
     layout

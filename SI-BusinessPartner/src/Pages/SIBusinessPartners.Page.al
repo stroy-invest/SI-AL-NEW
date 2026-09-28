@@ -4,7 +4,7 @@ page 54005 "SI Business Partners"
     SourceTable = "SI Business Partner";
     ApplicationArea = All;
     UsageCategory = Lists;
-    Caption = 'Business Partners';
+    Caption = 'Контрагенти';
     CardPageId = "SI Business Partner Card";
     Editable = false;
 
@@ -41,7 +41,7 @@ page 54005 "SI Business Partners"
                 field("Local Legal Form Code"; Rec."Local Legal Form Code")
                 {
                     ApplicationArea = All;
-                    Caption = 'Country Legal Form';
+                    Caption = 'Юридична форма країни';
                     ToolTip = 'Specifies the legal form used in the selected country or region.';
                 }
 
@@ -63,32 +63,26 @@ page 54005 "SI Business Partners"
 
     actions
     {
-        area(Navigation)
+        area(Processing)
         {
-            action(CountryLegalForms)
+            action(ShowTree)
             {
                 ApplicationArea = All;
-                Caption = 'Country Legal Forms';
-                ToolTip = 'Open the list of country-specific legal forms.';
-                Image = List;
-                RunObject = page "SI Country Legal Forms";
-            }
+                Caption = 'Показати дерево';
+                ToolTip = 'Показує контрагентів у дереві за ролями Постачальники та Клієнти.';
+                Image = Hierarchy;
 
-            action(LegalForms)
-            {
-                ApplicationArea = All;
-                Caption = 'Legal Forms';
-                ToolTip = 'Open the list of normalized corporate legal forms.';
-                Image = List;
-                RunObject = page "SI Legal Forms";
+                trigger OnAction()
+                begin
+                    Page.Run(Page::"SI Business Partners Tree");
+                    CurrPage.Close();
+                end;
             }
         }
 
         area(Promoted)
         {
-            actionref(CountryLegalFormsPromoted; CountryLegalForms)
-            {
-            }
+            actionref(ShowTreePromoted; ShowTree) { }
         }
     }
 }

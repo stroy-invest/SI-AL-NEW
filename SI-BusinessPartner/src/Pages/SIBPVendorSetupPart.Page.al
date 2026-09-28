@@ -1,6 +1,6 @@
 page 54011 "SI BP Vendor Setup Part"
 {
-    Caption = 'Vendor Settings';
+    Caption = 'Налаштування постачальника';
     PageType = CardPart;
     SourceTable = "SI BP Vendor Setup";
 
@@ -15,7 +15,7 @@ page 54011 "SI BP Vendor Setup Part"
         {
             group(Posting)
             {
-                Caption = 'Posting';
+                Caption = 'Облік';
 
                 field("Vendor Posting Group"; Rec."Vendor Posting Group")
                 {
@@ -38,7 +38,7 @@ page 54011 "SI BP Vendor Setup Part"
 
             group(Payments)
             {
-                Caption = 'Payments';
+                Caption = 'Оплата';
 
                 field("Payment Terms Code"; Rec."Payment Terms Code")
                 {
@@ -61,7 +61,7 @@ page 54011 "SI BP Vendor Setup Part"
 
             group(Purchasing)
             {
-                Caption = 'Purchasing';
+                Caption = 'Закупівлі';
 
                 field("Purchaser Code"; Rec."Purchaser Code")
                 {

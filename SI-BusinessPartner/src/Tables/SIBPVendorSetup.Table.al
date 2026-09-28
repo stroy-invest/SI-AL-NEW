@@ -1,6 +1,6 @@
 table 54011 "SI BP Vendor Setup"
 {
-    Caption = 'Business Partner Vendor Setup';
+    Caption = 'Налаштування постачальника контрагента';
     DataClassification = CustomerContent;
     ObsoleteState = Pending;
     ObsoleteReason = 'Legacy prototype role setup. ERP role configuration is owned by SI BP Role and standard BC Customer/Vendor Templates.';
@@ -9,83 +9,83 @@ table 54011 "SI BP Vendor Setup"
     {
         field(1; "Business Partner No."; Code[20])
         {
-            Caption = 'Business Partner No.';
+            Caption = 'Код контрагента';
             DataClassification = CustomerContent;
             TableRelation = "SI Business Partner"."No.";
         }
 
         field(10; "Is Inactive"; Boolean)
         {
-            Caption = 'Is Inactive';
+            Caption = 'Неактивний';
             DataClassification = CustomerContent;
             InitValue = false;
         }
 
         field(20; "Vendor Posting Group"; Code[20])
         {
-            Caption = 'Vendor Posting Group';
+            Caption = 'Група обліку постачальника';
             DataClassification = CustomerContent;
             TableRelation = "Vendor Posting Group".Code;
         }
 
         field(30; "Gen. Bus. Posting Group"; Code[20])
         {
-            Caption = 'Gen. Bus. Posting Group';
+            Caption = 'Бізнес-група обліку';
             DataClassification = CustomerContent;
             TableRelation = "Gen. Business Posting Group".Code;
         }
 
         field(40; "VAT Bus. Posting Group"; Code[20])
         {
-            Caption = 'VAT Bus. Posting Group';
+            Caption = 'Бізнес-група ПДВ';
             DataClassification = CustomerContent;
             TableRelation = "VAT Business Posting Group".Code;
         }
 
         field(50; "Payment Terms Code"; Code[10])
         {
-            Caption = 'Payment Terms Code';
+            Caption = 'Код умов оплати';
             DataClassification = CustomerContent;
             TableRelation = "Payment Terms".Code;
         }
 
         field(60; "Payment Method Code"; Code[10])
         {
-            Caption = 'Payment Method Code';
+            Caption = 'Код способу оплати';
             DataClassification = CustomerContent;
             TableRelation = "Payment Method".Code;
         }
 
         field(70; "Currency Code"; Code[10])
         {
-            Caption = 'Currency Code';
+            Caption = 'Код валюти';
             DataClassification = CustomerContent;
             TableRelation = Currency.Code;
         }
 
         field(80; "Purchaser Code"; Code[20])
         {
-            Caption = 'Purchaser Code';
+            Caption = 'Код закупівельника';
             DataClassification = CustomerContent;
             TableRelation = "Salesperson/Purchaser".Code;
         }
 
         field(90; "Lead Time Calculation"; DateFormula)
         {
-            Caption = 'Lead Time Calculation';
+            Caption = 'Розрахунок терміну постачання';
             DataClassification = CustomerContent;
         }
 
         field(100; "Shipment Method Code"; Code[10])
         {
-            Caption = 'Shipment Method Code';
+            Caption = 'Код способу доставки';
             DataClassification = CustomerContent;
             TableRelation = "Shipment Method".Code;
         }
 
         field(110; "Payment Discount %"; Decimal)
         {
-            Caption = 'Payment Discount %';
+            Caption = 'Знижка за оплату, %';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 5;
             MinValue = 0;
@@ -94,7 +94,7 @@ table 54011 "SI BP Vendor Setup"
 
         field(120; "Priority"; Integer)
         {
-            Caption = 'Priority';
+            Caption = 'Пріоритет';
             DataClassification = CustomerContent;
             MinValue = 0;
         }

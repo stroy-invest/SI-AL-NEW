@@ -1,7 +1,7 @@
 enum 54022 "SI BP Contact Point Type"
 {
     Extensible = true;
-    Caption = 'Business Partner Contact Point Type';
+    Caption = 'Тип контакту контрагента';
 
     value(0; " ")
     {

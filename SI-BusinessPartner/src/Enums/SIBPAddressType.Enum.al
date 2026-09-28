@@ -1,7 +1,7 @@
 enum 54021 "SI BP Address Type"
 {
     Extensible = true;
-    Caption = 'Business Partner Address Type';
+    Caption = 'Тип адреси контрагента';
 
     value(0; " ")
     {

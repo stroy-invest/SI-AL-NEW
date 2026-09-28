@@ -1,7 +1,7 @@
 enum 54020 "SI BP Entity Type"
 {
     Extensible = true;
-    Caption = 'Business Partner Entity Type';
+    Caption = 'Тип контрагента';
 
     value(0; " ")
     {

@@ -35,7 +35,7 @@ page 54006 "SI EDRPOU Check Result"
 
                 group(VATComparison)
                 {
-                    Caption = 'VAT Registration No.';
+                    Caption = 'Реєстраційний номер ПДВ';
 
                     field(BPVATRegistrationNo; Rec."BP Tax Registration No.")
                     {
@@ -78,7 +78,7 @@ page 54006 "SI EDRPOU Check Result"
 
                 group(NameComparison)
                 {
-                    Caption = 'Name (заповнення, якщо порожнє)';
+                    Caption = 'Назва (заповнення, якщо порожня)';
 
                     field(BPName; Rec."BP Name")
                     {

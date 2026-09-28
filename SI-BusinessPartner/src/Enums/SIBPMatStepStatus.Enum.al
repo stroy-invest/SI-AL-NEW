@@ -1,7 +1,7 @@
 enum 54071 "SI BP Mat. Step Status"
 {
     Extensible = false;
-    Caption = 'BP Materialization Step Status';
+    Caption = 'Стан кроку матеріалізації';
 
     value(0; Pending)
     {

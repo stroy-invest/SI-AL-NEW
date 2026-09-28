@@ -1,7 +1,7 @@
 enum 54050 "SI BP Bank Verify Status"
 {
     Extensible = false;
-    Caption = 'BP Bank Verification Status';
+    Caption = 'Статус перевірки банку контрагента';
 
     value(0; "Not Verified")
     {

@@ -1,6 +1,6 @@
 table 54021 "SI BP Contact Point"
 {
-    Caption = 'Business Partner Contact Point';
+    Caption = 'Контакт контрагента';
     DataClassification = CustomerContent;
     DrillDownPageId = "SI BP Contact Points";
     LookupPageId = "SI BP Contact Points";
@@ -9,36 +9,36 @@ table 54021 "SI BP Contact Point"
     {
         field(1; "Entry No."; Integer)
         {
-            Caption = 'Entry No.';
+            Caption = 'Номер запису';
             AutoIncrement = true;
         }
         field(2; "Business Partner No."; Code[60])
         {
-            Caption = 'Business Partner No.';
+            Caption = 'Код контрагента';
             TableRelation = "SI Business Partner"."No.";
             NotBlank = true;
         }
         field(3; Type; Enum "SI BP Contact Point Type")
         {
-            Caption = 'Type';
+            Caption = 'Тип';
             NotBlank = true;
         }
         field(4; "Subtype Code"; Code[30])
         {
-            Caption = 'Subtype Code';
+            Caption = 'Код підтипу';
         }
         field(5; Value; Text[250])
         {
-            Caption = 'Value';
+            Caption = 'Значення';
             NotBlank = true;
         }
         field(6; Description; Text[100])
         {
-            Caption = 'Description';
+            Caption = 'Опис';
         }
         field(7; "Is Primary"; Boolean)
         {
-            Caption = 'Is Primary';
+            Caption = 'Основний';
 
             trigger OnValidate()
             begin
@@ -48,24 +48,24 @@ table 54021 "SI BP Contact Point"
         }
         field(8; Active; Boolean)
         {
-            Caption = 'Active';
+            Caption = 'Активний';
             InitValue = true;
         }
         field(9; Verified; Boolean)
         {
-            Caption = 'Verified';
+            Caption = 'Перевірено';
         }
         field(10; "Verification Date/Time"; DateTime)
         {
-            Caption = 'Verification Date/Time';
+            Caption = 'Дата й час перевірки';
         }
         field(11; "Valid From"; Date)
         {
-            Caption = 'Valid From';
+            Caption = 'Діє з';
         }
         field(12; "Valid To"; Date)
         {
-            Caption = 'Valid To';
+            Caption = 'Діє до';
         }
     }
 

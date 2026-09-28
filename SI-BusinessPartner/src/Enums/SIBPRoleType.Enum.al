@@ -1,7 +1,7 @@
 enum 54030 "SI BP Role Type"
 {
     Extensible = false;
-    Caption = 'BP Role Type';
+    Caption = 'Тип ролі';
 
     value(0; Customer)
     {

@@ -1,7 +1,7 @@
 enum 54032 "SI BP Role Chg. Source"
 {
     Extensible = true;
-    Caption = 'BP Role Change Source';
+    Caption = 'Джерело зміни ролі';
 
     value(0; Manual)
     {

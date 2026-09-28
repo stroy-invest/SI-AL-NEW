@@ -48,7 +48,7 @@ page 54013 "SI Foreign Bank List"
             action(Refresh)
             {
                 ApplicationArea = All;
-                Caption = 'Refresh';
+                Caption = 'Оновити';
                 Image = Refresh;
                 ToolTip = 'Refreshes the foreign bank hierarchy.';
 

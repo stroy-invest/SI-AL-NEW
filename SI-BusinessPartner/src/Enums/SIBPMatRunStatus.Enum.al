@@ -1,7 +1,7 @@
 enum 54070 "SI BP Mat. Run Status"
 {
     Extensible = false;
-    Caption = 'BP Materialization Run Status';
+    Caption = 'Стан запуску матеріалізації';
 
     value(0; Pending)
     {

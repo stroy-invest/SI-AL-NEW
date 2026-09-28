@@ -1,25 +1,25 @@
 enum 54000 "SI BP Status"
 {
     Extensible = true;
-    Caption = 'Business Partner Status';
+    Caption = 'Статус контрагента';
 
     value(0; Draft)
     {
-        Caption = 'Draft';
+        Caption = 'Чернетка';
     }
 
     value(1; Active)
     {
-        Caption = 'Active';
+        Caption = 'Активний';
     }
 
     value(2; Blocked)
     {
-        Caption = 'Blocked';
+        Caption = 'Заблокований';
     }
 
     value(3; Archived)
     {
-        Caption = 'Archived';
+        Caption = 'Архівний';
     }
 }
