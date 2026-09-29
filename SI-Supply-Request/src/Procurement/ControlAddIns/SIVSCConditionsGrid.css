@@ -1,0 +1,14 @@
+.si-vsc-toolbar { display:flex; gap:8px; margin:0 0 10px 0; }
+.si-vsc-toolbar button { padding:6px 12px; cursor:pointer; }
+.si-vsc-title { font-weight:600; margin:0 0 8px 0; }
+.si-vsc-wrap { overflow:auto; width:100%; }
+.si-vsc-table { border-collapse:collapse; width:100%; font-family:Segoe UI,Arial,sans-serif; font-size:14px; }
+.si-vsc-table th { text-align:left; font-weight:600; padding:7px 8px; border-bottom:1px solid #c8c8c8; white-space:nowrap; }
+.si-vsc-table td { padding:4px 6px; border-bottom:1px solid #e6e6e6; }
+.si-vsc-table tr.si-selected { background:#e5f3f6; }
+.si-vsc-table input, .si-vsc-table select { width:100%; box-sizing:border-box; padding:5px 6px; border:1px solid #aaa; background:white; }
+.si-vsc-num { min-width:120px; }
+.si-vsc-method { min-width:230px; }
+.si-vsc-uom { min-width:120px; }
+.si-vsc-lead { min-width:110px; }
+.si-vsc-empty { padding:14px 4px; color:#666; }
