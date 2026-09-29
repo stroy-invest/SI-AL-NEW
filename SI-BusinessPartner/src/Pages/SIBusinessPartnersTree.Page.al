@@ -82,6 +82,7 @@ page 54029 "SI Business Partners Tree"
                 Caption = 'Відкрити контрагента';
                 ToolTip = 'Відкриває картку вибраного контрагента.';
                 Image = Card;
+                Enabled = HasSelectedBusinessPartner;
 
                 trigger OnAction()
                 var
@@ -96,6 +97,79 @@ page 54029 "SI Business Partners Tree"
                     Page.Run(Page::"SI Business Partner Card", BusinessPartner);
                 end;
             }
+
+            action(OpenRole)
+            {
+                ApplicationArea = All;
+                Caption = 'Відкрити роль';
+                ToolTip = 'Відкриває картку ролі вибраного контрагента.';
+                Image = Relationship;
+                Enabled = HasSelectedBusinessPartner;
+
+                trigger OnAction()
+                var
+                    BPRole: Record "SI BP Role";
+                begin
+                    if not GetSelectedRole(BPRole) then
+                        exit;
+
+                    Page.Run(Page::"SI BP Role Card", BPRole);
+                end;
+            }
+
+            action(OpenCustomer)
+            {
+                ApplicationArea = All;
+                Caption = 'Відкрити покупця';
+                ToolTip = 'Відкриває стандартну картку покупця Business Central.';
+                Image = Customer;
+                Visible = IsCustomerNode;
+                Enabled = CanOpenERPCard;
+
+                trigger OnAction()
+                var
+                    BPRole: Record "SI BP Role";
+                    Customer: Record Customer;
+                begin
+                    if not GetSelectedRole(BPRole) then
+                        exit;
+
+                    if BPRole."Customer No." = '' then
+                        exit;
+
+                    if not Customer.Get(BPRole."Customer No.") then
+                        exit;
+
+                    Page.Run(Page::"Customer Card", Customer);
+                end;
+            }
+
+            action(OpenVendor)
+            {
+                ApplicationArea = All;
+                Caption = 'Відкрити постачальника';
+                ToolTip = 'Відкриває стандартну картку постачальника Business Central.';
+                Image = Vendor;
+                Visible = IsVendorNode;
+                Enabled = CanOpenERPCard;
+
+                trigger OnAction()
+                var
+                    BPRole: Record "SI BP Role";
+                    Vendor: Record Vendor;
+                begin
+                    if not GetSelectedRole(BPRole) then
+                        exit;
+
+                    if BPRole."Vendor No." = '' then
+                        exit;
+
+                    if not Vendor.Get(BPRole."Vendor No.") then
+                        exit;
+
+                    Page.Run(Page::"Vendor Card", Vendor);
+                end;
+            }
         }
 
         area(Promoted)
@@ -107,12 +181,30 @@ page 54029 "SI Business Partners Tree"
             actionref(OpenBusinessPartnerPromoted; OpenBusinessPartner)
             {
             }
+
+            actionref(OpenRolePromoted; OpenRole)
+            {
+            }
+
+            actionref(OpenCustomerPromoted; OpenCustomer)
+            {
+            }
+
+            actionref(OpenVendorPromoted; OpenVendor)
+            {
+            }
         }
     }
 
     trigger OnOpenPage()
     begin
         BuildTree();
+        UpdateActionState();
+    end;
+
+    trigger OnAfterGetCurrRecord()
+    begin
+        UpdateActionState();
     end;
 
     local procedure BuildTree()
@@ -138,8 +230,10 @@ page 54029 "SI Business Partners Tree"
     var
         BPRole: Record "SI BP Role";
         BusinessPartner: Record "SI Business Partner";
+        CandidateBuffer: Record "SI BP Tree Buffer" temporary;
         AddedBusinessPartner: Dictionary of [Code[60], Boolean];
         BranchEntryNo: Integer;
+        CandidateEntryNo: Integer;
     begin
         BranchEntryNo := GetNextEntryNo();
 
@@ -163,20 +257,37 @@ page 54029 "SI Business Partners Tree"
                     if BusinessPartner.Get(
                         BPRole."Business Partner No.")
                     then begin
-                        AddBusinessPartner(
-                            BusinessPartner,
-                            BranchEntryNo);
+                        CandidateEntryNo += 1;
+                        CandidateBuffer.Init();
+                        CandidateBuffer."Entry No." := CandidateEntryNo;
+                        CandidateBuffer."Business Partner No." := BusinessPartner."No.";
+                        CandidateBuffer.Name := CopyStr(
+                            GetBusinessPartnerDisplayName(BusinessPartner),
+                            1,
+                            MaxStrLen(CandidateBuffer.Name));
+                        CandidateBuffer.Insert();
 
                         AddedBusinessPartner.Add(
                             BPRole."Business Partner No.",
                             true);
                     end;
             until BPRole.Next() = 0;
+
+        CandidateBuffer.SetCurrentKey(Name, "Business Partner No.");
+        if CandidateBuffer.FindSet() then
+            repeat
+                if BusinessPartner.Get(CandidateBuffer."Business Partner No.") then
+                    AddBusinessPartner(
+                        BusinessPartner,
+                        BranchEntryNo,
+                        RoleType);
+            until CandidateBuffer.Next() = 0;
     end;
 
     local procedure AddBusinessPartner(
         BusinessPartner: Record "SI Business Partner";
-        BranchEntryNo: Integer)
+        BranchEntryNo: Integer;
+        RoleType: Enum "SI BP Role Type")
     begin
         Rec.Init();
         Rec."Entry No." := GetNextEntryNo();
@@ -185,6 +296,8 @@ page 54029 "SI Business Partners Tree"
 
         Rec."Business Partner No." :=
             BusinessPartner."No.";
+
+        Rec."Role Type" := RoleType;
 
         Rec.Name :=
             CopyStr(
@@ -205,6 +318,40 @@ page 54029 "SI Business Partners Tree"
             Format(BusinessPartner.Status);
 
         Rec.Insert();
+    end;
+
+    local procedure GetSelectedRole(var BPRole: Record "SI BP Role"): Boolean
+    begin
+        if Rec."Business Partner No." = '' then
+            exit(false);
+
+        BPRole.SetRange("Business Partner No.", Rec."Business Partner No.");
+        BPRole.SetRange("Role Type", Rec."Role Type");
+        exit(BPRole.FindFirst());
+    end;
+
+    local procedure UpdateActionState()
+    var
+        BPRole: Record "SI BP Role";
+    begin
+        HasSelectedBusinessPartner := Rec."Business Partner No." <> '';
+        IsCustomerNode :=
+            HasSelectedBusinessPartner and
+            (Rec."Role Type" = Rec."Role Type"::Customer);
+        IsVendorNode :=
+            HasSelectedBusinessPartner and
+            (Rec."Role Type" = Rec."Role Type"::Vendor);
+        CanOpenERPCard := false;
+
+        if not GetSelectedRole(BPRole) then
+            exit;
+
+        case Rec."Role Type" of
+            Rec."Role Type"::Customer:
+                CanOpenERPCard := BPRole."Customer No." <> '';
+            Rec."Role Type"::Vendor:
+                CanOpenERPCard := BPRole."Vendor No." <> '';
+        end;
     end;
 
     local procedure GetBusinessPartnerDisplayName(
@@ -234,4 +381,8 @@ page 54029 "SI Business Partners Tree"
     var
         CustomerBranchLbl: Label 'Клієнти';
         VendorBranchLbl: Label 'Постачальники';
+        HasSelectedBusinessPartner: Boolean;
+        IsCustomerNode: Boolean;
+        IsVendorNode: Boolean;
+        CanOpenERPCard: Boolean;
 }

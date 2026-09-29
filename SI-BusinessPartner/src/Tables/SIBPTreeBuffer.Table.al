@@ -55,6 +55,11 @@ table 54029 "SI BP Tree Buffer"
         {
             Caption = 'Стиль';
         }
+
+        field(11; "Role Type"; Enum "SI BP Role Type")
+        {
+            Caption = 'Тип ролі';
+        }
     }
 
     keys
@@ -62,6 +67,10 @@ table 54029 "SI BP Tree Buffer"
         key(PK; "Entry No.")
         {
             Clustered = true;
+        }
+
+        key(NameKey; Name, "Business Partner No.")
+        {
         }
     }
 }
