@@ -808,60 +808,34 @@ codeunit 50431 "SI EDS Orchestrator"
         StartedAt: DateTime;
         FinishedAt: DateTime)
     var
-        ExecLog: Record "SI EDS Exec. Log";
+        AuditLogger: Codeunit "SI EDS Audit Logger";
         Operation: Record "SI EDS Operation";
+        ResponseBody: Text;
+        LogResponseBody: Boolean;
     begin
-        ExecLog.Init();
+        LogResponseBody :=
+            Operation.Get(ServiceCode, OperationCode) and
+            Operation."Log Response Body";
 
-        ExecLog."Correlation ID" :=
-            RequestBuffer."Correlation ID";
+        if LogResponseBody then
+            ResponseBody := ResponseBuffer.GetBodyText();
 
-        ExecLog."Service Code" :=
-            ServiceCode;
-
-        ExecLog."Operation Code" :=
-            OperationCode;
-
-        ExecLog."Provider Code" :=
-            RequestBuffer."Provider Code";
-
-        ExecLog."Endpoint Code" :=
-            RequestBuffer."Endpoint Code";
-
-        ExecLog."Request URL" :=
-            RequestBuffer."Request URL";
-
-        ExecLog."Started At" :=
-            StartedAt;
-
-        ExecLog."Finished At" :=
-            FinishedAt;
-
-        ExecLog."Duration (ms)" :=
-            ResponseBuffer."Duration (ms)";
-
-        ExecLog."HTTP Status Code" :=
-            ResponseBuffer."HTTP Status Code";
-
-        ExecLog."Result Type" :=
-            ResponseBuffer."Result Type";
-
-        ExecLog."Error Code" :=
-            ResponseBuffer."Error Code";
-
-        ExecLog."Error Message" :=
-            ResponseBuffer."Error Message";
-
-        ExecLog.Insert(true);
-
-        // BLOB must be persisted after the log record exists.
-        // Writing it on the not-yet-inserted record can leave the persisted
-        // FlowField/BLOB empty depending on the runtime path.
-        if Operation.Get(ServiceCode, OperationCode) then
-            if Operation."Log Response Body" then begin
-                ExecLog.SetResponseBody(ResponseBuffer.GetBodyText());
-                ExecLog.Modify(false);
-            end;
+        AuditLogger.WriteIsolated(
+            RequestBuffer."Correlation ID",
+            ServiceCode,
+            OperationCode,
+            RequestBuffer."Provider Code",
+            RequestBuffer."Endpoint Code",
+            RequestBuffer."Request URL",
+            StartedAt,
+            FinishedAt,
+            ResponseBuffer."Duration (ms)",
+            ResponseBuffer."HTTP Status Code",
+            ResponseBuffer."Result Type",
+            ResponseBuffer."Error Code",
+            ResponseBuffer."Error Message",
+            LogResponseBody,
+            ResponseBody);
     end;
 
     local procedure ShouldTryNext(
