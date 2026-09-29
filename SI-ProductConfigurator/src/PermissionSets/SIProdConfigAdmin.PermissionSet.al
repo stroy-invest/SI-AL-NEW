@@ -77,5 +77,10 @@ codeunit "SI Configuration Engine" = X,
         tabledata "SI Product Parameter" = RIMD,
         tabledata "SI Attribute Semantic" = RIMD,
         table "SI Attribute Semantic" = X,
-        page "SI Attribute Semantics" = X;
+        page "SI Attribute Semantics" = X,
+        tabledata "SI SKU Location Buffer" = RIMD,
+        table "SI SKU Location Buffer" = X,
+        page "SI SKU Location Select" = X,
+        codeunit "SI Product Tree Context" = X,
+        codeunit "SI SKU Location Mgt." = X;
 }

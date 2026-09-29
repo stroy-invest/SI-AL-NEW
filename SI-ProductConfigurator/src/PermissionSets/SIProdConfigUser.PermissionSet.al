@@ -60,7 +60,12 @@ permissionset 53001 "SI PROD CONFIG USER"
         codeunit "SI Naming Engine" = X,
         codeunit "SI Product Config. Mgt." = X,
         codeunit "SI Product Identity Mgt." = X,
-        codeunit "SI Validation Engine" = X;
+        codeunit "SI Validation Engine" = X,
+        tabledata "SI SKU Location Buffer" = RIMD,
+        table "SI SKU Location Buffer" = X,
+        page "SI SKU Location Select" = X,
+        codeunit "SI Product Tree Context" = X,
+        codeunit "SI SKU Location Mgt." = X;
 
         // Intentionally excluded:
         // - ERP materializers / projection write management
