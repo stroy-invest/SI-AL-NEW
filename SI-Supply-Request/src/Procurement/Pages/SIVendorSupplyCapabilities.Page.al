@@ -78,4 +78,32 @@ page 61037 "SI Vendor Supply Capabilities"
             }
         }
     }
+
+    actions
+    {
+        area(Processing)
+        {
+            action(TreeView)
+            {
+                ApplicationArea = All;
+                Caption = 'Дерево';
+                Image = Hierarchy;
+                ToolTip = 'Відкрити ієрархічне подання каналів постачання.';
+
+                trigger OnAction()
+                begin
+                    Page.Run(Page::"SI VSC Tree View");
+                    CurrPage.Close();
+                end;
+            }
+            action(ListView)
+            {
+                ApplicationArea = All;
+                Caption = 'Список';
+                Image = List;
+                Enabled = false;
+                ToolTip = 'Поточне подання каналів постачання списком.';
+            }
+        }
+    }
 }

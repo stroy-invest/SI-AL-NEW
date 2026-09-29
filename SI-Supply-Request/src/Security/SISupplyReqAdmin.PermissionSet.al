@@ -80,6 +80,7 @@ permissionset 61000 "SI SUPPLY REQ ADMIN"
         page "SI Vendor Supply Cap. Card" = X,
         page "SI Vendor Supply Capabilities" = X,
         page "SI VSC Wizard" = X,
+        page "SI VSC Tree View" = X,
         page "SI VSC Resolver Test" = X,
         page "SI VSC Resolver Results" = X,
         page "SI Procurement Allocations" = X,
