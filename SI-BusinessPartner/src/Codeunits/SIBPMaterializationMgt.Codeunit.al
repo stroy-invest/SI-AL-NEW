@@ -295,10 +295,6 @@ codeunit 54070 "SI BP Materialization Mgt."
 
         CreateStep(
             MatRun,
-            Enum::"SI BP Mat. Step Type"::"Apply BC Template");
-
-        CreateStep(
-            MatRun,
             Enum::"SI BP Mat. Step Type"::"Apply BP Data");
 
         CreateStep(

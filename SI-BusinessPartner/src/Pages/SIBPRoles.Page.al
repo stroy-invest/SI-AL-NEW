@@ -39,11 +39,6 @@ page 54030 "SI BP Roles"
                     ApplicationArea = All;
                 }
 
-                field("ERP Template Code"; Rec."ERP Template Code")
-                {
-                    ApplicationArea = All;
-                }
-
                 field("Customer No."; Rec."Customer No.")
                 {
                     ApplicationArea = All;

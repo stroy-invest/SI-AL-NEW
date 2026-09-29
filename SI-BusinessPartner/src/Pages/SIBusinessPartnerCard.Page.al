@@ -120,6 +120,14 @@ page 54004 "SI Business Partner Card"
                         ToolTip = 'Specifies the full country-specific legal form resolved from the selected country legal form.';
                         Editable = false;
                     }
+
+                    field(LegalFormGroupDescription; LegalFormGroupDescription)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Група';
+                        ToolTip = 'Specifies the legal form group to which the selected legal form belongs.';
+                        Editable = false;
+                    }
                 }
 
                 group(LegalIdentityNames)
@@ -178,22 +186,13 @@ page 54004 "SI Business Partner Card"
                     var
                         RoleMgt: Codeunit "SI BP Role Mgt.";
                         NewRole: Record "SI BP Role";
-                        CreateDialog: Page "SI BP Role Create Dialog";
                     begin
                         CurrPage.SaveRecord();
                         Rec.TestField("No.");
 
-                        CreateDialog.SetContext(
-                            Rec."No.",
-                            Enum::"SI BP Role Type"::Customer);
-
-                        if CreateDialog.RunModal() <> Action::OK then
-                            exit;
-
                         RoleMgt.CreateRole(
                             Rec."No.",
                             Enum::"SI BP Role Type"::Customer,
-                            CreateDialog.GetERPTemplateCode(),
                             NewRole);
 
                         Page.Run(
@@ -213,22 +212,13 @@ page 54004 "SI Business Partner Card"
                     var
                         RoleMgt: Codeunit "SI BP Role Mgt.";
                         NewRole: Record "SI BP Role";
-                        CreateDialog: Page "SI BP Role Create Dialog";
                     begin
                         CurrPage.SaveRecord();
                         Rec.TestField("No.");
 
-                        CreateDialog.SetContext(
-                            Rec."No.",
-                            Enum::"SI BP Role Type"::Vendor);
-
-                        if CreateDialog.RunModal() <> Action::OK then
-                            exit;
-
                         RoleMgt.CreateRole(
                             Rec."No.",
                             Enum::"SI BP Role Type"::Vendor,
-                            CreateDialog.GetERPTemplateCode(),
                             NewRole);
 
                         Page.Run(
@@ -371,6 +361,7 @@ page 54004 "SI Business Partner Card"
 
         CanCreateCustomerRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Customer);
         CanCreateVendorRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Vendor);
+        UpdateLegalFormGroupDescription();
 
         case Rec.Status of
             Rec.Status::Draft:
@@ -385,6 +376,23 @@ page 54004 "SI Business Partner Card"
             Rec.Status::Archived:
                 StatusStyle := 'Subordinate';
         end;
+    end;
+
+
+    local procedure UpdateLegalFormGroupDescription()
+    var
+        LegalForm: Record "SI Legal Form";
+    begin
+        Clear(LegalFormGroupDescription);
+
+        if Rec."Legal Form Code" = '' then
+            exit;
+
+        if not LegalForm.Get(Rec."Legal Form Code") then
+            exit;
+
+        LegalForm.CalcFields("Legal Form Group Desc.");
+        LegalFormGroupDescription := LegalForm."Legal Form Group Desc.";
     end;
 
     local procedure HasRole(
@@ -406,5 +414,6 @@ page 54004 "SI Business Partner Card"
         CanCreateCustomerRole: Boolean;
         CanCreateVendorRole: Boolean;
         IsDraft: Boolean;
+        LegalFormGroupDescription: Text[100];
         StatusStyle: Text;
 }

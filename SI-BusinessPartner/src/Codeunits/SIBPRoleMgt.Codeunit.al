@@ -3,7 +3,6 @@ codeunit 54030 "SI BP Role Mgt."
     procedure CreateRole(
         BusinessPartnerNo: Code[20];
         RoleType: Enum "SI BP Role Type";
-        ERPTemplateCode: Code[20];
         var Role: Record "SI BP Role")
     var
         BusinessPartner: Record "SI Business Partner";
@@ -51,9 +50,6 @@ codeunit 54030 "SI BP Role Mgt."
         Role.Status :=
             Role.Status::Draft;
 
-        Role."ERP Template Code" :=
-            ERPTemplateCode;
-
         Role.Insert(true);
 
     end;
@@ -62,12 +58,7 @@ codeunit 54030 "SI BP Role Mgt."
         var Role: Record "SI BP Role";
         Reason: Text;
         Comment: Text)
-    var
-        RoleConfigMgt: Codeunit "SI BP Role Config Mgt.";
     begin
-        RoleConfigMgt.ValidateRoleSetup(
-            Role);
-
         ChangeStatus(
             Role,
             Role.Status::Configured,

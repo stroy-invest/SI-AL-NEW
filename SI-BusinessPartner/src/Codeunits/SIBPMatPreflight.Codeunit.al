@@ -34,10 +34,6 @@ codeunit 54071 "SI BP Mat. Preflight"
             Role,
             ErrorText);
 
-        CheckStandardTemplateAvailability(
-            Role,
-            ErrorText);
-
         CheckERPNumberSeries(
             Role,
             ErrorText);
@@ -154,35 +150,6 @@ codeunit 54071 "SI BP Mat. Preflight"
             AddError(
                 ErrorText,
                 'ERP-проєкція не містить жодного банківського рахунку.');
-    end;
-
-    local procedure CheckStandardTemplateAvailability(
-        Role: Record "SI BP Role";
-        var ErrorText: Text)
-    var
-        CustomerTempl: Record "Customer Templ.";
-        VendorTempl: Record "Vendor Templ.";
-    begin
-        // Тимчасова Stage 1.3b перевірка:
-        // до рефакторингу Stage 1.1 перевіряємо,
-        // що стандартні шаблони відповідного типу взагалі налаштовані.
-        //
-        // Після введення Role."ERP Template Code"
-        // цей check буде замінено на точний Get(template code).
-
-        case Role."Role Type" of
-            Role."Role Type"::Customer:
-                if CustomerTempl.IsEmpty() then
-                    AddError(
-                        ErrorText,
-                        'У Business Central не налаштовано жодного стандартного шаблону клієнта.');
-
-            Role."Role Type"::Vendor:
-                if VendorTempl.IsEmpty() then
-                    AddError(
-                        ErrorText,
-                        'У Business Central не налаштовано жодного стандартного шаблону постачальника.');
-        end;
     end;
 
     local procedure CheckERPNumberSeries(

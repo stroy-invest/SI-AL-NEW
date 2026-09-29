@@ -76,25 +76,4 @@ page 54021 "SI BP Addresses Part"
         }
     }
 
-    trigger OnNewRecord(BelowxRec: Boolean)
-    begin
-        SetDefaultsFromBusinessPartner();
-    end;
-
-    local procedure SetDefaultsFromBusinessPartner()
-    var
-        BusinessPartner: Record "SI Business Partner";
-    begin
-        if Rec."Business Partner No." = '' then
-            exit;
-
-        if not BusinessPartner.Get(Rec."Business Partner No.") then
-            exit;
-
-        if Rec."Country/Region Code" = '' then
-            Rec."Country/Region Code" := BusinessPartner."Country/Region Code";
-
-        if Rec."Valid From" = 0D then
-            Rec."Valid From" := WorkDate();
-    end;
 }

@@ -33,6 +33,8 @@ table 54030 "SI BP Role"
         field(7; "ERP Template Code"; Code[20])
         {
             Caption = 'Шаблон BC';
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Standard BC templates are no longer part of SI BP role configuration or materialization.';
         }
 
         field(6; "Business Partner Name"; Text[250])

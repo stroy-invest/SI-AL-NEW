@@ -211,8 +211,6 @@ codeunit 54060 "SI BP Projection Mgt."
     var
         Role: Record "SI BP Role";
         Vendor: Record Vendor;
-        VendorTempl: Record "Vendor Templ.";
-        VendorTemplMgt: Codeunit "Vendor Templ. Mgt.";
     begin
         Role.Get(
             Projection."Role Code");
@@ -227,16 +225,8 @@ codeunit 54060 "SI BP Projection Mgt."
                 Role.Code,
                 Role."Vendor No.");
 
-        Role.TestField("ERP Template Code");
-        VendorTempl.Get(Role."ERP Template Code");
-
         Vendor.Init();
         Vendor.Insert(true);
-
-        VendorTemplMgt.ApplyVendorTemplate(
-            Vendor,
-            VendorTempl,
-            true);
 
         Vendor.Validate(
             Name,
@@ -285,8 +275,6 @@ codeunit 54060 "SI BP Projection Mgt."
     var
         Role: Record "SI BP Role";
         Customer: Record Customer;
-        CustomerTempl: Record "Customer Templ.";
-        CustomerTemplMgt: Codeunit "Customer Templ. Mgt.";
     begin
         Role.Get(
             Projection."Role Code");
@@ -301,16 +289,8 @@ codeunit 54060 "SI BP Projection Mgt."
                 Role.Code,
                 Role."Customer No.");
 
-        Role.TestField("ERP Template Code");
-        CustomerTempl.Get(Role."ERP Template Code");
-
         Customer.Init();
         Customer.Insert(true);
-
-        CustomerTemplMgt.ApplyCustomerTemplate(
-            Customer,
-            CustomerTempl,
-            true);
 
         Customer.Validate(
             Name,

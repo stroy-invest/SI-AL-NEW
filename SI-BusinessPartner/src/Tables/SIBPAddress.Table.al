@@ -117,12 +117,27 @@ table 54020 "SI BP Address"
 
     trigger OnInsert()
     begin
+        ApplyInsertDefaults();
         ValidateRecord();
     end;
 
     trigger OnModify()
     begin
         ValidateRecord();
+    end;
+
+    local procedure ApplyInsertDefaults()
+    var
+        BusinessPartner: Record "SI Business Partner";
+    begin
+        if "Valid From" = 0D then
+            "Valid From" := WorkDate();
+
+        if ("Country/Region Code" = '') and
+           ("Business Partner No." <> '') and
+           BusinessPartner.Get("Business Partner No.")
+        then
+            "Country/Region Code" := BusinessPartner."Country/Region Code";
     end;
 
     local procedure ValidateRecord()

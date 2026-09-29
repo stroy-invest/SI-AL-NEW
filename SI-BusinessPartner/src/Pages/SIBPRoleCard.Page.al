@@ -40,14 +40,6 @@ page 54031 "SI BP Role Card"
                     ApplicationArea = All;
                     Editable = false;
                 }
-
-                field("ERP Template Code"; Rec."ERP Template Code")
-                {
-                    ApplicationArea = All;
-                    Caption = 'Шаблон BC';
-                    Editable = false;
-                    ToolTip = 'Стандартний шаблон Business Central, який буде застосовано під час матеріалізації ERP-сутності.';
-                }
             }
 
             group(Banking)
