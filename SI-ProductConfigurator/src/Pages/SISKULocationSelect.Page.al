@@ -109,14 +109,13 @@ page 53038 "SI SKU Location Select"
         exit(ApplyRequested);
     end;
 
-    procedure Load(ItemNo: Code[20]; VariantCode: Code[10])
+    procedure Load(ItemNo: Code[20]; VariantCode: Code[10]; IncludeAllVariants: Boolean)
     var
         Item: Record Item;
         ItemVariant: Record "Item Variant";
         Location: Record Location;
         LocationType: Record "SI Location Type";
         LocationSetup: Record "SI Location Setup";
-        SKU: Record "Stockkeeping Unit";
     begin
         Rec.Reset();
         Rec.DeleteAll();
@@ -148,7 +147,7 @@ page 53038 "SI SKU Location Select"
                     Rec."Location Type Code" := Location."SI Location Type Code";
                     if LocationType.Get(Location."SI Location Type Code") then
                         Rec."Location Type Name" := LocationType.Description;
-                    Rec."SKU Exists" := SKU.Get(Location.Code, ItemNo, VariantCode);
+                    Rec."SKU Exists" := SKUExistsForScope(Location.Code, ItemNo, VariantCode, IncludeAllVariants);
                     Rec.Selected := false;
                     Rec.Insert();
                 end;
@@ -171,6 +170,27 @@ page 53038 "SI SKU Location Select"
                 TempSelection := Rec;
                 TempSelection.Insert();
             until Rec.Next() = 0;
+    end;
+
+    local procedure SKUExistsForScope(LocationCode: Code[10]; ItemNo: Code[20]; VariantCode: Code[10]; IncludeAllVariants: Boolean): Boolean
+    var
+        SKU: Record "Stockkeeping Unit";
+        ItemVariant: Record "Item Variant";
+    begin
+        if not SKU.Get(LocationCode, ItemNo, VariantCode) then
+            exit(false);
+
+        if not IncludeAllVariants then
+            exit(true);
+
+        ItemVariant.SetRange("Item No.", ItemNo);
+        if ItemVariant.FindSet() then
+            repeat
+                if not SKU.Get(LocationCode, ItemNo, ItemVariant.Code) then
+                    exit(false);
+            until ItemVariant.Next() = 0;
+
+        exit(true);
     end;
 
     local procedure IsAllowedLocationType(LocationTypeCode: Code[20]; LocationSetup: Record "SI Location Setup"): Boolean
