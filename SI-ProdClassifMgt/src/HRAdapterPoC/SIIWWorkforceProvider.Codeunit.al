@@ -100,6 +100,54 @@ codeunit 56200 "SI IW Workforce Provider" implements "SI Workforce Provider"
         until StaffEmployee.Next() = 0;
     end;
 
+    procedure ResolveEmployment(EmployeeNo: Code[20]; ContextDate: Date; var Resolution: Record "SI Employment Resolution"): Enum "SI Employment Resolve Status"
+    var
+        EmploymentContext: Record "SI Employment Context" temporary;
+        Employee: Record Employee;
+        ResolutionStatus: Enum "SI Employment Resolve Status";
+        ActiveContextCount: Integer;
+    begin
+        Resolution.Reset();
+        Resolution.DeleteAll();
+
+        ResolveEmploymentContexts(EmployeeNo, ContextDate, EmploymentContext);
+        ActiveContextCount := EmploymentContext.Count();
+
+        case ActiveContextCount of
+            0:
+                ResolutionStatus := ResolutionStatus::"Not Employed";
+            1:
+                ResolutionStatus := ResolutionStatus::Resolved;
+            else
+                ResolutionStatus := ResolutionStatus::Ambiguous;
+        end;
+
+        Resolution.Init();
+        Resolution."Entry No." := 1;
+        Resolution.Status := ResolutionStatus;
+        Resolution."Context Date" := ContextDate;
+        Resolution."Employee No." := EmployeeNo;
+        Resolution."Active Context Count" := ActiveContextCount;
+
+        if Employee.Get(EmployeeNo) then
+            Resolution."Employee Name" := CopyStr(Employee.FullName(), 1, MaxStrLen(Resolution."Employee Name"));
+
+        if ResolutionStatus = ResolutionStatus::Resolved then begin
+            EmploymentContext.FindFirst();
+            Resolution."Employment Context ID" := EmploymentContext."Employment Context ID";
+            Resolution."Employment Type" := EmploymentContext."Employment Type";
+            Resolution."Department Code" := EmploymentContext."Department Code";
+            Resolution."Department Name" := EmploymentContext."Department Name";
+            Resolution."Unit No." := EmploymentContext."Unit No.";
+            Resolution."Unit Name" := EmploymentContext."Unit Name";
+            Resolution."Position Code" := EmploymentContext."Position Code";
+            Resolution."Position Name" := EmploymentContext."Position Name";
+        end;
+
+        Resolution.Insert();
+        exit(ResolutionStatus);
+    end;
+
     local procedure FindLastLedgerEntryOnDate(StaffEmployeeNo: Code[20]; ContextDate: Date; var EmployeeLedgerEntry: Record "IWSP Employee Ledger Entry2"): Boolean
     var
         LatestPostingDate: Date;
