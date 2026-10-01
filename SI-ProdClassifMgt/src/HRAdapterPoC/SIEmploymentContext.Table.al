@@ -82,6 +82,14 @@ table 56200 "SI Employment Context"
         {
             Caption = 'Ledger Entry Type';
         }
+        field(20; "Resolved for Date"; Date)
+        {
+            Caption = 'Resolved for Date';
+        }
+        field(21; "Is Active on Context Date"; Boolean)
+        {
+            Caption = 'Is Active on Context Date';
+        }
     }
 
     keys

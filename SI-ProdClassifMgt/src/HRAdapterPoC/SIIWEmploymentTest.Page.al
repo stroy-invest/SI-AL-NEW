@@ -27,6 +27,12 @@ page 56200 "SI IW Employment Test"
                         LoadEmployments();
                     end;
                 }
+                field(ContextDate; ContextDate)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Context Date';
+                    Editable = true;
+                }
             }
             repeater(Employments)
             {
@@ -48,6 +54,8 @@ page 56200 "SI IW Employment Test"
                 field("Position Code"; Rec."Position Code") { ApplicationArea = All; }
                 field("Position Name"; Rec."Position Name") { ApplicationArea = All; }
                 field("Ledger Entry Type"; Rec."Ledger Entry Type") { ApplicationArea = All; }
+                field("Resolved for Date"; Rec."Resolved for Date") { ApplicationArea = All; }
+                field("Is Active on Context Date"; Rec."Is Active on Context Date") { ApplicationArea = All; }
             }
         }
     }
@@ -65,6 +73,17 @@ page 56200 "SI IW Employment Test"
                 trigger OnAction()
                 begin
                     LoadEmployments();
+                end;
+            }
+            action(ResolveOnDate)
+            {
+                ApplicationArea = All;
+                Caption = 'Resolve on Context Date';
+                Image = Calculate;
+
+                trigger OnAction()
+                begin
+                    ResolveOnContextDate();
                 end;
             }
             action(ClearResult)
@@ -127,6 +146,39 @@ page 56200 "SI IW Employment Test"
         }
     }
 
+    trigger OnOpenPage()
+    begin
+        ContextDate := WorkDate();
+    end;
+
+    local procedure ResolveOnContextDate()
+    var
+        ProviderType: Enum "SI Workforce Provider Type";
+        Provider: Interface "SI Workforce Provider";
+    begin
+        // The page itself is bound to the temporary Rec instance.  A provider call
+        // that returns zero rows can leave the page cursor positioned on the row
+        // displayed by the previous resolution.  Clear the page buffer first so
+        // a zero-result resolution cannot display stale data.
+        Rec.Reset();
+        Rec.DeleteAll();
+        Rec.Init();
+
+        ProviderType := ProviderType::IW;
+        Provider := ProviderType;
+        Provider.ResolveEmploymentContexts(EmployeeNo, ContextDate, Rec);
+
+        Rec.Reset();
+        if Rec.FindFirst() then begin
+            CurrPage.Update(false);
+            exit;
+        end;
+
+        Clear(Rec);
+        CurrPage.Update(false);
+        Message('No active employment context was resolved for %1 on %2.', EmployeeNo, ContextDate);
+    end;
+
     local procedure LoadEmployments()
     var
         ProviderType: Enum "SI Workforce Provider Type";
@@ -140,4 +192,5 @@ page 56200 "SI IW Employment Test"
 
     var
         EmployeeNo: Code[20];
+        ContextDate: Date;
 }
