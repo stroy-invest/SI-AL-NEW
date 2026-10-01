@@ -58,26 +58,88 @@ codeunit 60002 "SI Project Assignment Mgt."
     end;
 
     procedure IsEmployeeEligibleForRole(EmployeeNo: Code[20]; RoleCode: Code[20]): Boolean
+    begin
+        exit(IsEmployeeEligibleForRoleOnDate(EmployeeNo, RoleCode, WorkDate()));
+    end;
+
+    procedure IsEmployeeEligibleForRoleOnDate(EmployeeNo: Code[20]; RoleCode: Code[20]; ContextDate: Date): Boolean
     var
         EmployeeProjectRole: Record "SI Employee Project Role";
+        IsEligible: Boolean;
+        IsHandled: Boolean;
     begin
         if (EmployeeNo = '') or (RoleCode = '') then
             exit(false);
+        if ContextDate = 0D then
+            ContextDate := WorkDate();
 
+        OnResolveEmployeeRoleEligibility(EmployeeNo, RoleCode, ContextDate, IsEligible, IsHandled);
+        if IsHandled then
+            exit(IsEligible);
+
+        // Backward-compatible fallback while the HR capability provider is optional.
         exit(EmployeeProjectRole.Get(EmployeeNo, RoleCode));
     end;
 
     procedure ValidateEmployeeRoleEligibility(EmployeeNo: Code[20]; RoleCode: Code[20])
+    begin
+        ValidateEmployeeRoleOnDate(EmployeeNo, RoleCode, WorkDate());
+    end;
+
+    procedure ValidateEmployeeRoleOnDate(EmployeeNo: Code[20]; RoleCode: Code[20]; ContextDate: Date)
     var
         Employee: Record Employee;
         ProjectRole: Record "SI Project Role";
     begin
-        if IsEmployeeEligibleForRole(EmployeeNo, RoleCode) then
+        if IsEmployeeEligibleForRoleOnDate(EmployeeNo, RoleCode, ContextDate) then
             exit;
 
         Employee.Get(EmployeeNo);
         ProjectRole.Get(RoleCode);
-        Error('Працівник %1 не має допустимої ролі "%2" для будівельних проєктів.', Employee.FullName(), ProjectRole.Description);
+        Error(
+            'Працівник %1 не має чинної ролі "%2" на дату %3.',
+            Employee.FullName(), ProjectRole.Description, ContextDate);
+    end;
+
+    procedure CollectEligibleEmployees(RoleCode: Code[20]; ContextDate: Date; var Employee: Record Employee): Boolean
+    var
+        EmployeeProjectRole: Record "SI Employee Project Role";
+        IsHandled: Boolean;
+        HasEligibleEmployees: Boolean;
+    begin
+        Employee.Reset();
+        Employee.ClearMarks();
+
+        if ContextDate = 0D then
+            ContextDate := WorkDate();
+
+        OnCollectEligibleEmployees(RoleCode, ContextDate, Employee, HasEligibleEmployees, IsHandled);
+        if IsHandled then begin
+            Employee.MarkedOnly(true);
+            exit(HasEligibleEmployees);
+        end;
+
+        EmployeeProjectRole.SetRange("Role Code", RoleCode);
+        if EmployeeProjectRole.FindSet() then
+            repeat
+                if Employee.Get(EmployeeProjectRole."Employee No.") then begin
+                    Employee.Mark(true);
+                    HasEligibleEmployees := true;
+                end;
+            until EmployeeProjectRole.Next() = 0;
+
+        Employee.MarkedOnly(true);
+        exit(HasEligibleEmployees);
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnResolveEmployeeRoleEligibility(EmployeeNo: Code[20]; RoleCode: Code[20]; ContextDate: Date; var IsEligible: Boolean; var IsHandled: Boolean)
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnCollectEligibleEmployees(RoleCode: Code[20]; ContextDate: Date; var Employee: Record Employee; var HasEligibleEmployees: Boolean; var IsHandled: Boolean)
+    begin
     end;
 
     procedure TryGetPrimaryEmployee(ProjectNo: Code[20]; RoleCode: Code[20]; AsOfDate: Date; var Employee: Record Employee): Boolean

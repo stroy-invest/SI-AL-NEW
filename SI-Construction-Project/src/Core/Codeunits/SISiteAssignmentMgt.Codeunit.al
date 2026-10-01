@@ -30,7 +30,10 @@ codeunit 60005 "SI Site Assignment Mgt."
         if Assignment."Employee No." <> '' then begin
             if not Employee.Get(Assignment."Employee No.") then
                 Error('Працівник %1 не існує.', Assignment."Employee No.");
-            ProjectAssignmentMgt.ValidateEmployeeRoleEligibility(Assignment."Employee No.", Assignment."Role Code");
+            ProjectAssignmentMgt.ValidateEmployeeRoleOnDate(
+                Assignment."Employee No.",
+                Assignment."Role Code",
+                GetEligibilityDate(Assignment));
         end;
 
         if (Assignment."Project No." = '') or (Assignment."Site Code" = '') or (Assignment."Employee No." = '') then
@@ -39,6 +42,14 @@ codeunit 60005 "SI Site Assignment Mgt."
         CheckEmployeeOverlap(Assignment, ProjectRole.Description);
         if Assignment.Primary then
             CheckPrimaryOverlap(Assignment, ProjectRole.Description);
+    end;
+
+    local procedure GetEligibilityDate(Assignment: Record "SI Site Assignment"): Date
+    begin
+        if Assignment."Valid From" <> 0D then
+            exit(Assignment."Valid From");
+
+        exit(WorkDate());
     end;
 
     local procedure CheckEmployeeOverlap(Assignment: Record "SI Site Assignment"; RoleDescription: Text[100])

@@ -55,23 +55,17 @@ page 60021 "SI Site Assignments Part"
     local procedure LookupEmployee(var LookupText: Text): Boolean
     var
         Employee: Record Employee;
-        EmployeeProjectRole: Record "SI Employee Project Role";
         EmployeeList: Page "Employee List";
-        HasEligibleEmployees: Boolean;
+        AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
+        EligibilityDate: Date;
     begin
-        EmployeeProjectRole.SetRange("Role Code", 'FOREMAN');
-        if EmployeeProjectRole.FindSet() then
-            repeat
-                if Employee.Get(EmployeeProjectRole."Employee No.") then begin
-                    Employee.Mark(true);
-                    HasEligibleEmployees := true;
-                end;
-            until EmployeeProjectRole.Next() = 0;
+        EligibilityDate := Rec."Valid From";
+        if EligibilityDate = 0D then
+            EligibilityDate := WorkDate();
 
-        if not HasEligibleEmployees then
-            Error('Для ролі "Виконроб" не налаштовано жодного допустимого працівника.');
+        if not AssignmentMgt.CollectEligibleEmployees(Rec."Role Code", EligibilityDate, Employee) then
+            Error('На дату %1 немає працівників, допустимих для ролі "Виконроб".', EligibilityDate);
 
-        Employee.MarkedOnly(true);
         EmployeeList.SetTableView(Employee);
         EmployeeList.LookupMode(true);
         if EmployeeList.RunModal() <> Action::LookupOK then
