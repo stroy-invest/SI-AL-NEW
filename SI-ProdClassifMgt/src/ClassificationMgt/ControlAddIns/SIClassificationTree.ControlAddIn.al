@@ -8,10 +8,10 @@ controladdin "SI Classification Tree"
     HorizontalStretch = true;
 
     Scripts =
-        'ClassificationMgt/src/ControlAddIns/SIClassificationTree.js';
+        'src/ClassificationMgt/ControlAddIns/SIClassificationTree.js';
 
     StartupScript =
-        'ClassificationMgt/src/ControlAddIns/SIClassificationTreeStartup.js';
+        'src/ClassificationMgt/ControlAddIns/SIClassificationTreeStartup.js';
 
     event ControlReady();
 

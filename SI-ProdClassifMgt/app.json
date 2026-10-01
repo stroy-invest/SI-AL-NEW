@@ -2,7 +2,7 @@
     "id": "9f7472a1-62e9-4595-ac66-0ff6d2f759fb",
     "name": "SI Product Classification Management",
     "publisher": "STROYINVEST",
-    "version": "1.0.0.0",
+    "version": "1.0.0.1",
     "brief": "Керування класифікаційними системами продукції",
     "description": "Універсальний компонент для ведення класифікаційних систем, мапінгу продукції, інтеграції з конфігуратором і формування регламентованої звітності.",
     "privacyStatement": "",
@@ -10,7 +10,14 @@
     "help": "",
     "url": "",
     "logo": "",
-    "dependencies": [],
+    "dependencies": [
+        {
+            "id": "71988d19-be5b-493b-bde1-ee173e3c96a0",
+            "name": "IW HR & Payroll",
+            "publisher": "Innoware Ukraine LLC",
+            "version": "27.22.6496.0"
+        }
+    ],
     "screenshots": [],
     "platform": "1.0.0.0",
     "application": "28.0.0.0",
