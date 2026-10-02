@@ -28,6 +28,10 @@ page 60013 "SI Project Roles"
                 {
                     ApplicationArea = All;
                 }
+                field("Required Capability Code"; Rec."Required Capability Code")
+                {
+                    ApplicationArea = All;
+                }
                 field("Require Primary"; Rec."Require Primary")
                 {
                     ApplicationArea = All;

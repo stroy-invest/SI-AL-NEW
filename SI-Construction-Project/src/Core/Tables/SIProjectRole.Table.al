@@ -38,6 +38,12 @@ table 60010 "SI Project Role"
             Caption = 'Рівень призначення';
             DataClassification = CustomerContent;
         }
+        field(7; "Required Capability Code"; Code[20])
+        {
+            Caption = 'Необхідна компетенція';
+            DataClassification = CustomerContent;
+            TableRelation = "SI Workforce Capability".Code where(Active = const(true));
+        }
     }
 
     keys

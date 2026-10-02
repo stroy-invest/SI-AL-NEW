@@ -2,7 +2,7 @@
     "id": "9f7472a1-62e9-4595-ac66-0ff6d2f759fb",
     "name": "SI Product Classification Management",
     "publisher": "STROYINVEST",
-    "version": "1.0.0.3",
+    "version": "1.0.0.4",
     "brief": "Керування класифікаційними системами продукції",
     "description": "Універсальний компонент для ведення класифікаційних систем, мапінгу продукції, інтеграції з конфігуратором і формування регламентованої звітності.",
     "privacyStatement": "",
@@ -21,7 +21,7 @@
             "id": "e7e9d6bb-52d8-4f68-93ad-d8c390cbbf73",
             "name": "SI Construction Project",
             "publisher": "STROYINVEST",
-            "version": "1.0.0.12"
+            "version": "1.0.0.13"
         }        
     ],
     "screenshots": [],

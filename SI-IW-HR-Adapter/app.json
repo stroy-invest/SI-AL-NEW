@@ -2,7 +2,7 @@
   "id": "c8dd1b1a-7f9e-4e72-a3cc-0d5af23e3f19",
   "name": "SI IW HR Adapter",
   "publisher": "STROYINVEST",
-  "version": "1.0.0.1",
+  "version": "1.0.0.2",
   "brief": "STROYINVEST Workforce adapter for IW HR & Payroll",
   "description": "Isolates IW HR & Payroll data model behind STROYINVEST Foundation Workforce contracts.",
   "privacyStatement": "",
@@ -27,12 +27,19 @@
   "screenshots": [],
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
-  "idRanges": [{ "from": 51000, "to": 51999 }],
+  "idRanges": [
+    {
+      "from": 51000,
+      "to": 51999
+    }
+  ],
   "resourceExposurePolicy": {
     "allowDebugging": true,
     "allowDownloadingSource": true,
     "includeSourceInSymbolFile": true
   },
   "runtime": "17.0",
-  "features": ["NoImplicitWith"]
+  "features": [
+    "NoImplicitWith"
+  ]
 }

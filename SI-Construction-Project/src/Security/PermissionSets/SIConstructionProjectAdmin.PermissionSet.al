@@ -10,6 +10,7 @@ permissionset 60000 "SI CP ADMIN"
         tabledata Location = R,
         tabledata Employee = R,
         tabledata "SI Location Setup" = R,
+        tabledata "SI Workforce Capability" = RIM,
         tabledata "SI Project Role" = RIMD,
         tabledata "SI Project Assignment" = RIMD,
         tabledata "SI Employee Project Role" = RIMD,

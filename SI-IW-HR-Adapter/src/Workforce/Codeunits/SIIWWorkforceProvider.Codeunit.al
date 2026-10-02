@@ -137,25 +137,13 @@ codeunit 51000 "SI IW Workforce Provider"
     end;
 
     local procedure FindLastLedgerEntryOnDate(StaffEmployeeNo: Code[20]; ContextDate: Date; var EmployeeLedgerEntry: Record "IWSP Employee Ledger Entry2"): Boolean
-    var
-        LatestPostingDate: Date;
     begin
         EmployeeLedgerEntry.Reset();
         EmployeeLedgerEntry.SetCurrentKey("Staff Employee No.", "Posting Date");
         EmployeeLedgerEntry.SetRange("Staff Employee No.", StaffEmployeeNo);
         EmployeeLedgerEntry.SetRange(Canceled, false);
         EmployeeLedgerEntry.SetFilter("Posting Date", '..%1', ContextDate);
-
-        if not EmployeeLedgerEntry.FindLast() then
-            exit(false);
-
-        LatestPostingDate := EmployeeLedgerEntry."Posting Date";
-
-        EmployeeLedgerEntry.Reset();
-        EmployeeLedgerEntry.SetCurrentKey("Entry No.");
-        EmployeeLedgerEntry.SetRange("Staff Employee No.", StaffEmployeeNo);
-        EmployeeLedgerEntry.SetRange(Canceled, false);
-        EmployeeLedgerEntry.SetRange("Posting Date", LatestPostingDate);
+        EmployeeLedgerEntry.SetFilter("Entry Type", '<>%1', EmployeeLedgerEntry."Entry Type"::Resignation);
 
         exit(EmployeeLedgerEntry.FindLast());
     end;
@@ -167,7 +155,6 @@ codeunit 51000 "SI IW Workforce Provider"
             EmployeeLedgerEntry."Entry Type"::Assignment,
             EmployeeLedgerEntry."Entry Type"::"App. Parametres Change":
                 exit(true);
-            EmployeeLedgerEntry."Entry Type"::Resignation,
             EmployeeLedgerEntry."Entry Type"::Termination:
                 exit(false);
         end;

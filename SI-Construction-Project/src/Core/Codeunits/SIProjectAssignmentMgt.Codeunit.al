@@ -2,8 +2,10 @@ codeunit 60002 "SI Project Assignment Mgt."
 {
     procedure EnsureDefaultRoles()
     begin
-        EnsureRole('PROJECT_MANAGER', 'Керівник проєкту', "SI Assignment Cardinality"::Single, true, "SI Assignment Scope"::Project);
-        EnsureRole('FOREMAN', 'Виконроб', "SI Assignment Cardinality"::Multiple, false, "SI Assignment Scope"::Site);
+        EnsureCapability('PROJECT_MANAGER', 'Керівник проєкту');
+        EnsureCapability('FOREMAN', 'Виконроб');
+        EnsureRole('PROJECT_MANAGER', 'Керівник проєкту', "SI Assignment Cardinality"::Single, true, "SI Assignment Scope"::Project, 'PROJECT_MANAGER');
+        EnsureRole('FOREMAN', 'Виконроб', "SI Assignment Cardinality"::Multiple, false, "SI Assignment Scope"::Site, 'FOREMAN');
     end;
 
     procedure ApplyRoleDefaults(var Assignment: Record "SI Project Assignment")
@@ -43,7 +45,7 @@ codeunit 60002 "SI Project Assignment Mgt."
                 Error('Працівник %1 не існує.', Assignment."Employee No.");
 
         if (Assignment."Role Code" <> '') and (Assignment."Employee No." <> '') then
-            ValidateEmployeeRoleEligibility(Assignment."Employee No.", Assignment."Role Code");
+            ValidateEmployeeRoleOnDate(Assignment."Employee No.", Assignment."Role Code", GetEligibilityDate(Assignment));
 
         if (Assignment."Project No." = '') or (Assignment."Employee No." = '') then
             exit;
@@ -64,21 +66,16 @@ codeunit 60002 "SI Project Assignment Mgt."
 
     procedure IsEmployeeEligibleForRoleOnDate(EmployeeNo: Code[20]; RoleCode: Code[20]; ContextDate: Date): Boolean
     var
-        EmployeeProjectRole: Record "SI Employee Project Role";
-        IsEligible: Boolean;
-        IsHandled: Boolean;
+        ProjectRole: Record "SI Project Role";
+        WorkforceMgt: Codeunit "SI Workforce Mgt.";
     begin
         if (EmployeeNo = '') or (RoleCode = '') then
             exit(false);
         if ContextDate = 0D then
             ContextDate := WorkDate();
 
-        OnResolveEmployeeRoleEligibility(EmployeeNo, RoleCode, ContextDate, IsEligible, IsHandled);
-        if IsHandled then
-            exit(IsEligible);
-
-        // Backward-compatible fallback while the HR capability provider is optional.
-        exit(EmployeeProjectRole.Get(EmployeeNo, RoleCode));
+        GetRoleCapability(RoleCode, ProjectRole);
+        exit(WorkforceMgt.HasCapability(EmployeeNo, ContextDate, ProjectRole."Required Capability Code"));
     end;
 
     procedure ValidateEmployeeRoleEligibility(EmployeeNo: Code[20]; RoleCode: Code[20])
@@ -97,14 +94,14 @@ codeunit 60002 "SI Project Assignment Mgt."
         Employee.Get(EmployeeNo);
         ProjectRole.Get(RoleCode);
         Error(
-            'Працівник %1 не має чинної ролі "%2" на дату %3.',
+            'Працівник %1 не має необхідної компетенції для ролі "%2" на дату %3.',
             Employee.FullName(), ProjectRole.Description, ContextDate);
     end;
 
     procedure CollectEligibleEmployees(RoleCode: Code[20]; ContextDate: Date; var Employee: Record Employee): Boolean
     var
-        EmployeeProjectRole: Record "SI Employee Project Role";
-        IsHandled: Boolean;
+        ProjectRole: Record "SI Project Role";
+        WorkforceMgt: Codeunit "SI Workforce Mgt.";
         HasEligibleEmployees: Boolean;
     begin
         Employee.Reset();
@@ -113,33 +110,18 @@ codeunit 60002 "SI Project Assignment Mgt."
         if ContextDate = 0D then
             ContextDate := WorkDate();
 
-        OnCollectEligibleEmployees(RoleCode, ContextDate, Employee, HasEligibleEmployees, IsHandled);
-        if IsHandled then begin
-            Employee.MarkedOnly(true);
-            exit(HasEligibleEmployees);
-        end;
+        GetRoleCapability(RoleCode, ProjectRole);
 
-        EmployeeProjectRole.SetRange("Role Code", RoleCode);
-        if EmployeeProjectRole.FindSet() then
+        if Employee.FindSet() then
             repeat
-                if Employee.Get(EmployeeProjectRole."Employee No.") then begin
+                if WorkforceMgt.HasCapability(Employee."No.", ContextDate, ProjectRole."Required Capability Code") then begin
                     Employee.Mark(true);
                     HasEligibleEmployees := true;
                 end;
-            until EmployeeProjectRole.Next() = 0;
+            until Employee.Next() = 0;
 
         Employee.MarkedOnly(true);
         exit(HasEligibleEmployees);
-    end;
-
-    [IntegrationEvent(false, false)]
-    local procedure OnResolveEmployeeRoleEligibility(EmployeeNo: Code[20]; RoleCode: Code[20]; ContextDate: Date; var IsEligible: Boolean; var IsHandled: Boolean)
-    begin
-    end;
-
-    [IntegrationEvent(false, false)]
-    local procedure OnCollectEligibleEmployees(RoleCode: Code[20]; ContextDate: Date; var Employee: Record Employee; var HasEligibleEmployees: Boolean; var IsHandled: Boolean)
-    begin
     end;
 
     procedure TryGetPrimaryEmployee(ProjectNo: Code[20]; RoleCode: Code[20]; AsOfDate: Date; var Employee: Record Employee): Boolean
@@ -272,7 +254,44 @@ codeunit 60002 "SI Project Assignment Mgt."
              ((Assignment."Valid To" = 0D) or (Assignment."Valid To" >= AsOfDate)));
     end;
 
-    local procedure EnsureRole(RoleCode: Code[20]; RoleDescription: Text[100]; Cardinality: Enum "SI Assignment Cardinality"; RequirePrimary: Boolean; Scope: Enum "SI Assignment Scope")
+    local procedure GetEligibilityDate(Assignment: Record "SI Project Assignment"): Date
+    begin
+        if Assignment."Valid From" <> 0D then
+            exit(Assignment."Valid From");
+        exit(WorkDate());
+    end;
+
+    local procedure GetRoleCapability(RoleCode: Code[20]; var ProjectRole: Record "SI Project Role")
+    begin
+        if not ProjectRole.Get(RoleCode) then
+            Error('Роль проєкту %1 не існує.', RoleCode);
+        if not ProjectRole.Active then
+            Error('Роль проєкту %1 неактивна.', ProjectRole.Description);
+        if ProjectRole."Required Capability Code" = '' then
+            Error('Для ролі "%1" не налаштовано необхідну Workforce-компетенцію.', ProjectRole.Description);
+    end;
+
+    local procedure EnsureCapability(CapabilityCode: Code[20]; CapabilityDescription: Text[100])
+    var
+        Capability: Record "SI Workforce Capability";
+    begin
+        if Capability.Get(CapabilityCode) then begin
+            if (Capability.Description <> CapabilityDescription) or (not Capability.Active) then begin
+                Capability.Description := CapabilityDescription;
+                Capability.Active := true;
+                Capability.Modify(true);
+            end;
+            exit;
+        end;
+
+        Capability.Init();
+        Capability.Code := CapabilityCode;
+        Capability.Description := CapabilityDescription;
+        Capability.Active := true;
+        Capability.Insert(true);
+    end;
+
+    local procedure EnsureRole(RoleCode: Code[20]; RoleDescription: Text[100]; Cardinality: Enum "SI Assignment Cardinality"; RequirePrimary: Boolean; Scope: Enum "SI Assignment Scope"; CapabilityCode: Code[20])
     var
         ProjectRole: Record "SI Project Role";
     begin
@@ -280,12 +299,14 @@ codeunit 60002 "SI Project Assignment Mgt."
             if (ProjectRole.Description <> RoleDescription) or
                (ProjectRole."Assignment Cardinality" <> Cardinality) or
                (ProjectRole."Require Primary" <> RequirePrimary) or
-               (ProjectRole."Assignment Scope" <> Scope)
+               (ProjectRole."Assignment Scope" <> Scope) or
+               (ProjectRole."Required Capability Code" <> CapabilityCode)
             then begin
                 ProjectRole.Description := RoleDescription;
                 ProjectRole."Assignment Cardinality" := Cardinality;
                 ProjectRole."Require Primary" := RequirePrimary;
                 ProjectRole."Assignment Scope" := Scope;
+                ProjectRole."Required Capability Code" := CapabilityCode;
                 ProjectRole.Modify(true);
             end;
             exit;
@@ -297,6 +318,7 @@ codeunit 60002 "SI Project Assignment Mgt."
         ProjectRole."Assignment Cardinality" := Cardinality;
         ProjectRole."Require Primary" := RequirePrimary;
         ProjectRole."Assignment Scope" := Scope;
+        ProjectRole."Required Capability Code" := CapabilityCode;
         ProjectRole.Active := true;
         ProjectRole.Insert(true);
     end;
