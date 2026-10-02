@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "BC Sandbox",
+            "type": "al",
+            "request": "launch",
+
+            "environmentType": "Sandbox",
+            "environmentName": "Sandbox",
+            "tenant": "6ab21447-f0e1-4d77-a3d8-d18115c14e96",
+
+            "startupObjectType": "Page",
+            "startupObjectId": 51002,
+            "schemaUpdateMode": "Synchronize",
+
+            "breakOnError": "All",
+            "breakOnRecordWrite": "None",
+
+            "launchBrowser": true,
+
+            "enableSqlInformationDebugger": true,
+            "enableLongRunningSqlStatements": true,
+            "longRunningSqlStatementsThreshold": 500,
+            "numberOfSqlStatements": 10
+        }
+    ]
+}

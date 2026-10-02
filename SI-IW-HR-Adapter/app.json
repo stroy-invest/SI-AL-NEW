@@ -1,0 +1,38 @@
+{
+  "id": "c8dd1b1a-7f9e-4e72-a3cc-0d5af23e3f19",
+  "name": "SI IW HR Adapter",
+  "publisher": "STROYINVEST",
+  "version": "1.0.0.1",
+  "brief": "STROYINVEST Workforce adapter for IW HR & Payroll",
+  "description": "Isolates IW HR & Payroll data model behind STROYINVEST Foundation Workforce contracts.",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "",
+  "dependencies": [
+    {
+      "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+      "name": "STROYINVEST Foundation",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.61"
+    },
+    {
+      "id": "71988d19-be5b-493b-bde1-ee173e3c96a0",
+      "name": "IW HR & Payroll",
+      "publisher": "Innoware Ukraine LLC",
+      "version": "27.22.6496.0"
+    }
+  ],
+  "screenshots": [],
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "idRanges": [{ "from": 51000, "to": 51999 }],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "17.0",
+  "features": ["NoImplicitWith"]
+}
