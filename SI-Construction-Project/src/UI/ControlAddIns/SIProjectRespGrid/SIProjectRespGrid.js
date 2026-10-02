@@ -29,15 +29,12 @@ function SetAssignments(data) {
     var table = document.createElement('table');
     table.className = 'si-pr-table';
     var thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Роль</th><th>Працівник</th><th>Чинний з</th><th>Чинний по</th><th class="si-pr-primary">Основний</th><th class="si-pr-actions"></th></tr>';
+    thead.innerHTML = '<tr><th>Працівник</th><th>Чинний з</th><th>Чинний по</th><th class="si-pr-primary">Основний</th><th class="si-pr-actions"></th></tr>';
     table.appendChild(thead);
     var tbody = document.createElement('tbody');
 
     rows.forEach(function (r) {
         var tr = document.createElement('tr');
-        tr.appendChild(lookupCell(r.role || '—', function () {
-            Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('LookupRole', [r.lineNo]);
-        }));
         tr.appendChild(lookupCell(r.employee || '—', function () {
             Microsoft.Dynamics.NAV.InvokeExtensibilityMethod('LookupEmployee', [r.lineNo]);
         }));

@@ -135,11 +135,6 @@ page 60011 "SI Construction Project Card"
                         DeleteProjectAssignment(LineNo);
                     end;
 
-                    trigger LookupRole(LineNo: Integer)
-                    begin
-                        LookupAssignmentRole(LineNo);
-                    end;
-
                     trigger LookupEmployee(LineNo: Integer)
                     begin
                         LookupAssignmentEmployee(LineNo);
@@ -256,7 +251,6 @@ page 60011 "SI Construction Project Card"
     var
         AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
     begin
-        AssignmentMgt.EnsureDefaultRoles();
     end;
 
     trigger OnNewRecord(BelowxRec: Boolean)
@@ -437,6 +431,7 @@ page 60011 "SI Construction Project Card"
         Assignment: Record "SI Project Assignment";
         ProjectRole: Record "SI Project Role";
         Employee: Record Employee;
+        AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
         Data: JsonArray;
         Row: JsonObject;
         RoleName: Text[100];
@@ -449,7 +444,10 @@ page 60011 "SI Construction Project Card"
         Clear(Data);
         if Rec."No." <> '' then begin
             Assignment.SetRange("Project No.", Rec."No.");
-            Assignment.SetRange("Role Code", 'PROJECT_MANAGER');
+            if AssignmentMgt.FindRoleByPurpose("SI Project Role Purpose"::ProjectManager, ProjectRole) then
+                Assignment.SetRange("Role Code", ProjectRole.Code)
+            else
+                Assignment.SetRange("Role Code", '');
             if Assignment.FindSet() then
                 repeat
                     Clear(RoleName);
@@ -479,22 +477,29 @@ page 60011 "SI Construction Project Card"
         Assignment: Record "SI Project Assignment";
         LastAssignment: Record "SI Project Assignment";
         ProjectRole: Record "SI Project Role";
-        ProjectRoles: Page "SI Project Roles";
+        Employee: Record Employee;
+        EmployeeLookup: Page "SI Eligible Employee Lookup";
         AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
+        EligibilityDate: Date;
         NextLineNo: Integer;
     begin
         CurrPage.SaveRecord();
         if Rec."No." = '' then
             Error('Спочатку створіть проєкт.');
 
-        AssignmentMgt.EnsureDefaultRoles();
-        ProjectRole.SetRange(Active, true);
-        ProjectRole.SetRange("Assignment Scope", ProjectRole."Assignment Scope"::Project);
-        ProjectRoles.SetTableView(ProjectRole);
-        ProjectRoles.LookupMode(true);
-        if ProjectRoles.RunModal() <> Action::LookupOK then
+        AssignmentMgt.RequireRoleByPurpose("SI Project Role Purpose"::ProjectManager, ProjectRole);
+        if ProjectRole."Assignment Scope" <> ProjectRole."Assignment Scope"::Project then
+            Error('Роль керівника проєкту "%1" повинна мати рівень призначення "Проєкт".', ProjectRole.Description);
+
+        EligibilityDate := WorkDate();
+        if not AssignmentMgt.CollectEligibleEmployees(ProjectRole.Code, EligibilityDate, Employee) then
+            Error('На дату %1 немає працівників, які мають компетенцію "%2" для функції "Керівник проєкту".', EligibilityDate, ProjectRole."Capability Description");
+
+        EmployeeLookup.LoadEligible(ProjectRole.Code, EligibilityDate);
+        EmployeeLookup.LookupMode(true);
+        if EmployeeLookup.RunModal() <> Action::LookupOK then
             exit;
-        ProjectRoles.GetRecord(ProjectRole);
+        Employee.Get(EmployeeLookup.GetSelectedEmployeeNo());
 
         LastAssignment.SetRange("Project No.", Rec."No.");
         if LastAssignment.FindLast() then
@@ -505,8 +510,9 @@ page 60011 "SI Construction Project Card"
         Assignment.Init();
         Assignment."Project No." := Rec."No.";
         Assignment."Line No." := NextLineNo;
-        Assignment."Valid From" := WorkDate();
+        Assignment."Valid From" := EligibilityDate;
         Assignment.Validate("Role Code", ProjectRole.Code);
+        Assignment.Validate("Employee No.", Employee."No.");
         Assignment.Insert(true);
         RefreshResponsibilityGrid();
     end;
@@ -524,62 +530,31 @@ page 60011 "SI Construction Project Card"
         RefreshResponsibilityGrid();
     end;
 
-    local procedure LookupAssignmentRole(LineNo: Integer)
-    var
-        Assignment: Record "SI Project Assignment";
-        ProjectRole: Record "SI Project Role";
-        ProjectRoles: Page "SI Project Roles";
-        AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
-    begin
-        if not Assignment.Get(Rec."No.", LineNo) then
-            exit;
-
-        AssignmentMgt.EnsureDefaultRoles();
-        ProjectRole.SetRange(Active, true);
-        ProjectRole.SetRange("Assignment Scope", ProjectRole."Assignment Scope"::Project);
-        ProjectRoles.SetTableView(ProjectRole);
-        ProjectRoles.LookupMode(true);
-        if ProjectRoles.RunModal() <> Action::LookupOK then
-            exit;
-
-        ProjectRoles.GetRecord(ProjectRole);
-        Assignment.Validate("Role Code", ProjectRole.Code);
-        Assignment.Modify(true);
-        RefreshResponsibilityGrid();
-    end;
-
     local procedure LookupAssignmentEmployee(LineNo: Integer)
     var
         Assignment: Record "SI Project Assignment";
         Employee: Record Employee;
-        EmployeeProjectRole: Record "SI Employee Project Role";
-        EmployeeList: Page "Employee List";
-        HasEligibleEmployees: Boolean;
+        EmployeeLookup: Page "SI Eligible Employee Lookup";
+        AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
+        EligibilityDate: Date;
     begin
         if not Assignment.Get(Rec."No.", LineNo) then
             exit;
         if Assignment."Role Code" = '' then
             Error('Спочатку виберіть роль у проєкті.');
 
-        EmployeeProjectRole.SetRange("Role Code", Assignment."Role Code");
-        if EmployeeProjectRole.FindSet() then
-            repeat
-                if Employee.Get(EmployeeProjectRole."Employee No.") then begin
-                    Employee.Mark(true);
-                    HasEligibleEmployees := true;
-                end;
-            until EmployeeProjectRole.Next() = 0;
+        EligibilityDate := Assignment."Valid From";
+        if EligibilityDate = 0D then
+            EligibilityDate := WorkDate();
+        if not AssignmentMgt.CollectEligibleEmployees(Assignment."Role Code", EligibilityDate, Employee) then
+            Error('На дату %1 немає працівників, які мають Workforce-компетенцію для вибраної ролі.', EligibilityDate);
 
-        if not HasEligibleEmployees then
-            Error('Для вибраної ролі не налаштовано жодного допустимого працівника.');
-
-        Employee.MarkedOnly(true);
-        EmployeeList.SetTableView(Employee);
-        EmployeeList.LookupMode(true);
-        if EmployeeList.RunModal() <> Action::LookupOK then
+        EmployeeLookup.LoadEligible(Assignment."Role Code", EligibilityDate);
+        EmployeeLookup.LookupMode(true);
+        if EmployeeLookup.RunModal() <> Action::LookupOK then
             exit;
 
-        EmployeeList.GetRecord(Employee);
+        Employee.Get(EmployeeLookup.GetSelectedEmployeeNo());
         Assignment.Validate("Employee No.", Employee."No.");
         Assignment.Modify(true);
         RefreshResponsibilityGrid();

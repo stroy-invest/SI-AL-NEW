@@ -1,13 +1,5 @@
 codeunit 60002 "SI Project Assignment Mgt."
 {
-    procedure EnsureDefaultRoles()
-    begin
-        EnsureCapability('PROJECT_MANAGER', 'Керівник проєкту');
-        EnsureCapability('FOREMAN', 'Виконроб');
-        EnsureRole('PROJECT_MANAGER', 'Керівник проєкту', "SI Assignment Cardinality"::Single, true, "SI Assignment Scope"::Project, 'PROJECT_MANAGER');
-        EnsureRole('FOREMAN', 'Виконроб', "SI Assignment Cardinality"::Multiple, false, "SI Assignment Scope"::Site, 'FOREMAN');
-    end;
-
     procedure ApplyRoleDefaults(var Assignment: Record "SI Project Assignment")
     var
         ProjectRole: Record "SI Project Role";
@@ -122,6 +114,30 @@ codeunit 60002 "SI Project Assignment Mgt."
 
         Employee.MarkedOnly(true);
         exit(HasEligibleEmployees);
+    end;
+
+    procedure FindRoleByPurpose(Purpose: Enum "SI Project Role Purpose"; var ProjectRole: Record "SI Project Role"): Boolean
+    begin
+        ProjectRole.Reset();
+        ProjectRole.SetRange(Purpose, Purpose);
+        ProjectRole.SetRange(Active, true);
+        exit(ProjectRole.FindFirst());
+    end;
+
+    procedure RequireRoleByPurpose(Purpose: Enum "SI Project Role Purpose"; var ProjectRole: Record "SI Project Role")
+    begin
+        if FindRoleByPurpose(Purpose, ProjectRole) then
+            exit;
+        Error('Не налаштовано активну роль із системним призначенням "%1". Відкрийте "Ролі проєкту та вимоги до працівників".', Format(Purpose));
+    end;
+
+    procedure TryGetPrimaryByPurpose(ProjectNo: Code[20]; Purpose: Enum "SI Project Role Purpose"; AsOfDate: Date; var Employee: Record Employee): Boolean
+    var
+        ProjectRole: Record "SI Project Role";
+    begin
+        if not FindRoleByPurpose(Purpose, ProjectRole) then
+            exit(false);
+        exit(TryGetPrimaryEmployee(ProjectNo, ProjectRole.Code, AsOfDate, Employee));
     end;
 
     procedure TryGetPrimaryEmployee(ProjectNo: Code[20]; RoleCode: Code[20]; AsOfDate: Date; var Employee: Record Employee): Boolean
@@ -271,55 +287,4 @@ codeunit 60002 "SI Project Assignment Mgt."
             Error('Для ролі "%1" не налаштовано необхідну Workforce-компетенцію.', ProjectRole.Description);
     end;
 
-    local procedure EnsureCapability(CapabilityCode: Code[20]; CapabilityDescription: Text[100])
-    var
-        Capability: Record "SI Workforce Capability";
-    begin
-        if Capability.Get(CapabilityCode) then begin
-            if (Capability.Description <> CapabilityDescription) or (not Capability.Active) then begin
-                Capability.Description := CapabilityDescription;
-                Capability.Active := true;
-                Capability.Modify(true);
-            end;
-            exit;
-        end;
-
-        Capability.Init();
-        Capability.Code := CapabilityCode;
-        Capability.Description := CapabilityDescription;
-        Capability.Active := true;
-        Capability.Insert(true);
-    end;
-
-    local procedure EnsureRole(RoleCode: Code[20]; RoleDescription: Text[100]; Cardinality: Enum "SI Assignment Cardinality"; RequirePrimary: Boolean; Scope: Enum "SI Assignment Scope"; CapabilityCode: Code[20])
-    var
-        ProjectRole: Record "SI Project Role";
-    begin
-        if ProjectRole.Get(RoleCode) then begin
-            if (ProjectRole.Description <> RoleDescription) or
-               (ProjectRole."Assignment Cardinality" <> Cardinality) or
-               (ProjectRole."Require Primary" <> RequirePrimary) or
-               (ProjectRole."Assignment Scope" <> Scope) or
-               (ProjectRole."Required Capability Code" <> CapabilityCode)
-            then begin
-                ProjectRole.Description := RoleDescription;
-                ProjectRole."Assignment Cardinality" := Cardinality;
-                ProjectRole."Require Primary" := RequirePrimary;
-                ProjectRole."Assignment Scope" := Scope;
-                ProjectRole."Required Capability Code" := CapabilityCode;
-                ProjectRole.Modify(true);
-            end;
-            exit;
-        end;
-
-        ProjectRole.Init();
-        ProjectRole.Code := RoleCode;
-        ProjectRole.Description := RoleDescription;
-        ProjectRole."Assignment Cardinality" := Cardinality;
-        ProjectRole."Require Primary" := RequirePrimary;
-        ProjectRole."Assignment Scope" := Scope;
-        ProjectRole."Required Capability Code" := CapabilityCode;
-        ProjectRole.Active := true;
-        ProjectRole.Insert(true);
-    end;
 }

@@ -12,7 +12,7 @@
 
             "startupObjectType": "Page",
             "startupObjectId": 9022,
-            "schemaUpdateMode": "Synchronize",
+            "schemaUpdateMode": "ForceSync",
 
             "breakOnError": "All",
             "breakOnRecordWrite": "None",

@@ -36,8 +36,12 @@ page 60021 "SI Site Assignments Part"
     }
 
     trigger OnNewRecord(BelowxRec: Boolean)
+    var
+        ProjectRole: Record "SI Project Role";
+        AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
     begin
-        Rec."Role Code" := 'FOREMAN';
+        AssignmentMgt.RequireRoleByPurpose("SI Project Role Purpose"::SiteSupervisor, ProjectRole);
+        Rec."Role Code" := ProjectRole.Code;
         if Rec."Valid From" = 0D then
             Rec."Valid From" := WorkDate();
         Clear(EmployeeDisplayName);
@@ -55,7 +59,7 @@ page 60021 "SI Site Assignments Part"
     local procedure LookupEmployee(var LookupText: Text): Boolean
     var
         Employee: Record Employee;
-        EmployeeList: Page "Employee List";
+        EmployeeLookup: Page "SI Eligible Employee Lookup";
         AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
         EligibilityDate: Date;
     begin
@@ -64,14 +68,14 @@ page 60021 "SI Site Assignments Part"
             EligibilityDate := WorkDate();
 
         if not AssignmentMgt.CollectEligibleEmployees(Rec."Role Code", EligibilityDate, Employee) then
-            Error('На дату %1 немає працівників, допустимих для ролі "Виконроб".', EligibilityDate);
+            Error('На дату %1 немає працівників, які мають Workforce-компетенцію для ролі виконроба.', EligibilityDate);
 
-        EmployeeList.SetTableView(Employee);
-        EmployeeList.LookupMode(true);
-        if EmployeeList.RunModal() <> Action::LookupOK then
+        EmployeeLookup.LoadEligible(Rec."Role Code", EligibilityDate);
+        EmployeeLookup.LookupMode(true);
+        if EmployeeLookup.RunModal() <> Action::LookupOK then
             exit(false);
 
-        EmployeeList.GetRecord(Employee);
+        Employee.Get(EmployeeLookup.GetSelectedEmployeeNo());
         Rec.Validate("Employee No.", Employee."No.");
         CurrPage.SaveRecord();
         EmployeeDisplayName := Employee.FullName();

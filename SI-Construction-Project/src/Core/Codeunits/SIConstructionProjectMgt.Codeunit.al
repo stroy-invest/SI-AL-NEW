@@ -22,7 +22,6 @@ codeunit 60001 "SI Construction Project Mgt."
         InternalCustomerMgt.EnsureInternalSICustomer(Project, InternalCustomer);
         EnsureProjectLocation(Project);
         ConstructionSiteMgt.EnsureDefaultSite(Project, DefaultSite);
-        ConstructionSiteMgt.MigrateProjectForemenToDefaultSite(Project);
         JobTaskMgt.EnsureProjectTasksSite(Project);
     end;
 
@@ -59,7 +58,6 @@ codeunit 60001 "SI Construction Project Mgt."
         InternalCustomerMgt.EnsureInternalSICustomer(Project, InternalCustomer);
         EnsureProjectLocation(Project);
         ConstructionSiteMgt.EnsureDefaultSite(Project, DefaultSite);
-        ConstructionSiteMgt.MigrateProjectForemenToDefaultSite(Project);
         JobTaskMgt.EnsureProjectTasksSite(Project);
     end;
 

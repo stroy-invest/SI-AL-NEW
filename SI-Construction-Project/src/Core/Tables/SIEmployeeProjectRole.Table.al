@@ -1,5 +1,8 @@
 table 60012 "SI Employee Project Role"
 {
+    ObsoleteState = Pending;
+    ObsoleteReason = 'Operational eligibility is resolved through Foundation Workforce capabilities.';
+    ObsoleteTag = '1.0.0.15';
     Caption = 'Допустима роль працівника в будівельних проєктах';
     DataClassification = CustomerContent;
 

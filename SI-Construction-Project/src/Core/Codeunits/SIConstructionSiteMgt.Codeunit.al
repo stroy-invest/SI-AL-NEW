@@ -109,48 +109,6 @@ codeunit 60003 "SI Construction Site Mgt."
             Error('Проєкт %1 повинен мати рівно один активний основний будівельний майданчик. Знайдено: %2.', Project."No.", DefaultCount);
     end;
 
-    procedure MigrateProjectForemenToDefaultSite(Project: Record Job)
-    var
-        DefaultSite: Record "SI Construction Site";
-        ProjectAssignment: Record "SI Project Assignment";
-        SiteAssignment: Record "SI Site Assignment";
-        LastSiteAssignment: Record "SI Site Assignment";
-        AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
-        NextLineNo: Integer;
-    begin
-        if not Project."SI Construction Project" then
-            exit;
-
-        AssignmentMgt.EnsureDefaultRoles();
-        if not FindDefaultSite(Project."No.", DefaultSite) then
-            exit;
-
-        ProjectAssignment.SetRange("Project No.", Project."No.");
-        ProjectAssignment.SetRange("Role Code", 'FOREMAN');
-        while ProjectAssignment.FindFirst() do begin
-            LastSiteAssignment.Reset();
-            LastSiteAssignment.SetRange("Project No.", Project."No.");
-            LastSiteAssignment.SetRange("Site Code", DefaultSite."Site Code");
-            if LastSiteAssignment.FindLast() then
-                NextLineNo := LastSiteAssignment."Line No." + 10000
-            else
-                NextLineNo := 10000;
-
-            SiteAssignment.Init();
-            SiteAssignment."Project No." := ProjectAssignment."Project No.";
-            SiteAssignment."Site Code" := DefaultSite."Site Code";
-            SiteAssignment."Line No." := NextLineNo;
-            SiteAssignment."Role Code" := 'FOREMAN';
-            SiteAssignment."Employee No." := ProjectAssignment."Employee No.";
-            SiteAssignment."Valid From" := ProjectAssignment."Valid From";
-            SiteAssignment."Valid To" := ProjectAssignment."Valid To";
-            SiteAssignment.Primary := ProjectAssignment.Primary;
-            SiteAssignment.Insert(true);
-
-            ProjectAssignment.Delete(true);
-        end;
-    end;
-
     procedure GetNextSiteCode(ProjectNo: Code[20]): Code[20]
     var
         Site: Record "SI Construction Site";

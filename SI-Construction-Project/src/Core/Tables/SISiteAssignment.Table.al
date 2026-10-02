@@ -90,8 +90,6 @@ table 60014 "SI Site Assignment"
     var
         AssignmentMgt: Codeunit "SI Site Assignment Mgt.";
     begin
-        if "Role Code" = '' then
-            "Role Code" := 'FOREMAN';
         AssignmentMgt.ValidateAssignment(Rec);
     end;
 

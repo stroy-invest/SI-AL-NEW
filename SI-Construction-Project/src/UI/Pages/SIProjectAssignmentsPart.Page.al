@@ -70,7 +70,6 @@ page 60012 "SI Project Assignments Part"
         ProjectRoles: Page "SI Project Roles";
         AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
     begin
-        AssignmentMgt.EnsureDefaultRoles();
         ProjectRole.SetRange(Active, true);
         ProjectRole.SetRange("Assignment Scope", ProjectRole."Assignment Scope"::Project);
         ProjectRoles.SetTableView(ProjectRole);
@@ -89,32 +88,26 @@ page 60012 "SI Project Assignments Part"
     local procedure LookupEmployee(var LookupText: Text): Boolean
     var
         Employee: Record Employee;
-        EmployeeProjectRole: Record "SI Employee Project Role";
-        EmployeeList: Page "Employee List";
-        HasEligibleEmployees: Boolean;
+        EmployeeLookup: Page "SI Eligible Employee Lookup";
+        AssignmentMgt: Codeunit "SI Project Assignment Mgt.";
+        EligibilityDate: Date;
     begin
         if Rec."Role Code" = '' then
             Error('Спочатку виберіть роль у проєкті.');
 
-        EmployeeProjectRole.SetRange("Role Code", Rec."Role Code");
-        if EmployeeProjectRole.FindSet() then
-            repeat
-                if Employee.Get(EmployeeProjectRole."Employee No.") then begin
-                    Employee.Mark(true);
-                    HasEligibleEmployees := true;
-                end;
-            until EmployeeProjectRole.Next() = 0;
+        EligibilityDate := Rec."Valid From";
+        if EligibilityDate = 0D then
+            EligibilityDate := WorkDate();
 
-        if not HasEligibleEmployees then
-            Error('Для вибраної ролі не налаштовано жодного допустимого працівника.');
+        if not AssignmentMgt.CollectEligibleEmployees(Rec."Role Code", EligibilityDate, Employee) then
+            Error('На дату %1 немає працівників, які мають Workforce-компетенцію для вибраної ролі.', EligibilityDate);
 
-        Employee.MarkedOnly(true);
-        EmployeeList.SetTableView(Employee);
-        EmployeeList.LookupMode(true);
-        if EmployeeList.RunModal() <> Action::LookupOK then
+        EmployeeLookup.LoadEligible(Rec."Role Code", EligibilityDate);
+        EmployeeLookup.LookupMode(true);
+        if EmployeeLookup.RunModal() <> Action::LookupOK then
             exit(false);
 
-        EmployeeList.GetRecord(Employee);
+        Employee.Get(EmployeeLookup.GetSelectedEmployeeNo());
         Rec.Validate("Employee No.", Employee."No.");
         CurrPage.SaveRecord();
         EmployeeDisplayName := Employee.FullName();

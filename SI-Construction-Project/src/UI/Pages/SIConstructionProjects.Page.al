@@ -87,7 +87,7 @@ page 60010 "SI Construction Projects"
         if (Rec."Location Code" <> '') and Location.Get(Rec."Location Code") then
             LocationDisplayName := Location.Name;
 
-        if AssignmentMgt.TryGetPrimaryEmployee(Rec."No.", 'PROJECT_MANAGER', WorkDate(), ProjectManager) then
+        if AssignmentMgt.TryGetPrimaryByPurpose(Rec."No.", "SI Project Role Purpose"::ProjectManager, WorkDate(), ProjectManager) then
             ProjectManagerDisplayName := ProjectManager.FullName();
     end;
 

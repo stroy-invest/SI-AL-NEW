@@ -16,7 +16,6 @@ controladdin SIProjectRespGrid
     event ControlReady();
     event AddAssignment();
     event DeleteAssignment(LineNo: Integer);
-    event LookupRole(LineNo: Integer);
     event LookupEmployee(LineNo: Integer);
     event UpdateValidFrom(LineNo: Integer; NewValue: Text);
     event UpdateValidTo(LineNo: Integer; NewValue: Text);
