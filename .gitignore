@@ -26,3 +26,4 @@ cache_*
 .vscode/settings.json
 **/.vscode/settings.json
 **/docs/
+**/scripts/
