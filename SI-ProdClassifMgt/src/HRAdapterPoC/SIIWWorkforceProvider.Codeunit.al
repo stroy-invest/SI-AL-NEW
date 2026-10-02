@@ -149,8 +149,6 @@ codeunit 56200 "SI IW Workforce Provider" implements "SI Workforce Provider"
     end;
 
     local procedure FindLastLedgerEntryOnDate(StaffEmployeeNo: Code[20]; ContextDate: Date; var EmployeeLedgerEntry: Record "IWSP Employee Ledger Entry2"): Boolean
-    var
-        LatestPostingDate: Date;
     begin
         EmployeeLedgerEntry.Reset();
         EmployeeLedgerEntry.SetCurrentKey("Staff Employee No.", "Posting Date");
@@ -158,19 +156,14 @@ codeunit 56200 "SI IW Workforce Provider" implements "SI Workforce Provider"
         EmployeeLedgerEntry.SetRange(Canceled, false);
         EmployeeLedgerEntry.SetFilter("Posting Date", '..%1', ContextDate);
 
-        if not EmployeeLedgerEntry.FindLast() then
-            exit(false);
-
-        LatestPostingDate := EmployeeLedgerEntry."Posting Date";
-
-        // One business event can create several ledger entries on the same date
-        // (verified Transfer: Resignation followed by Assignment).
-        // Resolve the final state of that date by the greatest Entry No.
-        EmployeeLedgerEntry.Reset();
-        EmployeeLedgerEntry.SetCurrentKey("Entry No.");
-        EmployeeLedgerEntry.SetRange("Staff Employee No.", StaffEmployeeNo);
-        EmployeeLedgerEntry.SetRange(Canceled, false);
-        EmployeeLedgerEntry.SetRange("Posting Date", LatestPostingDate);
+        // IW-confirmed semantics: Resignation is not a state-bearing employment event.
+        // It is a technical closing entry created as part of a transfer and must be
+        // excluded from temporal resolution. This deliberately avoids relying on
+        // Entry No. ordering between same-day Resignation and Assignment entries.
+        EmployeeLedgerEntry.SetFilter(
+            "Entry Type",
+            '<>%1',
+            EmployeeLedgerEntry."Entry Type"::Resignation);
 
         exit(EmployeeLedgerEntry.FindLast());
     end;
@@ -183,9 +176,13 @@ codeunit 56200 "SI IW Workforce Provider" implements "SI Workforce Provider"
             EmployeeLedgerEntry."Entry Type"::"App. Parametres Change":
                 exit(true);
 
-            EmployeeLedgerEntry."Entry Type"::Resignation,
             EmployeeLedgerEntry."Entry Type"::Termination:
                 exit(false);
+
+            EmployeeLedgerEntry."Entry Type"::Resignation:
+                Error(
+                    'IW Resignation entry %1 reached state resolution although Resignation must be excluded from temporal candidates.',
+                    EmployeeLedgerEntry."Entry No.");
         end;
 
         Error(
