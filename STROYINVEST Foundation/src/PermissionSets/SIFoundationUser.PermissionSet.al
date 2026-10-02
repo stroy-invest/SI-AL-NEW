@@ -42,8 +42,10 @@ permissionset 50198 "SI FOUNDATION USER"
         codeunit "SI EDS HTTP Transport" = X,
 
         // Organizational Identity is read-only for operational users.
-        tabledata "SI User Employee Link" = R,
-        table "SI User Employee Link" = X,
+        tabledata "SI User Identity Assignment" = R,
+        table "SI User Identity Assignment" = X,
+        tabledata "SI User Identity Purpose" = R,
+        table "SI User Identity Purpose" = X,
         codeunit "SI Org. Identity Mgt." = X,
 
         // Runtime EDS configuration is read-only.

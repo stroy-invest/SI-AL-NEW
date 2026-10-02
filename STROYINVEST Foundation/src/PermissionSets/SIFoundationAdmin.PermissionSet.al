@@ -96,9 +96,12 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         codeunit "SI EDS Credential Mgt." = X,
 
         // Organizational Identity.
-        tabledata "SI User Employee Link" = RIMD,
-        table "SI User Employee Link" = X,
-        page "SI User Employee Links" = X,
+        tabledata "SI User Identity Assignment" = RIMD,
+        table "SI User Identity Assignment" = X,
+        tabledata "SI User Identity Purpose" = RIMD,
+        table "SI User Identity Purpose" = X,
+        page "SI User Identity Assignments" = X,
+        page "SI User Identity Purposes" = X,
         codeunit "SI Org. Identity Mgt." = X,
         codeunit "SI Country Currency Mgt." = X,
         tabledata "SI EDS Inbound Event" = RIMD,
