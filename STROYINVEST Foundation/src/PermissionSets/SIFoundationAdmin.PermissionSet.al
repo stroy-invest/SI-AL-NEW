@@ -102,6 +102,7 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         table "SI User Identity Purpose" = X,
         page "SI User Identity Assignments" = X,
         page "SI User Identity Purposes" = X,
+        page "SI Identity Resolver Test" = X,
         codeunit "SI Org. Identity Mgt." = X,
         codeunit "SI Country Currency Mgt." = X,
         tabledata "SI EDS Inbound Event" = RIMD,
