@@ -13,7 +13,7 @@
             "startupObjectType": "Page",
             "startupObjectId": 9022,
             "schemaUpdateMode": "Synchronize",
-			"dependencyPublishingOption": "Ignore",
+            "dependencyPublishingOption": "Ignore",
 
             "breakOnError": "All",
             "breakOnRecordWrite": "None",

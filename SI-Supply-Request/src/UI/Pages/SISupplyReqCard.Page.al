@@ -47,8 +47,18 @@ page 61002 "SI Supply Req Card"
                     end;
                 }
                 field(Status; Rec.Status) { ApplicationArea = All; }
-                field("Requested By User ID"; Rec."Requested By User ID") { ApplicationArea = All; }
-                field("Created At"; Rec."Created At") { ApplicationArea = All; }
+                field(CreatorDisplay; CreatorDisplay)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Створено';
+                    Editable = false;
+                    ToolTip = 'Посада та ім’я працівника, який створив заявку, визначені на дату створення заявки.';
+                }
+                field("Created At"; Rec."Created At")
+                {
+                    ApplicationArea = All;
+                    Caption = 'Дата створення';
+                }
                 field(Description; Rec.Description) { ApplicationArea = All; MultiLine = true; }
             }
 
@@ -173,6 +183,7 @@ page 61002 "SI Supply Req Card"
     trigger OnAfterGetRecord()
     begin
         UpdateProjectDisplayName();
+        RefreshCreatorDisplay();
         if Rec."No." <> '' then
             CurrPage.DemandLines.Page.SetRequestContext(Rec."No.");
     end;
@@ -180,6 +191,7 @@ page 61002 "SI Supply Req Card"
     trigger OnNewRecord(BelowxRec: Boolean)
     begin
         Clear(ProjectDisplayName);
+        Clear(CreatorDisplay);
     end;
 
     local procedure SelectProject(): Boolean
@@ -236,6 +248,26 @@ page 61002 "SI Supply Req Card"
         end;
     end;
 
+
+    local procedure RefreshCreatorDisplay()
     var
+        CreatorMgt: Codeunit "SI Supply Req Creator Mgt.";
+        WarningText: Text;
+    begin
+        Clear(CreatorDisplay);
+        if (Rec."Requested By User ID" = '') or (Rec."Created At" = 0DT) then
+            exit;
+
+        if CreatorMgt.TryGetCreatorDisplay(Rec, CreatorDisplay, WarningText) then
+            exit;
+
+        CreatorDisplay := StrSubstNo(CreatorUnavailableLbl, Rec."Requested By User ID");
+        Message(CreatorWarningMsg, Rec."No.", WarningText);
+    end;
+
+    var
+        CreatorDisplay: Text[500];
         ProjectDisplayName: Text[100];
+        CreatorUnavailableLbl: Label 'Автор не визначений (%1)', Comment = '%1 = technical BC User Name';
+        CreatorWarningMsg: Label 'Для заявки %1 не вдалося визначити бізнес-контекст автора на дату її створення. Заявку буде відкрито.\\%2', Comment = '%1 = Request No., %2 = diagnostic reason';
 }
