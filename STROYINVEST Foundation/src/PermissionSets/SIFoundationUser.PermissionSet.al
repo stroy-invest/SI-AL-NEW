@@ -35,6 +35,7 @@ permissionset 50198 "SI FOUNDATION USER"
         codeunit "SI Address Parser Mgt." = X,
         codeunit "SI Country Currency Mgt." = X,
         codeunit "SI IBAN Mgt." = X,
+        codeunit "SI UA Identifier Mgt." = X,
         codeunit "SI Bank Resolver" = X,
         codeunit "SI NBU Bank Resolver" = X,
         codeunit "SI EDS Orchestrator" = X,
