@@ -18,6 +18,8 @@ codeunit 54010 "SI BP Identity Mgt."
         then
             exit;
 
+        ValidateUkrainianRegistrationNo(BusinessPartner);
+
         BusinessPartnerNo := BuildBusinessPartnerNo(
             BusinessPartner."Country/Region Code",
             BusinessPartner."Entity Type",
@@ -68,6 +70,21 @@ codeunit 54010 "SI BP Identity Mgt."
         exit(CopyStr(Result, 1, 60));
     end;
 
+    local procedure ValidateUkrainianRegistrationNo(BusinessPartner: Record "SI Business Partner")
+    var
+        UAIdentifierMgt: Codeunit "SI UA Identifier Mgt.";
+    begin
+        if UpperCase(BusinessPartner."Country/Region Code") <> UkraineCountryCodeLbl then
+            exit;
+
+        case BusinessPartner."Entity Type" of
+            BusinessPartner."Entity Type"::"Legal Entity":
+                UAIdentifierMgt.ValidateEDRPOU(BusinessPartner."Registration No.");
+            BusinessPartner."Entity Type"::"Individual Entrepreneur":
+                UAIdentifierMgt.ValidateRNOKPP(BusinessPartner."Registration No.");
+        end;
+    end;
+
     local procedure GetEntityTypeCode(EntityType: Enum "SI BP Entity Type"): Code[10]
     begin
         case EntityType of
@@ -100,6 +117,7 @@ codeunit 54010 "SI BP Identity Mgt."
     end;
 
     var
+        UkraineCountryCodeLbl: Label 'UA', Locked = true;
         BusinessPartnerNoTooLongErr: Label 'The generated Business Partner No. %1 exceeds the maximum length of %2 characters.';
         CountryRequiredErr: Label 'Country/Region Code is required.';
         EntityTypeRequiredErr: Label 'Entity Type is required.';

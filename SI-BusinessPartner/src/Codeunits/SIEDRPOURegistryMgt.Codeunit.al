@@ -101,21 +101,11 @@ codeunit 54013 "SI EDRPOU Registry Mgt."
             BusinessPartner."Registration No.");
     end;
 
-    local procedure ValidateRegistrationNo(
-        RegistrationNo: Text)
+    local procedure ValidateRegistrationNo(RegistrationNo: Text)
     var
-        Character: Char;
-        Position: Integer;
+        UAIdentifierMgt: Codeunit "SI UA Identifier Mgt.";
     begin
-        for Position := 1 to StrLen(RegistrationNo) do begin
-            Character := RegistrationNo[Position];
-
-            if StrPos(
-                '0123456789',
-                Format(Character)) = 0
-            then
-                Error(RegistrationNoMustBeNumericErr);
-        end;
+        UAIdentifierMgt.ValidateEDRPOU(RegistrationNo);
     end;
 
     var
@@ -132,8 +122,6 @@ codeunit 54013 "SI EDRPOU Registry Mgt."
         OnlyUkraineSupportedErr: Label
             'EDRPOU verification is available only for business partners registered in Ukraine.';
 
-        RegistrationNoMustBeNumericErr: Label
-            'For Ukraine, Registration No. must contain digits only.';
 
         EmptyRegistryResponseErr: Label
             'The registry provider returned an empty response.';
