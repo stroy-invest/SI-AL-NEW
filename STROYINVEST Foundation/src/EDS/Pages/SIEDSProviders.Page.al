@@ -49,6 +49,13 @@ page 50452 "SI EDS Providers"
                 RunObject = page "SI EDS Credentials";
                 RunPageLink = "Provider Code" = field(Code);
             }
+            action(RateLimits)
+            {
+                Caption = 'Ліміти запитів';
+                ApplicationArea = All;
+                RunObject = page "SI EDS Provider Rate Limits";
+                RunPageLink = "Provider Code" = field(Code);
+            }
         }
     }
 }

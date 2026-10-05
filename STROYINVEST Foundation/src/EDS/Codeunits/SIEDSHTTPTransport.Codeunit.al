@@ -24,6 +24,7 @@ codeunit 50430 "SI EDS HTTP Transport"
         RequestUrl: Text;
         StartedAt: DateTime;
         FinishedAt: DateTime;
+        RateLimitMgt: Codeunit "SI EDS Rate Limit Mgt.";
     begin
         InitializeResponseBuffer(
             RequestBuffer,
@@ -44,6 +45,8 @@ codeunit 50430 "SI EDS HTTP Transport"
             RequestBuffer,
             ResponseBuffer,
             RequestUrl);
+
+        RateLimitMgt.WaitForSlot(RequestBuffer."Provider Code");
 
         StartedAt :=
             CurrentDateTime;
@@ -161,6 +164,7 @@ codeunit 50430 "SI EDS HTTP Transport"
         RequestUrl: Text;
         StartedAt: DateTime;
         FinishedAt: DateTime;
+        RateLimitMgt: Codeunit "SI EDS Rate Limit Mgt.";
     begin
         InitializeResponseBuffer(
             RequestBuffer,
@@ -181,6 +185,8 @@ codeunit 50430 "SI EDS HTTP Transport"
             RequestBuffer,
             ResponseBuffer,
             RequestUrl);
+
+        RateLimitMgt.WaitForSlot(RequestBuffer."Provider Code");
 
         StartedAt :=
             CurrentDateTime;
@@ -297,6 +303,7 @@ codeunit 50430 "SI EDS HTTP Transport"
         var ResponseText: Text)
     var
         FinishedAt: DateTime;
+        RateLimitMgt: Codeunit "SI EDS Rate Limit Mgt.";
     begin
         FinishedAt :=
             CurrentDateTime;

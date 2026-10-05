@@ -39,6 +39,10 @@ permissionset 50198 "SI FOUNDATION USER"
         codeunit "SI Bank Resolver" = X,
         codeunit "SI NBU Bank Resolver" = X,
         codeunit "SI EDS Orchestrator" = X,
+        tabledata "SI EDS Provider Rate Limit" = R,
+        table "SI EDS Provider Rate Limit" = X,
+        codeunit "SI EDS Rate Limit Mgt." = X,
+        codeunit "SI EDS Async Mgt." = X,
         codeunit "SI EDS Provider Context" = X,
         codeunit "SI EDS HTTP Transport" = X,
 

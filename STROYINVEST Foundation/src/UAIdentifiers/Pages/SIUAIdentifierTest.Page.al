@@ -164,6 +164,33 @@ page 50447 "SI UA Identifier Test"
                 end;
             }
 
+            action(ForceUsrBackground)
+            {
+                ApplicationArea = All;
+                Caption = 'YouScore: передати USR у фон';
+                Image = SendTo;
+                ToolTip = 'Діагностична дія: виконує один реальний GET-USR, після чого примусово ставить GET-USR у EDS Async Request Queue, минаючи стандартний foreground chain 3 x 5 с. Якщо первинна відповідь 202, додатково показує останні доступні дані через GET-USR-CURRENT.';
+
+                trigger OnAction()
+                begin
+                    if EDRPOUValue <> '' then begin
+                        UAIdentifierMgt.ValidateEDRPOU(EDRPOUValue);
+                        EDRPOUResultText := 'Коректний';
+                        ForceUsrToBackground(EDRPOUValue);
+                        exit;
+                    end;
+
+                    if RNOKPPValue <> '' then begin
+                        UAIdentifierMgt.ValidateRNOKPP(RNOKPPValue);
+                        RNOKPPResultText := 'Коректний';
+                        ForceUsrToBackground(RNOKPPValue);
+                        exit;
+                    end;
+
+                    Error('Вкажіть код ЄДРПОУ або РНОКПП.');
+                end;
+            }
+
             action(GetUsrCurrentData)
             {
                 ApplicationArea = All;
@@ -281,6 +308,8 @@ page 50447 "SI UA Identifier Test"
         HttpStatusCode: Integer;
         RetryNo: Integer;
         WaitDialog: Dialog;
+        First202At: DateTime;
+        AsyncEntryNo: Integer;
     begin
         Clear(UsrFlowStatusText);
 
@@ -291,6 +320,7 @@ page 50447 "SI UA Identifier Test"
             exit;
         end;
 
+        First202At := CurrentDateTime;
         WaitDialog.Open('Триває актуалізація даних реєстру. Зачекайте...');
         for RetryNo := 1 to 3 do begin
             Sleep(5000);
@@ -311,12 +341,61 @@ page 50447 "SI UA Identifier Test"
         WaitDialog.Close();
 
         ExecuteUsrCurrent(IdentifierValue);
+        AsyncEntryNo := EnqueueUsrRefresh(IdentifierValue, First202At);
         UsrFlowStatusText :=
-            'GET-USR: 202 після ~15 с; показано останні доступні дані через GET-USR-CURRENT.';
+            StrSubstNo(
+                'GET-USR: 202 після ~15 с; показано останні доступні дані; фоновий запит №%1.',
+                AsyncEntryNo);
         CurrPage.Update(false);
 
         Message(
             'Актуалізація даних реєстру ще триває. Зараз буде показано останні доступні дані. Після завершення актуалізації система оновить їх автоматично.');
+    end;
+
+
+    local procedure ForceUsrToBackground(IdentifierValue: Text)
+    var
+        HttpStatusCode: Integer;
+        StartedAt: DateTime;
+        AsyncEntryNo: Integer;
+    begin
+        Clear(UsrFlowStatusText);
+        StartedAt := CurrentDateTime;
+
+        HttpStatusCode := ExecuteUsrRequest(IdentifierValue);
+
+        // For a real 202, show the currently available snapshot before handing the refresh to the worker.
+        if HttpStatusCode = 202 then
+            ExecuteUsrCurrent(IdentifierValue);
+
+        // This is deliberately a diagnostic force-handoff: even if GET-USR already returned 200,
+        // enqueue the same real request so Queue -> Worker -> EDS -> Completed can be acceptance-tested.
+        AsyncEntryNo := EnqueueUsrRefresh(IdentifierValue, StartedAt);
+        UsrFlowStatusText :=
+            StrSubstNo(
+                'TEST background: первинний GET-USR HTTP %1; примусово передано у фоновий запит №%2.',
+                HttpStatusCode,
+                AsyncEntryNo);
+        CurrPage.Update(false);
+
+        Message(
+            'Тестовий USR-запит передано у фонову чергу EDS. Номер асинхронного запиту: %1. Подальшу обробку виконає Job Queue.',
+            AsyncEntryNo);
+    end;
+
+    local procedure EnqueueUsrRefresh(IdentifierValue: Text; StartedAt: DateTime): Integer
+    var
+        RuntimeParam: Record "SI EDS Runtime Param" temporary;
+        AsyncMgt: Codeunit "SI EDS Async Mgt.";
+    begin
+        RuntimeParam.Add('CONTRACTOR-CODE', IdentifierValue);
+        exit(
+            AsyncMgt.Enqueue(
+                'UA-REGISTRY',
+                'GET-USR',
+                IdentifierValue,
+                StartedAt,
+                RuntimeParam));
     end;
 
     local procedure ExecuteUsrRequest(IdentifierValue: Text): Integer
