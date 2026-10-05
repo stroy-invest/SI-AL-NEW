@@ -140,5 +140,14 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         page "SI Product Selector Test" = X,
         codeunit "SI Product Selector Mgt." = X,
         page "SI Category Selector" = X,
-        codeunit "SI Category Selector Mgt." = X;
+        codeunit "SI Category Selector Mgt." = X,
+
+        // EDS Administration UX.
+        tabledata "SI EDS Admin Cue" = RIMD,
+        table "SI EDS Admin Cue" = X,
+        page "SI EDS Admin Activities" = X,
+        page "SI EDS Admin Role Center" = X,
+        page "SI EDS Operations Tree" = X,
+        page "SI EDS Provider Routes Tree" = X,
+        page "SI EDS Parameters Tree" = X;
 }
