@@ -19,6 +19,9 @@ table 50470 "SI EDS Admin Cue"
         field(22; "Async Timed Out"; Integer) { FieldClass = FlowField; CalcFormula = count("SI EDS Async Request" where(Status = const("Timed Out"))); }
         field(30; "Execution Log"; Integer) { FieldClass = FlowField; CalcFormula = count("SI EDS Exec. Log"); }
         field(31; "Technical Failures"; Integer) { FieldClass = FlowField; CalcFormula = count("SI EDS Exec. Log" where("Result Type" = const("Technical Failure"))); }
+        field(40; "Health Errors"; Integer) { Caption = 'Помилки конфігурації'; }
+        field(41; "Health Warnings"; Integer) { Caption = 'Попередження конфігурації'; }
+        field(42; "Health OK"; Integer) { Caption = 'Успішні перевірки'; }
     }
 
     keys { key(PK; "Primary Key") { Clustered = true; } }

@@ -28,6 +28,7 @@ page 50471 "SI EDS Admin Role Center"
                 action(Routes) { ApplicationArea = All; Caption = '7. Маршрути'; RunObject = page "SI EDS Provider Routes Tree"; }
                 action(Parameters) { ApplicationArea = All; Caption = '8. Параметри'; RunObject = page "SI EDS Parameters Tree"; }
                 action(RateLimits) { ApplicationArea = All; Caption = '9. Ліміти запитів'; RunObject = page "SI EDS Provider Rate Limits"; }
+                action(HealthCheck) { ApplicationArea = All; Caption = 'Перевірка конфігурації'; RunObject = page "SI EDS Health Check"; }
             }
             group(Monitoring)
             {

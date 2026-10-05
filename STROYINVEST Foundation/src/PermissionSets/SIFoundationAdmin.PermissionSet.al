@@ -74,6 +74,10 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         table "SI EDS Async Param" = X,
         codeunit "SI EDS Async Mgt." = X,
         codeunit "SI EDS Async Worker" = X,
+        tabledata "SI EDS Health Check Buffer" = RIMD,
+        table "SI EDS Health Check Buffer" = X,
+        codeunit "SI EDS Health Check Mgt." = X,
+        page "SI EDS Health Check" = X,
         page "SI EDS Async Requests" = X,
         codeunit "SI EDS Provider Context" = X,
         codeunit "SI NBU Bank Resolver" = X,
@@ -149,5 +153,12 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         page "SI EDS Admin Role Center" = X,
         page "SI EDS Operations Tree" = X,
         page "SI EDS Provider Routes Tree" = X,
-        page "SI EDS Parameters Tree" = X;
+        page "SI EDS Parameters Tree" = X,
+        page "SI EDS Service Card" = X,
+        page "SI EDS Operation Card" = X,
+        page "SI EDS Provider Card" = X,
+        page "SI EDS Endpoint Card" = X,
+        page "SI EDS Credential Card" = X,
+        page "SI EDS Provider Route Card" = X,
+        page "SI EDS Parameter Card" = X;
 }
