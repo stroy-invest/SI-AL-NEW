@@ -450,7 +450,9 @@ codeunit 50431 "SI EDS Orchestrator"
         */
         RequestBuffer."Relative Path" :=
             ResolveOperationPath(
-                EDSOperation);
+                EDSOperation,
+                EDSProvider.Code,
+                RuntimeParam);
 
         RequestBuffer."Query String" :=
             BuildQueryString(
@@ -473,35 +475,100 @@ codeunit 50431 "SI EDS Orchestrator"
     end;
 
     local procedure ResolveOperationPath(
-        EDSOperation: Record "SI EDS Operation"): Text
+        EDSOperation: Record "SI EDS Operation";
+        ProviderCode: Code[50];
+        var RuntimeParam: Record "SI EDS Runtime Param" temporary): Text
     var
         OperationGroup: Record "SI EDS Operation Group";
+        ResultPath: Text;
     begin
         if EDSOperation."Operation Group Code" = '' then
-            exit(
+            ResultPath :=
                 NormalizePath(
-                    EDSOperation."Relative Path"));
-
-        if not OperationGroup.Get(
-            EDSOperation."Service Code",
-            EDSOperation."Operation Group Code")
-        then
-            Error(
-                'Для операції EDS %1 / %2 не знайдено групу операцій %3.',
+                    EDSOperation."Relative Path")
+        else begin
+            if not OperationGroup.Get(
                 EDSOperation."Service Code",
-                EDSOperation.Code,
-                EDSOperation."Operation Group Code");
+                EDSOperation."Operation Group Code")
+            then
+                Error(
+                    'Для операції EDS %1 / %2 не знайдено групу операцій %3.',
+                    EDSOperation."Service Code",
+                    EDSOperation.Code,
+                    EDSOperation."Operation Group Code");
 
-        if not OperationGroup.Enabled then
-            Error(
-                'Група операцій EDS %1 / %2 вимкнена.',
-                OperationGroup."Service Code",
-                OperationGroup.Code);
+            if not OperationGroup.Enabled then
+                Error(
+                    'Група операцій EDS %1 / %2 вимкнена.',
+                    OperationGroup."Service Code",
+                    OperationGroup.Code);
+
+            ResultPath :=
+                JoinPath(
+                    OperationGroup."Path Prefix",
+                    EDSOperation."Relative Path");
+        end;
 
         exit(
-            JoinPath(
-                OperationGroup."Path Prefix",
-                EDSOperation."Relative Path"));
+            ResolvePathParameters(
+                ResultPath,
+                EDSOperation."Service Code",
+                EDSOperation.Code,
+                ProviderCode,
+                RuntimeParam));
+    end;
+
+    local procedure ResolvePathParameters(
+        PathTemplate: Text;
+        ServiceCode: Code[50];
+        OperationCode: Code[50];
+        ProviderCode: Code[50];
+        var RuntimeParam: Record "SI EDS Runtime Param" temporary): Text
+    var
+        EDSParameter: Record "SI EDS Parameter";
+        ParameterValue: Text;
+        Placeholder: Text;
+        ResultPath: Text;
+    begin
+        ResultPath := PathTemplate;
+
+        EDSParameter.SetRange("Service Code", ServiceCode);
+        EDSParameter.SetRange("Operation Code", OperationCode);
+        EDSParameter.SetRange("Provider Code", ProviderCode);
+        EDSParameter.SetRange(Location, EDSParameter.Location::Path);
+        EDSParameter.SetRange(Enabled, true);
+        EDSParameter.SetCurrentKey(
+            "Service Code", "Operation Code", "Provider Code", Enabled, Sequence);
+
+        if EDSParameter.FindSet() then
+            repeat
+                ParameterValue :=
+                    ResolveParameterValue(
+                        EDSParameter,
+                        RuntimeParam);
+
+                if ParameterValue = '' then
+                    Error(
+                        'Для Path-параметра EDS %1 не передано значення.',
+                        EDSParameter.Code);
+
+                Placeholder :=
+                    '{' + EDSParameter.GetExternalName() + '}';
+
+                if StrPos(ResultPath, Placeholder) = 0 then
+                    Error(
+                        'У Relative Path операції %1 / %2 не знайдено placeholder %3.',
+                        ServiceCode,
+                        OperationCode,
+                        Placeholder);
+
+                ResultPath :=
+                    ResultPath.Replace(
+                        Placeholder,
+                        ParameterValue);
+            until EDSParameter.Next() = 0;
+
+        exit(ResultPath);
     end;
 
     local procedure JoinPath(
@@ -561,44 +628,18 @@ codeunit 50431 "SI EDS Orchestrator"
         ParameterValue: Text;
         QueryString: Text;
     begin
-        EDSParameter.SetRange(
-            "Service Code",
-            ServiceCode);
-
-        EDSParameter.SetRange(
-            "Operation Code",
-            OperationCode);
-
-        EDSParameter.SetRange(
-            "Provider Code",
-            ProviderCode);
-
-        EDSParameter.SetRange(
-            Enabled,
-            true);
-
+        EDSParameter.SetRange("Service Code", ServiceCode);
+        EDSParameter.SetRange("Operation Code", OperationCode);
+        EDSParameter.SetRange("Provider Code", ProviderCode);
+        EDSParameter.SetRange(Location, EDSParameter.Location::Query);
+        EDSParameter.SetRange(Enabled, true);
         EDSParameter.SetCurrentKey(
-            "Service Code",
-            "Operation Code",
-            "Provider Code",
-            Enabled,
-            Sequence);
+            "Service Code", "Operation Code", "Provider Code", Enabled, Sequence);
 
         if not EDSParameter.FindSet() then
             exit('');
 
         repeat
-            if EDSParameter.Location <>
-               EDSParameter.Location::Query
-            then
-                Error(
-                    'EDS parameter %1 / %2 / %3 / %4 використовує location %5, який ще не підтримується runtime v0.1.',
-                    ServiceCode,
-                    OperationCode,
-                    ProviderCode,
-                    EDSParameter.Code,
-                    Format(EDSParameter.Location));
-
             ParameterValue :=
                 ResolveParameterValue(
                     EDSParameter,
@@ -612,11 +653,9 @@ codeunit 50431 "SI EDS Orchestrator"
                     QueryString,
                     EDSParameter,
                     ParameterValue);
-
         until EDSParameter.Next() = 0;
 
-        exit(
-            QueryString);
+        exit(QueryString);
     end;
 
     local procedure ResolveParameterValue(

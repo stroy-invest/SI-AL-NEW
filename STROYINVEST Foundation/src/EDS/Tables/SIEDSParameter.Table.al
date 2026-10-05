@@ -49,8 +49,20 @@ table 50418 "SI EDS Parameter"
 
             trigger OnValidate()
             begin
-                if Source = Source::Fixed then
-                    Clear("Runtime Key");
+                case Source of
+                    Source::Fixed:
+                        begin
+                            Clear("Runtime Key");
+                            Clear("Credential Code");
+                        end;
+                    Source::Runtime:
+                        Clear("Credential Code");
+                    Source::Credential:
+                        begin
+                            Clear("Runtime Key");
+                            Clear(Value);
+                        end;
+                end;
             end;
         }
 
@@ -89,6 +101,17 @@ table 50418 "SI EDS Parameter"
         field(13; "External Name"; Text[100])
         {
             Caption = 'Зовнішнє ім''я';
+        }
+
+        field(14; "Credential Code"; Code[50])
+        {
+            Caption = 'Код облікових даних';
+            TableRelation = "SI EDS Credential".Code where("Provider Code" = field("Provider Code"));
+        }
+
+        field(15; "Value Prefix"; Text[50])
+        {
+            Caption = 'Префікс значення';
         }
     }
 
@@ -132,6 +155,23 @@ table 50418 "SI EDS Parameter"
         if (Source = Source::Runtime) and ("Runtime Key" = '') then
             Error(
                 'Для runtime-параметра %1 необхідно вказати Runtime Key.',
+                Code);
+
+        if Source = Source::Credential then begin
+            if Location <> Location::Header then
+                Error(
+                    'Credential-параметр %1 дозволено використовувати лише в HTTP Header.',
+                    Code);
+
+            if "Credential Code" = '' then
+                Error(
+                    'Для credential-параметра %1 необхідно вказати код облікових даних.',
+                    Code);
+        end;
+
+        if (Location = Location::Path) and (Source <> Source::Runtime) then
+            Error(
+                'Path-параметр %1 повинен мати джерело Runtime.',
                 Code);
 
         if (Format = Format::"Name Only") and (Location <> Location::Query) then

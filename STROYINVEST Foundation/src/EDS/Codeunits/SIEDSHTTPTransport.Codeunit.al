@@ -1,4 +1,4 @@
-﻿codeunit 50430 "SI EDS HTTP Transport"
+codeunit 50430 "SI EDS HTTP Transport"
 {
     procedure Execute(
         var RequestBuffer: Record "SI EDS Request Buffer" temporary;
@@ -32,6 +32,10 @@
         SetStandardRequestHeaders(
             HttpClient,
             AcceptType);
+
+        ApplyConfiguredRequestHeaders(
+            RequestBuffer,
+            HttpClient);
 
         RequestUrl :=
             BuildUrl(RequestBuffer);
@@ -165,6 +169,10 @@
         SetStandardRequestHeaders(
             HttpClient,
             AcceptType);
+
+        ApplyConfiguredRequestHeaders(
+            RequestBuffer,
+            HttpClient);
 
         RequestUrl :=
             BuildUrl(RequestBuffer);
@@ -378,6 +386,73 @@
             Error(
                 'Не вдалося встановити HTTP Accept. Значення: %1',
                 EffectiveAcceptType);
+    end;
+
+    [NonDebuggable]
+    local procedure ApplyConfiguredRequestHeaders(
+        RequestBuffer: Record "SI EDS Request Buffer" temporary;
+        var HttpClient: HttpClient)
+    var
+        EDSParameter: Record "SI EDS Parameter";
+        CredentialMgt: Codeunit "SI EDS Credential Mgt.";
+        RequestHeaders: HttpHeaders;
+        HeaderName: Text;
+        HeaderValue: Text;
+    begin
+        EDSParameter.SetRange("Service Code", RequestBuffer."Service Code");
+        EDSParameter.SetRange("Operation Code", RequestBuffer."Operation Code");
+        EDSParameter.SetRange("Provider Code", RequestBuffer."Provider Code");
+        EDSParameter.SetRange(Location, EDSParameter.Location::Header);
+        EDSParameter.SetRange(Enabled, true);
+        EDSParameter.SetCurrentKey(
+            "Service Code", "Operation Code", "Provider Code", Enabled, Sequence);
+
+        if not EDSParameter.FindSet() then
+            exit;
+
+        RequestHeaders := HttpClient.DefaultRequestHeaders();
+
+        repeat
+            HeaderName := EDSParameter.GetExternalName();
+
+            case EDSParameter.Source of
+                EDSParameter.Source::Fixed:
+                    HeaderValue :=
+                        EDSParameter."Value Prefix" + EDSParameter.Value;
+
+                EDSParameter.Source::Credential:
+                    HeaderValue :=
+                        EDSParameter."Value Prefix" +
+                        CredentialMgt.GetSecretText(
+                            RequestBuffer."Provider Code",
+                            EDSParameter."Credential Code");
+
+                EDSParameter.Source::Runtime:
+                    Error(
+                        'Runtime HTTP headers ще не підтримуються EDS. Параметр: %1.',
+                        EDSParameter.Code);
+            end;
+
+            if EDSParameter.Required and (HeaderValue = '') then
+                Error(
+                    'HTTP header %1 має порожнє обов''язкове значення.',
+                    HeaderName);
+
+            if HeaderValue <> '' then begin
+                if RequestHeaders.Contains(HeaderName) then
+                    RequestHeaders.Remove(HeaderName);
+
+                if not RequestHeaders.TryAddWithoutValidation(
+                    HeaderName,
+                    HeaderValue)
+                then
+                    Error(
+                        'Не вдалося встановити HTTP header %1.',
+                        HeaderName);
+            end;
+
+            Clear(HeaderValue);
+        until EDSParameter.Next() = 0;
     end;
 
     local procedure SetContentType(

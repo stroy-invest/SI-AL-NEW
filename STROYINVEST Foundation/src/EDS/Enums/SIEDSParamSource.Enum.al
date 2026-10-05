@@ -12,4 +12,9 @@ enum 50403 "SI EDS Param. Source"
     {
         Caption = 'Runtime';
     }
+
+    value(2; Credential)
+    {
+        Caption = 'Credential';
+    }
 }

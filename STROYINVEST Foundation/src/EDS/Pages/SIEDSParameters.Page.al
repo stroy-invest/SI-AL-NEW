@@ -78,6 +78,18 @@ page 50455 "SI EDS Parameters"
                     ToolTip = 'Визначає фіксоване значення параметра.';
                 }
 
+                field("Credential Code"; Rec."Credential Code")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Визначає захищені облікові дані EDS, значення яких буде передано в HTTP header без збереження секрету в параметрі.';
+                }
+
+                field("Value Prefix"; Rec."Value Prefix")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Необов''язковий префікс перед значенням header, наприклад bearer та пробіл.';
+                }
+
                 field(Required; Rec.Required)
                 {
                     ApplicationArea = All;

@@ -17,4 +17,9 @@ enum 50402 "SI EDS Param. Location"
     {
         Caption = 'Body';
     }
+
+    value(3; Path)
+    {
+        Caption = 'Path';
+    }
 }
