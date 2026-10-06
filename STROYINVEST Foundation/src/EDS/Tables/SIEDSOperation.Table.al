@@ -54,6 +54,21 @@ table 50411 "SI EDS Operation"
             DataClassification = SystemMetadata;
             InitValue = false;
         }
+
+        field(9; "Async Retry Mode"; Enum "SI EDS Async Retry Mode")
+        {
+            Caption = 'Повтор після HTTP 202';
+            DataClassification = SystemMetadata;
+            InitValue = None;
+        }
+
+        field(10; "Async Max Attempts"; Integer)
+        {
+            Caption = 'Макс. фонових спроб';
+            DataClassification = SystemMetadata;
+            InitValue = 10;
+            MinValue = 1;
+        }
     }
 
     keys

@@ -13,8 +13,18 @@ codeunit 50466 "SI EDS Async Mgt."
     var
         AsyncRequest: Record "SI EDS Async Request";
         AsyncParam: Record "SI EDS Async Param";
+        Operation: Record "SI EDS Operation";
         LineNo: Integer;
     begin
+        if not Operation.Get(ServiceCode, OperationCode) then
+            Error('EDS operation %1/%2 does not exist.', ServiceCode, OperationCode);
+
+        if Operation."Async Retry Mode" = Operation."Async Retry Mode"::None then
+            Error(
+                'EDS operation %1/%2 has no safe automatic retry policy. The request was not added to the async queue.',
+                ServiceCode,
+                OperationCode);
+
         AsyncRequest.SetRange("Service Code", ServiceCode);
         AsyncRequest.SetRange("Operation Code", OperationCode);
         AsyncRequest.SetRange("Business Key", CopyStr(BusinessKey, 1, MaxStrLen(AsyncRequest."Business Key")));

@@ -59,6 +59,18 @@ page 50451 "SI EDS Operations"
                     ApplicationArea = All;
                     ToolTip = 'Зберігати сире тіло HTTP-відповіді у записі журналу EDS. Увімкніть лише для операцій, відповіді яких не містять секретів або токенів.';
                 }
+
+                field("Async Retry Mode"; Rec."Async Retry Mode")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Визначає, чи дозволено фоновому Worker повторювати цю саму операцію після HTTP 202. За замовчуванням повтор заборонений.';
+                }
+
+                field("Async Max Attempts"; Rec."Async Max Attempts")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Максимальна кількість фонових HTTP-спроб для одного асинхронного запиту. Після досягнення ліміту запит завершується помилкою.';
+                }
             }
         }
     }

@@ -61,7 +61,30 @@ codeunit 50467 "SI EDS Async Worker"
         ResponseBuffer: Record "SI EDS Response Buffer" temporary;
         EDSOrchestrator: Codeunit "SI EDS Orchestrator";
         AgeMs: Duration;
+        EDSOperation: Record "SI EDS Operation";
+        MaxAttempts: Integer;
     begin
+        if not EDSOperation.Get(AsyncRequest."Service Code", AsyncRequest."Operation Code") then
+            Error(
+                'EDS operation %1/%2 no longer exists. Async retry was stopped before an HTTP request was sent.',
+                AsyncRequest."Service Code",
+                AsyncRequest."Operation Code");
+
+        if EDSOperation."Async Retry Mode" <> EDSOperation."Async Retry Mode"::"Repeat Same Operation" then
+            Error(
+                'Automatic retry after HTTP 202 is not allowed for EDS operation %1/%2. Configure an explicit async retry policy before enabling the worker for this operation.',
+                AsyncRequest."Service Code",
+                AsyncRequest."Operation Code");
+
+        MaxAttempts := EDSOperation."Async Max Attempts";
+        if MaxAttempts <= 0 then
+            MaxAttempts := 10;
+
+        if AsyncRequest."Attempt Count" >= MaxAttempts then
+            Error(
+                'EDS async request reached the configured maximum of %1 background attempts. No further HTTP request was sent.',
+                MaxAttempts);
+
         AsyncParam.SetRange("Request Entry No.", AsyncRequest."Entry No.");
         if AsyncParam.FindSet() then
             repeat
@@ -94,16 +117,27 @@ codeunit 50467 "SI EDS Async Worker"
                 end;
             202:
                 begin
-                    if CurrentDateTime >= AsyncRequest."Expires At" then begin
-                        AsyncRequest.Status := AsyncRequest.Status::"Timed Out";
+                    if AsyncRequest."Attempt Count" >= MaxAttempts then begin
+                        AsyncRequest.Status := AsyncRequest.Status::Error;
                         AsyncRequest."Next Attempt At" := 0DT;
-                    end else begin
-                        AgeMs := CurrentDateTime - AsyncRequest."Started At";
-                        if AgeMs < 600000 then
-                            AsyncRequest."Next Attempt At" := CurrentDateTime + 30000
-                        else
-                            AsyncRequest."Next Attempt At" := CurrentDateTime + 120000;
-                    end;
+                        AsyncRequest."Error Message" :=
+                            CopyStr(
+                                StrSubstNo(
+                                    'HTTP 202 persisted for %1 background attempts. Retry limit reached; automatic requests were stopped.',
+                                    MaxAttempts),
+                                1,
+                                MaxStrLen(AsyncRequest."Error Message"));
+                    end else
+                        if CurrentDateTime >= AsyncRequest."Expires At" then begin
+                            AsyncRequest.Status := AsyncRequest.Status::"Timed Out";
+                            AsyncRequest."Next Attempt At" := 0DT;
+                        end else begin
+                            AgeMs := CurrentDateTime - AsyncRequest."Started At";
+                            if AgeMs < 600000 then
+                                AsyncRequest."Next Attempt At" := CurrentDateTime + 30000
+                            else
+                                AsyncRequest."Next Attempt At" := CurrentDateTime + 120000;
+                        end;
                 end;
             else
                 begin
