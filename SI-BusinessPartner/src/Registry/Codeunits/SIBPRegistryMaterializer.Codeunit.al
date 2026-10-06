@@ -109,10 +109,35 @@ codeunit 54016 "SI BP Registry Materializer"
         if PreferredName <> '' then
             BusinessPartner.Validate(Name, CopyStr(PreferredName, 1, MaxStrLen(BusinessPartner.Name)));
 
+        if BusinessPartner."Entity Type" = BusinessPartner."Entity Type"::"Individual Entrepreneur" then
+            MaterializeEntrepreneurWorkingName(BusinessPartner, RegistryResult);
+
         BusinessPartner."Registry Legal Name" :=
             CopyStr(RegistryResult."Legal Name", 1, MaxStrLen(BusinessPartner."Registry Legal Name"));
         BusinessPartner."Registry Short Name" :=
             CopyStr(RegistryResult."Registry Short Name", 1, MaxStrLen(BusinessPartner."Registry Short Name"));
+    end;
+
+
+    local procedure MaterializeEntrepreneurWorkingName(
+        var BusinessPartner: Record "SI Business Partner";
+        RegistryResult: Record "SI Registry Result" temporary)
+    var
+        PersonName: Text;
+    begin
+        PersonName := RegistryResult.Director;
+        if PersonName.StartsWith('Фізична особа-підприємець ') then
+            PersonName := CopyStr(PersonName, StrLen('Фізична особа-підприємець ') + 1);
+
+        if PersonName = '' then begin
+            PersonName := RegistryResult."Registry Short Name";
+            if PersonName.EndsWith(' (ФОП)') then
+                PersonName := CopyStr(PersonName, 1, StrLen(PersonName) - StrLen(' (ФОП)'));
+        end;
+
+        if PersonName <> '' then
+            BusinessPartner."Short Name BK" :=
+                CopyStr('ФОП ' + PersonName, 1, MaxStrLen(BusinessPartner."Short Name BK"));
     end;
 
     local procedure MaterializeLegalForm(

@@ -150,6 +150,7 @@ page 54004 "SI Business Partner Card"
                     field(Name; Rec.Name)
                     {
                         ApplicationArea = All;
+                        Width = 100;
                         ToolTip = 'Specifies only the business partner name, without the legal form and without quotation marks.';
                         Editable = IsDraft;
                         ShowMandatory = true;

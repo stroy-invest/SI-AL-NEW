@@ -79,16 +79,44 @@ codeunit 54017 "SI YouControl Reg. Resolver" implements "SI Registry Resp. Resol
             RegistryResult."Identity Provided" := RegistryResult."Tax Registration No." <> '';
         end;
 
-        RegistryResult."Legal Name" := CopyStr(GetText(Root, 'name'), 1, MaxStrLen(RegistryResult."Legal Name"));
-        RegistryResult."Core Name" := CopyStr(RegistryResult."Legal Name", 1, MaxStrLen(RegistryResult."Core Name"));
-        RegistryResult."Names Provided" := HasProperty(Root, 'name');
+        ResolveEntrepreneurNames(Root, RegistryResult);
 
         ResolveCommonFacts(Root, RegistryResult);
 
         // For an individual entrepreneur the entrepreneur themself is the manager.
-        RegistryResult.Director := CopyStr(RegistryResult."Legal Name", 1, MaxStrLen(RegistryResult.Director));
+        RegistryResult.Director := CopyStr(GetText(Root, 'name'), 1, MaxStrLen(RegistryResult.Director));
         RegistryResult."Manager Role" := CopyStr('ФОП', 1, MaxStrLen(RegistryResult."Manager Role"));
         RegistryResult."Manager Provided" := RegistryResult."Names Provided";
+    end;
+
+
+    local procedure ResolveEntrepreneurNames(Root: JsonObject; var RegistryResult: Record "SI Registry Result" temporary)
+    var
+        PersonName: Text;
+        ContractorType: Text;
+    begin
+        PersonName := GetText(Root, 'name');
+        ContractorType := GetText(Root, 'contractorType');
+
+        RegistryResult."Names Provided" := HasProperty(Root, 'name');
+        if PersonName = '' then
+            exit;
+
+        // YouScore identifies this payload explicitly as an individual entrepreneur.
+        // Normalize provider naming into the canonical BP representation.
+        if StrPos(UpperCase(ContractorType), 'ФОП') > 0 then begin
+            RegistryResult."Legal Name" :=
+                CopyStr('Фізична особа-підприємець ' + PersonName, 1, MaxStrLen(RegistryResult."Legal Name"));
+            RegistryResult."Core Name" :=
+                CopyStr(RegistryResult."Legal Name", 1, MaxStrLen(RegistryResult."Core Name"));
+            RegistryResult."Registry Short Name" :=
+                CopyStr(PersonName + ' (ФОП)', 1, MaxStrLen(RegistryResult."Registry Short Name"));
+            exit;
+        end;
+
+        // Defensive fallback for an incomplete provider payload.
+        RegistryResult."Legal Name" := CopyStr(PersonName, 1, MaxStrLen(RegistryResult."Legal Name"));
+        RegistryResult."Core Name" := CopyStr(PersonName, 1, MaxStrLen(RegistryResult."Core Name"));
     end;
 
     local procedure ResolveCommonFacts(Root: JsonObject; var RegistryResult: Record "SI Registry Result" temporary)

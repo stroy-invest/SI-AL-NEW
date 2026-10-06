@@ -14,10 +14,11 @@ page 54005 "SI Business Partners"
         {
             repeater(Partners)
             {
-                field("Registration No."; Rec."Registration No.")
+                field("Registration No."; DisplayRegistrationNo)
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the official registration number of the business partner.';
+                    Caption = 'Реєстраційний номер';
+                    ToolTip = 'Для юридичної особи показує ЄДРПОУ; для ФОП — податковий реєстраційний номер (РНОКПП).';
                 }
 
                 field("Short Name BK"; Rec."Short Name BK")
@@ -38,11 +39,11 @@ page 54005 "SI Business Partners"
                     ToolTip = 'Specifies the country or region of the business partner.';
                 }
 
-                field("Local Legal Form Code"; Rec."Local Legal Form Code")
+                field("Local Legal Form Code"; DisplayLegalForm)
                 {
                     ApplicationArea = All;
                     Caption = 'Юридична форма країни';
-                    ToolTip = 'Specifies the legal form used in the selected country or region.';
+                    ToolTip = 'Для ФОП показує ФОП; для юридичної особи — юридичну форму країни.';
                 }
 
                 field(Status; Rec.Status)
@@ -85,4 +86,19 @@ page 54005 "SI Business Partners"
             actionref(ShowTreePromoted; ShowTree) { }
         }
     }
+
+    trigger OnAfterGetRecord()
+    begin
+        if Rec."Entity Type" = Rec."Entity Type"::"Individual Entrepreneur" then begin
+            DisplayRegistrationNo := Rec."Tax Registration No.";
+            DisplayLegalForm := 'ФОП';
+        end else begin
+            DisplayRegistrationNo := Rec."Registration No.";
+            DisplayLegalForm := Rec."Local Legal Form Code";
+        end;
+    end;
+
+    var
+        DisplayRegistrationNo: Code[50];
+        DisplayLegalForm: Code[50];
 }
