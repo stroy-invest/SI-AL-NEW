@@ -23,4 +23,8 @@ enum 54022 "SI BP Contact Point Type"
     {
         Caption = 'Інше';
     }
+    value(50; Website)
+    {
+        Caption = 'Вебсайт';
+    }
 }

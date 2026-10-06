@@ -63,9 +63,10 @@ page 54004 "SI Business Partner Card"
                     field("Registration No."; Rec."Registration No.")
                     {
                         ApplicationArea = All;
-                        ToolTip = 'Specifies the official registration number of the business partner.';
-                        Editable = IsDraft;
-                        ShowMandatory = true;
+                        Caption = 'ЄДРПОУ';
+                        ToolTip = 'Код ЄДРПОУ юридичної особи. Для фізичної особи-підприємця не застосовується.';
+                        Editable = IsDraft and IsLegalEntity;
+                        ShowMandatory = IsLegalEntity;
 
                         trigger OnValidate()
                         begin
@@ -85,6 +86,15 @@ page 54004 "SI Business Partner Card"
                         ApplicationArea = All;
                         ToolTip = 'Specifies the tax registration number of the business partner.';
                         Editable = IsDraft;
+                        ShowMandatory = IsIndividualEntrepreneur;
+
+                        trigger OnValidate()
+                        begin
+                            if IsIndividualEntrepreneur and (Rec."Tax Registration No." <> '') then
+                                CurrPage.SaveRecord();
+                            UpdatePageState();
+                            CurrPage.Update(false);
+                        end;
                     }
 
                     field(Status; Rec.Status)
@@ -111,7 +121,8 @@ page 54004 "SI Business Partner Card"
                         Caption = 'Офіційна юридична форма';
                         ToolTip = 'Specifies the legal form used in the selected country or region.';
                         Editable = IsDraft;
-                        ShowMandatory = true;
+                        ShowMandatory = IsLegalEntity;
+                        Visible = IsLegalEntity;
                     }
 
                     field("Full Legal Form"; Rec."Full Legal Form")
@@ -119,6 +130,7 @@ page 54004 "SI Business Partner Card"
                         ApplicationArea = All;
                         ToolTip = 'Specifies the full country-specific legal form resolved from the selected country legal form.';
                         Editable = false;
+                        Visible = IsLegalEntity;
                     }
 
                     field(LegalFormGroupDescription; LegalFormGroupDescription)
@@ -127,6 +139,7 @@ page 54004 "SI Business Partner Card"
                         Caption = 'Група';
                         ToolTip = 'Specifies the legal form group to which the selected legal form belongs.';
                         Editable = false;
+                        Visible = IsLegalEntity;
                     }
                 }
 
@@ -148,6 +161,74 @@ page 54004 "SI Business Partner Card"
                         ToolTip = 'Specifies the accountant-facing short name generated from the name and the abbreviated country legal form.';
                         Editable = false;
                     }
+                }
+            }
+
+            group(RegistryData)
+            {
+                Caption = 'Дані реєстру';
+
+                field("Registry Legal Name"; Rec."Registry Legal Name")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Офіційна юридична назва, отримана з реєстру.';
+                }
+                field("Registry Short Name"; Rec."Registry Short Name")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Скорочена назва, отримана з реєстру.';
+                }
+                field("Registry Status"; Rec."Registry Status")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Поточний статус контрагента за даними реєстру.';
+                }
+                field("Main KVED No."; Rec."Main KVED No.")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Код основного виду економічної діяльності за даними реєстру.';
+                }
+                field("Main KVED Description"; Rec."Main KVED Description")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Основний вид економічної діяльності за даними реєстру.';
+                }
+                field("Registry Data Actual At"; Rec."Registry Data Actual At")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Дата й час актуальності отриманих реєстрових даних.';
+                }
+                field("Registry Provider Code"; Rec."Registry Provider Code")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Реєстровий сервіс, з якого фактично отримано дані.';
+                }
+            }
+
+            group(Manager)
+            {
+                Caption = 'Керівник';
+
+                field("Manager Name"; Rec."Manager Name")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'ПІБ керівника за даними реєстру. Для ФОП — ПІБ самого підприємця.';
+                }
+                field("Manager Role"; Rec."Manager Role")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Посада або роль керівника за даними реєстру.';
+                }
+                field("Manager Appointed At"; Rec."Manager Appointed At")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Дата призначення керівника за даними реєстру.';
+                }
+                field("Manager Authority"; Rec."Manager Authority")
+                {
+                    ApplicationArea = All;
+                    MultiLine = true;
+                    ToolTip = 'Відомості про повноваження керівника за даними реєстру.';
                 }
             }
 
@@ -251,26 +332,35 @@ page 54004 "SI Business Partner Card"
                 }
             }
 
-            action(CheckEDRPOURegistry)
+            action(GetRegistryData)
             {
                 ApplicationArea = All;
-                Caption = 'Перевірити реєстр. №';
+                Caption = 'Отримати дані з реєстру';
                 ToolTip = 'Отримує актуальні дані українського контрагента з реєстру та оновлює дані Business Partner.';
                 Image = Check;
-                Enabled = CanCheckEDRPOU;
+                Enabled = CanGetRegistryData;
 
                 trigger OnAction()
                 var
                     EDRPOURegistryMgt: Codeunit "SI EDRPOU Registry Mgt.";
-                    SuccessMsg: Label 'Дані контрагента успішно отримано з реєстру та матеріалізовано.';
+                    RegistryResult: Record "SI Registry Result" temporary;
+                    BackgroundRefreshQueued: Boolean;
                 begin
                     CurrPage.SaveRecord();
-
-                    EDRPOURegistryMgt.CheckAndMaterialize(Rec);
+                    if not EDRPOURegistryMgt.CheckAndMaterialize(Rec, RegistryResult, BackgroundRefreshQueued) then
+                        exit;
 
                     CurrPage.Update(false);
 
-                    Message(SuccessMsg);
+                    if BackgroundRefreshQueued then begin
+                        Message(CurrentDataBackgroundRefreshMsg, Rec."Registry Provider Code");
+                        exit;
+                    end;
+
+                    if RegistryResult.FindFirst() and RegistryResult."Fallback Used" then
+                        Message(FallbackSuccessMsg, RegistryResult."Provider Code", RegistryResult."Primary Failure Reason")
+                    else
+                        Message(SuccessMsg, Rec."Registry Provider Code");
                 end;
             }
         }
@@ -298,7 +388,7 @@ page 54004 "SI Business Partner Card"
 
         area(Promoted)
         {
-            actionref(CheckEDRPOURegistryPromoted; CheckEDRPOURegistry)
+            actionref(GetRegistryDataPromoted; GetRegistryData)
             {
             }
 
@@ -356,8 +446,9 @@ page 54004 "SI Business Partner Card"
         BPRole: Record "SI BP Role";
     begin
         IsDraft := Rec.Status = Rec.Status::Draft;
-        CanCheckEDRPOU :=
-            EDRPOURegistryMgt.IsCheckAvailable(Rec);
+        IsLegalEntity := Rec."Entity Type" = Rec."Entity Type"::"Legal Entity";
+        IsIndividualEntrepreneur := Rec."Entity Type" = Rec."Entity Type"::"Individual Entrepreneur";
+        CanGetRegistryData := EDRPOURegistryMgt.IsCheckAvailable(Rec);
 
         CanCreateCustomerRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Customer);
         CanCreateVendorRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Vendor);
@@ -410,10 +501,15 @@ page 54004 "SI Business Partner Card"
     end;
 
     var
-        CanCheckEDRPOU: Boolean;
+        CanGetRegistryData: Boolean;
+        IsLegalEntity: Boolean;
+        IsIndividualEntrepreneur: Boolean;
         CanCreateCustomerRole: Boolean;
         CanCreateVendorRole: Boolean;
         IsDraft: Boolean;
         LegalFormGroupDescription: Text[100];
         StatusStyle: Text;
+        SuccessMsg: Label 'Дані контрагента успішно отримано з реєстру %1.';
+        CurrentDataBackgroundRefreshMsg: Label 'Отримано останні доступні дані з реєстру %1. YouScore продовжує актуалізацію у фоні. Після її завершення дані контрагента будуть оновлені автоматично.';
+        FallbackSuccessMsg: Label 'Дані отримано з резервного реєстрового сервісу %1. Основний сервіс був недоступний. Причина: %2. Набір отриманих відомостей може бути обмеженим.';
 }

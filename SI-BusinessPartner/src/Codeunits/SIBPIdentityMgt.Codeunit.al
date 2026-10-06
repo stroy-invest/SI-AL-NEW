@@ -1,29 +1,38 @@
 codeunit 54010 "SI BP Identity Mgt."
 {
     procedure AssignIdentity(var BusinessPartner: Record "SI Business Partner")
+    var
+        IdentityNo: Text[50];
     begin
+        IdentityNo := GetIdentityNo(BusinessPartner);
+        ValidateUniqueIdentity(BusinessPartner, IdentityNo);
         BusinessPartner."No." := BuildBusinessPartnerNo(
             BusinessPartner."Country/Region Code",
             BusinessPartner."Entity Type",
-            BusinessPartner."Registration No.");
+            IdentityNo);
     end;
 
     procedure SynchronizeIdentity(var BusinessPartner: Record "SI Business Partner")
     var
         BusinessPartnerNo: Code[60];
+        IdentityNo: Text[50];
     begin
         if (BusinessPartner."Country/Region Code" = '') or
-           (BusinessPartner."Entity Type" = BusinessPartner."Entity Type"::" ") or
-           (BusinessPartner."Registration No." = '')
+           (BusinessPartner."Entity Type" = BusinessPartner."Entity Type"::" ")
         then
             exit;
 
-        ValidateUkrainianRegistrationNo(BusinessPartner);
+        IdentityNo := GetIdentityNo(BusinessPartner);
+        if IdentityNo = '' then
+            exit;
+
+        ValidateUkrainianIdentifier(BusinessPartner, IdentityNo);
+        ValidateUniqueIdentity(BusinessPartner, IdentityNo);
 
         BusinessPartnerNo := BuildBusinessPartnerNo(
             BusinessPartner."Country/Region Code",
             BusinessPartner."Entity Type",
-            BusinessPartner."Registration No.");
+            IdentityNo);
 
         if BusinessPartner."No." = BusinessPartnerNo then
             exit;
@@ -70,7 +79,45 @@ codeunit 54010 "SI BP Identity Mgt."
         exit(CopyStr(Result, 1, 60));
     end;
 
-    local procedure ValidateUkrainianRegistrationNo(BusinessPartner: Record "SI Business Partner")
+    local procedure GetIdentityNo(BusinessPartner: Record "SI Business Partner"): Text[50]
+    begin
+        case BusinessPartner."Entity Type" of
+            BusinessPartner."Entity Type"::"Legal Entity":
+                exit(BusinessPartner."Registration No.");
+            BusinessPartner."Entity Type"::"Individual Entrepreneur":
+                exit(BusinessPartner."Tax Registration No.");
+        end;
+
+        exit(BusinessPartner."Registration No.");
+    end;
+
+    local procedure ValidateUniqueIdentity(BusinessPartner: Record "SI Business Partner"; IdentityNo: Text[50])
+    var
+        ExistingBusinessPartner: Record "SI Business Partner";
+    begin
+        if IdentityNo = '' then
+            exit;
+
+        ExistingBusinessPartner.SetRange("Country/Region Code", BusinessPartner."Country/Region Code");
+        ExistingBusinessPartner.SetRange("Entity Type", BusinessPartner."Entity Type");
+
+        case BusinessPartner."Entity Type" of
+            BusinessPartner."Entity Type"::"Legal Entity":
+                ExistingBusinessPartner.SetRange("Registration No.", IdentityNo);
+            BusinessPartner."Entity Type"::"Individual Entrepreneur":
+                ExistingBusinessPartner.SetRange("Tax Registration No.", IdentityNo);
+            else
+                ExistingBusinessPartner.SetRange("Registration No.", IdentityNo);
+        end;
+
+        if BusinessPartner."No." <> '' then
+            ExistingBusinessPartner.SetFilter("No.", '<>%1', BusinessPartner."No.");
+
+        if ExistingBusinessPartner.FindFirst() then
+            Error(DuplicateIdentityErr, IdentityNo, ExistingBusinessPartner."No.");
+    end;
+
+    local procedure ValidateUkrainianIdentifier(BusinessPartner: Record "SI Business Partner"; IdentityNo: Text[50])
     var
         UAIdentifierMgt: Codeunit "SI UA Identifier Mgt.";
     begin
@@ -79,9 +126,9 @@ codeunit 54010 "SI BP Identity Mgt."
 
         case BusinessPartner."Entity Type" of
             BusinessPartner."Entity Type"::"Legal Entity":
-                UAIdentifierMgt.ValidateEDRPOU(BusinessPartner."Registration No.");
+                UAIdentifierMgt.ValidateEDRPOU(IdentityNo);
             BusinessPartner."Entity Type"::"Individual Entrepreneur":
-                UAIdentifierMgt.ValidateRNOKPP(BusinessPartner."Registration No.");
+                UAIdentifierMgt.ValidateRNOKPP(IdentityNo);
         end;
     end;
 
@@ -124,4 +171,5 @@ codeunit 54010 "SI BP Identity Mgt."
         InvalidCountryCodeErr: Label 'Country/Region Code %1 does not contain characters that can be used in the Business Partner No.';
         InvalidRegistrationNoErr: Label 'Registration No. %1 does not contain characters that can be used in the Business Partner No.';
         RegistrationNoRequiredErr: Label 'Registration No. is required.';
+        DuplicateIdentityErr: Label 'Контрагент з ідентифікатором %1 уже існує (%2).';
 }

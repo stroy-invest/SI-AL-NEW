@@ -9,7 +9,13 @@ codeunit 54011 "SI BP Validator"
     begin
         BusinessPartner.TestField("Entity Type");
         BusinessPartner.TestField("Country/Region Code");
-        BusinessPartner.TestField("Registration No.");
+
+        case BusinessPartner."Entity Type" of
+            BusinessPartner."Entity Type"::"Legal Entity":
+                BusinessPartner.TestField("Registration No.");
+            BusinessPartner."Entity Type"::"Individual Entrepreneur":
+                BusinessPartner.TestField("Tax Registration No.");
+        end;
     end;
 
     procedure ValidateForActivation(var BusinessPartner: Record "SI Business Partner")

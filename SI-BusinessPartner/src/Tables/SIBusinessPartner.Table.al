@@ -93,8 +93,6 @@ table 54003 "SI Business Partner"
         field(6; "Registration No."; Text[50])
         {
             Caption = 'Реєстраційний номер';
-            NotBlank = true;
-
             trigger OnValidate()
             var
                 BPIdentityMgt: Codeunit "SI BP Identity Mgt.";
@@ -111,9 +109,12 @@ table 54003 "SI Business Partner"
 
             trigger OnValidate()
             var
+                BPIdentityMgt: Codeunit "SI BP Identity Mgt.";
                 BPValidator: Codeunit "SI BP Validator";
             begin
                 BPValidator.CheckCriticalFieldCanBeChanged(Rec, xRec, FieldCaption("Tax Registration No."));
+                if "Entity Type" = "Entity Type"::"Individual Entrepreneur" then
+                    BPIdentityMgt.SynchronizeIdentity(Rec);
             end;
         }
 
@@ -233,6 +234,65 @@ table 54003 "SI Business Partner"
                 BPCurrencyMgt.HandleCurrencyChanged(Rec, xRec);
             end;
         }
+
+        // Registry-owned facts. These fields are materialized only when the
+        // normalized Registry Result explicitly marks the corresponding fact as provided.
+        field(18; "Registry Legal Name"; Text[500])
+        {
+            Caption = 'Юридична назва з реєстру';
+            Editable = false;
+        }
+        field(19; "Registry Short Name"; Text[250])
+        {
+            Caption = 'Скорочена назва з реєстру';
+            Editable = false;
+        }
+        field(20; "Registry Status"; Text[100])
+        {
+            Caption = 'Статус у реєстрі';
+            Editable = false;
+        }
+        field(21; "Main KVED No."; Text[30])
+        {
+            Caption = 'Код основного КВЕД';
+            Editable = false;
+        }
+        field(22; "Main KVED Description"; Text[500])
+        {
+            Caption = 'Основний КВЕД';
+            Editable = false;
+        }
+        field(23; "Manager Name"; Text[250])
+        {
+            Caption = 'Керівник';
+            Editable = false;
+        }
+        field(24; "Manager Role"; Text[100])
+        {
+            Caption = 'Посада/роль керівника';
+            Editable = false;
+        }
+        field(25; "Manager Appointed At"; DateTime)
+        {
+            Caption = 'Дата призначення керівника';
+            Editable = false;
+        }
+        field(26; "Manager Authority"; Text[500])
+        {
+            Caption = 'Відомості про повноваження';
+            Editable = false;
+        }
+        field(27; "Registry Data Actual At"; DateTime)
+        {
+            Caption = 'Дані реєстру актуальні на';
+            Editable = false;
+        }
+        field(28; "Registry Provider Code"; Code[50])
+        {
+            Caption = 'Джерело реєстрових даних';
+            Editable = false;
+        }
+
     }
 
     keys
@@ -249,7 +309,6 @@ table 54003 "SI Business Partner"
 
         key(BusinessIdentity; "Country/Region Code", "Entity Type", "Registration No.")
         {
-            Unique = true;
         }
 
         key(TaxRegistrationNo; "Country/Region Code", "Tax Registration No.")

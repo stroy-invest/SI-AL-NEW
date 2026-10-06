@@ -1,9 +1,28 @@
-codeunit 54015 "SI AdmTools Reg. Resolver"
+codeunit 54015 "SI AdmTools Reg. Resolver" implements "SI Registry Resp. Resolver"
 {
     procedure Resolve(
         ResponseText: Text;
         ProviderCode: Code[50];
         CountryRegionCode: Code[10];
+        var RegistryResult: Record "SI Registry Result" temporary)
+    begin
+        ResolveResponse(
+            ResponseText,
+            ProviderCode,
+            CountryRegionCode,
+            Enum::"SI BP Entity Type"::"Legal Entity",
+            Enum::"SI Registry Identifier Type"::"Registration No.",
+            '',
+            RegistryResult);
+    end;
+
+    procedure ResolveResponse(
+        ResponseText: Text;
+        ProviderCode: Code[50];
+        CountryRegionCode: Code[10];
+        EntityType: Enum "SI BP Entity Type";
+        IdentifierType: Enum "SI Registry Identifier Type";
+        IdentifierValue: Text[50];
         var RegistryResult: Record "SI Registry Result" temporary)
     var
         CompanyElement: XmlElement;
@@ -43,6 +62,9 @@ codeunit 54015 "SI AdmTools Reg. Resolver"
         RegistryResult."Entry No." := 1;
         RegistryResult."Provider Code" := ProviderCode;
         RegistryResult."Country/Region Code" := CountryRegionCode;
+        RegistryResult."Entity Type" := EntityType;
+        RegistryResult."Identifier Type" := IdentifierType;
+        RegistryResult."Identifier Value" := IdentifierValue;
 
         RegistryResult."Registration No." :=
             CopyStr(
@@ -127,6 +149,16 @@ codeunit 54015 "SI AdmTools Reg. Resolver"
                 GetAttributeValue(CompanyElement, 'last_update'),
                 1,
                 MaxStrLen(RegistryResult."Registry Last Update"));
+
+        // adm.tools contract: these groups are present in the provider schema.
+        // Empty values therefore mean an authoritative empty value, not
+        // "provider does not support this fact".
+        RegistryResult."Identity Provided" := true;
+        RegistryResult."Names Provided" := true;
+        RegistryResult."Legal Form Provided" := true;
+        RegistryResult."Address Provided" := true;
+        RegistryResult."Manager Provided" := true;
+        RegistryResult."Main Activity Provided" := true;
 
         RegistryResult.Insert();
     end;

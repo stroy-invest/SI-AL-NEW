@@ -143,6 +143,77 @@ codeunit 54020 "SI BP Address Mgt."
         BPAddress.Insert(true);
     end;
 
+    procedure UpsertCurrentRegistryLegalAddressV2(
+        BusinessPartner: Record "SI Business Partner";
+        RegistryResult: Record "SI Registry Result" temporary)
+    var
+        BPAddress: Record "SI BP Address";
+    begin
+        if not RegistryResult."Address Provided" then
+            exit;
+
+        if GetCurrentLegalAddress(BusinessPartner."No.", WorkDate(), BPAddress) then begin
+            ApplyNormalizedRegistryAddress(BPAddress, BusinessPartner, RegistryResult);
+            BPAddress.Modify(true);
+            exit;
+        end;
+
+        BPAddress.Init();
+        BPAddress."Business Partner No." := BusinessPartner."No.";
+        BPAddress."Address Type" := BPAddress."Address Type"::Legal;
+        BPAddress."Is Primary" := true;
+        ApplyNormalizedRegistryAddress(BPAddress, BusinessPartner, RegistryResult);
+        BPAddress.Insert(true);
+    end;
+
+    local procedure ApplyNormalizedRegistryAddress(
+        var BPAddress: Record "SI BP Address";
+        BusinessPartner: Record "SI Business Partner";
+        RegistryResult: Record "SI Registry Result" temporary)
+    var
+        HasStructuredAddress: Boolean;
+    begin
+        BPAddress."Country/Region Code" := BusinessPartner."Country/Region Code";
+        BPAddress.Verified := true;
+        BPAddress."Verification Source" :=
+            CopyStr(RegistryResult."Provider Code", 1, MaxStrLen(BPAddress."Verification Source"));
+        BPAddress."Verification Date/Time" := CurrentDateTime();
+
+        if RegistryResult.Address <> '' then
+            BPAddress."Raw Address" :=
+                CopyStr(RegistryResult.Address, 1, MaxStrLen(BPAddress."Raw Address"));
+
+        HasStructuredAddress :=
+            (RegistryResult."Address Post Code" <> '') or
+            (RegistryResult."Address Region" <> '') or
+            (RegistryResult."Address District" <> '') or
+            (RegistryResult."Address City" <> '') or
+            (RegistryResult."Address Street" <> '') or
+            (RegistryResult."Address Building" <> '') or
+            (RegistryResult."Address Apartment" <> '');
+
+        // A poorer fallback result must never erase richer structured data.
+        // Therefore only structured values actually present in the normalized
+        // result are applied. Raw-only fallback keeps existing structure intact.
+        if not HasStructuredAddress then
+            exit;
+
+        if RegistryResult."Address Post Code" <> '' then
+            BPAddress."Post Code" := CopyStr(RegistryResult."Address Post Code", 1, MaxStrLen(BPAddress."Post Code"));
+        if RegistryResult."Address Region" <> '' then
+            BPAddress."Region/State" := CopyStr(RegistryResult."Address Region", 1, MaxStrLen(BPAddress."Region/State"));
+        if RegistryResult."Address District" <> '' then
+            BPAddress.District := CopyStr(RegistryResult."Address District", 1, MaxStrLen(BPAddress.District));
+        if RegistryResult."Address City" <> '' then
+            BPAddress.City := CopyStr(RegistryResult."Address City", 1, MaxStrLen(BPAddress.City));
+        if RegistryResult."Address Street" <> '' then
+            BPAddress.Street := CopyStr(RegistryResult."Address Street", 1, MaxStrLen(BPAddress.Street));
+        if RegistryResult."Address Building" <> '' then
+            BPAddress."Building No." := CopyStr(RegistryResult."Address Building", 1, MaxStrLen(BPAddress."Building No."));
+        if RegistryResult."Address Apartment" <> '' then
+            BPAddress."Office/Apartment" := CopyStr(RegistryResult."Address Apartment", 1, MaxStrLen(BPAddress."Office/Apartment"));
+    end;
+
     procedure IsCurrent(BPAddress: Record "SI BP Address"; AsOfDate: Date): Boolean
     begin
         exit(
