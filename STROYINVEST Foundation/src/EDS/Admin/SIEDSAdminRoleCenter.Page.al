@@ -14,6 +14,20 @@ page 50471 "SI EDS Admin Role Center"
 
     actions
     {
+        area(Processing)
+        {
+            action(SetupWizardTop)
+            {
+                ApplicationArea = All;
+                Caption = 'Майстер налаштування EDS';
+                ToolTip = 'Запустити майстер налаштування EDS';
+                Image = Setup;
+                RunObject = page "SI EDS Setup Wizard";
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+            }
+        }
         area(Sections)
         {
             group(Configuration)
@@ -28,6 +42,7 @@ page 50471 "SI EDS Admin Role Center"
                 action(Routes) { ApplicationArea = All; Caption = '7. Маршрути'; RunObject = page "SI EDS Provider Routes Tree"; }
                 action(Parameters) { ApplicationArea = All; Caption = '8. Параметри'; RunObject = page "SI EDS Parameters Tree"; }
                 action(RateLimits) { ApplicationArea = All; Caption = '9. Ліміти запитів'; RunObject = page "SI EDS Provider Rate Limits"; }
+                action(SetupWizard) { ApplicationArea = All; Caption = 'Майстер налаштування'; RunObject = page "SI EDS Setup Wizard"; }
                 action(HealthCheck) { ApplicationArea = All; Caption = 'Перевірка конфігурації'; RunObject = page "SI EDS Health Check"; }
             }
             group(Monitoring)

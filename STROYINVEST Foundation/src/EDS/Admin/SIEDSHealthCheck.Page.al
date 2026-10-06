@@ -68,15 +68,65 @@ page 50476 "SI EDS Health Check"
         SeverityStyle: Text;
         SeverityFilterValue: Integer;
         SeverityFilterEnabled: Boolean;
+        ContextEnabled: Boolean;
+        ContextServiceCode: Code[50];
+        ContextOperationCode: Code[50];
+        ContextProviderCode: Code[50];
 
     local procedure LoadChecks()
     var
         HealthCheck: Codeunit "SI EDS Health Check Mgt.";
     begin
         HealthCheck.Run(Rec);
+        ApplyConfigurationContext();
         ApplySeverityFilter();
         if Rec.FindFirst() then;
         CurrPage.Update(false);
+    end;
+
+    procedure SetConfigurationContext(ServiceCode: Code[50]; OperationCode: Code[50]; ProviderCode: Code[50])
+    begin
+        ContextServiceCode := ServiceCode;
+        ContextOperationCode := OperationCode;
+        ContextProviderCode := ProviderCode;
+        ContextEnabled := true;
+    end;
+
+    local procedure ApplyConfigurationContext()
+    begin
+        if not ContextEnabled then
+            exit;
+
+        Rec.Reset();
+        if Rec.FindSet() then
+            repeat
+                if not IsContextRow() then
+                    Rec.Delete();
+            until Rec.Next() = 0;
+        Rec.Reset();
+    end;
+
+    local procedure IsContextRow(): Boolean
+    var
+        ServicePrefix: Text;
+        OperationPrefix: Text;
+        RoutePrefix: Text;
+    begin
+        ServicePrefix := ContextServiceCode + ' / ';
+        OperationPrefix := ContextServiceCode + ' / ' + ContextOperationCode;
+        RoutePrefix := OperationPrefix + ' / ' + ContextProviderCode;
+
+        case Rec."Check Area" of
+            Rec."Check Area"::Service:
+                exit(Rec."Object Code" = ContextServiceCode);
+            Rec."Check Area"::Operation:
+                exit((Rec."Object Code" = OperationPrefix) or (StrPos(Rec."Object Code", OperationPrefix + ' / ') = 1));
+            Rec."Check Area"::Provider, Rec."Check Area"::Endpoint, Rec."Check Area"::RateLimit:
+                exit((Rec."Object Code" = ContextProviderCode) or (StrPos(Rec."Object Code", ContextProviderCode + ' / ') = 1));
+            Rec."Check Area"::Route, Rec."Check Area"::Parameter, Rec."Check Area"::Credential:
+                exit((Rec."Object Code" = RoutePrefix) or (StrPos(Rec."Object Code", RoutePrefix + ' / ') = 1));
+        end;
+        exit(false);
     end;
 
     procedure SetSeverityFilter(NewSeverityFilter: Integer)

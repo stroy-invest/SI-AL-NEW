@@ -160,5 +160,13 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         page "SI EDS Endpoint Card" = X,
         page "SI EDS Credential Card" = X,
         page "SI EDS Provider Route Card" = X,
-        page "SI EDS Parameter Card" = X;
+        page "SI EDS Parameter Card" = X,
+        page "SI EDS Setup Wizard" = X,
+        codeunit "SI EDS Setup Wizard Mgt." = X,
+        tabledata "SI EDS Wiz Param Buffer" = RIMD,
+        table "SI EDS Wiz Param Buffer" = X,
+        page "SI EDS Wiz Param Lines" = X,
+        tabledata "SI EDS Wiz Rate Buffer" = RIMD,
+        table "SI EDS Wiz Rate Buffer" = X,
+        page "SI EDS Wiz Rate Lines" = X;
 }
