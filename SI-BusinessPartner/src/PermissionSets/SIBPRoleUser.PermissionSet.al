@@ -29,8 +29,8 @@ permissionset 54031 "SI BP ROLE USER"
         table "SI BP Vend. Role Setup" = X,
 
         // ERP projection is visible and may be maintained through controlled Mgt. codeunits.
-        tabledata "SI BP ERP Projection" = RM,
-        tabledata "SI BP ERP Proj. Bank" = RM,
+        tabledata "SI BP ERP Projection" = RIMD,
+        tabledata "SI BP ERP Proj. Bank" = RIMD,
 
         table "SI BP ERP Projection" = X,
         table "SI BP ERP Proj. Bank" = X,
@@ -41,5 +41,11 @@ permissionset 54031 "SI BP ROLE USER"
 
         codeunit "SI BP Projection Mgt." = X,
         codeunit "SI BP Role Config Mgt." = X,
-        codeunit "SI BP Role Mgt." = X;
+        codeunit "SI BP Role Mgt." = X,
+
+        tabledata "SI BP Template Setting" = R,
+        table "SI BP Template Setting" = X,
+        codeunit "SI BP Template Resolver" = X,
+        page "SI BP Role Activation Wizard" = X,
+        codeunit "SI BP Role Activation Mgt." = X;
 }

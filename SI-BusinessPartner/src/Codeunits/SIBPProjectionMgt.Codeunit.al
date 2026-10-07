@@ -17,9 +17,9 @@ codeunit 54060 "SI BP Projection Mgt."
     begin
         Role.TestField(Code);
 
-        if Role.Status <> Role.Status::Active then
+        if Role.Status <> Role.Status::Configured then
             Error(
-                'ERP-проєкцію можна створити лише для активної ролі.');
+                'ERP-проєкцію для активації можна створити лише для налаштованої ролі.');
 
         if Projection.Get(Role.Code) then
             Error(
@@ -49,7 +49,7 @@ codeunit 54060 "SI BP Projection Mgt."
 
         Projection.Name :=
             CopyStr(
-                BusinessPartner.Name,
+                GetProjectionName(BusinessPartner),
                 1,
                 MaxStrLen(Projection.Name));
 
@@ -180,6 +180,13 @@ codeunit 54060 "SI BP Projection Mgt."
     procedure MaterializeProjection(
         var Projection: Record "SI BP ERP Projection")
     begin
+        Error('Пряма матеріалізація вимкнена. Використайте дію Налаштувати та активувати роль.');
+    end;
+
+    procedure MaterializeProjection(
+        var Projection: Record "SI BP ERP Projection";
+        TemplateCode: Code[20])
+    begin
         Projection.Get(
             Projection."Role Code");
 
@@ -198,26 +205,31 @@ codeunit 54060 "SI BP Projection Mgt."
         case Projection."Role Type" of
             Projection."Role Type"::Vendor:
                 MaterializeVendor(
-                    Projection);
+                    Projection,
+                    TemplateCode);
 
             Projection."Role Type"::Customer:
                 MaterializeCustomer(
-                    Projection);
+                    Projection,
+                    TemplateCode);
         end;
     end;
 
     local procedure MaterializeVendor(
-        var Projection: Record "SI BP ERP Projection")
+        var Projection: Record "SI BP ERP Projection";
+        TemplateCode: Code[20])
     var
         Role: Record "SI BP Role";
         Vendor: Record Vendor;
+        VendorTempl: Record "Vendor Templ.";
+        VendorTemplMgt: Codeunit "Vendor Templ. Mgt.";
     begin
         Role.Get(
             Projection."Role Code");
 
-        if Role.Status <> Role.Status::Active then
+        if Role.Status <> Role.Status::Configured then
             Error(
-                'Матеріалізувати ERP-проєкцію можна лише для активної ролі.');
+                'Матеріалізувати ERP-проєкцію під час активації можна лише для налаштованої ролі.');
 
         if Role."Vendor No." <> '' then
             Error(
@@ -225,8 +237,18 @@ codeunit 54060 "SI BP Projection Mgt."
                 Role.Code,
                 Role."Vendor No.");
 
+        if TemplateCode = '' then
+            Error('Не визначено шаблон постачальника.');
+
+        if not VendorTempl.Get(TemplateCode) then
+            Error('Шаблон постачальника %1 не знайдено.', TemplateCode);
+
         Vendor.Init();
         Vendor.Insert(true);
+
+        VendorTemplMgt.ApplyVendorTemplate(
+            Vendor,
+            VendorTempl);
 
         Vendor.Validate(
             Name,
@@ -271,17 +293,20 @@ codeunit 54060 "SI BP Projection Mgt."
     end;
 
     local procedure MaterializeCustomer(
-        var Projection: Record "SI BP ERP Projection")
+        var Projection: Record "SI BP ERP Projection";
+        TemplateCode: Code[20])
     var
         Role: Record "SI BP Role";
         Customer: Record Customer;
+        CustomerTempl: Record "Customer Templ.";
+        CustomerTemplMgt: Codeunit "Customer Templ. Mgt.";
     begin
         Role.Get(
             Projection."Role Code");
 
-        if Role.Status <> Role.Status::Active then
+        if Role.Status <> Role.Status::Configured then
             Error(
-                'Матеріалізувати ERP-проєкцію можна лише для активної ролі.');
+                'Матеріалізувати ERP-проєкцію під час активації можна лише для налаштованої ролі.');
 
         if Role."Customer No." <> '' then
             Error(
@@ -289,8 +314,18 @@ codeunit 54060 "SI BP Projection Mgt."
                 Role.Code,
                 Role."Customer No.");
 
+        if TemplateCode = '' then
+            Error('Не визначено шаблон покупця.');
+
+        if not CustomerTempl.Get(TemplateCode) then
+            Error('Шаблон покупця %1 не знайдено.', TemplateCode);
+
         Customer.Init();
         Customer.Insert(true);
+
+        CustomerTemplMgt.ApplyCustomerTemplate(
+            Customer,
+            CustomerTempl);
 
         Customer.Validate(
             Name,
@@ -992,4 +1027,19 @@ codeunit 54060 "SI BP Projection Mgt."
                 end;
         end;
     end;
+
+    local procedure GetProjectionName(BusinessPartner: Record "SI Business Partner"): Text
+    begin
+        // ERP Customer/Vendor uses the operational name.
+        // For an individual entrepreneur this is the short legal-form representation
+        // (for example, "ФОП ІВАНЕНКО ІВАН ІВАНОВИЧ"), while the full registry
+        // legal name remains available separately on the Business Partner.
+        if (BusinessPartner."Entity Type" = BusinessPartner."Entity Type"::"Individual Entrepreneur") and
+           (BusinessPartner."Short Name BK" <> '')
+        then
+            exit(BusinessPartner."Short Name BK");
+
+        exit(BusinessPartner.Name);
+    end;
+
 }

@@ -43,5 +43,7 @@ permissionset 54030 "SI BP ROLE ADMIN"
         tabledata "SI BP Template Setting" = RIMD,
         table "SI BP Template Setting" = X,
         page "SI BP Template Settings" = X,
-        codeunit "SI BP Template Resolver" = X;
+        codeunit "SI BP Template Resolver" = X,
+        page "SI BP Role Activation Wizard" = X,
+        codeunit "SI BP Role Activation Mgt." = X;
 }

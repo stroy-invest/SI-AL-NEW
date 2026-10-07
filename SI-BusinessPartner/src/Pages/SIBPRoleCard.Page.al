@@ -150,6 +150,7 @@ page 54031 "SI BP Role Card"
             {
                 Caption = 'Створити запуск матеріалізації';
                 ApplicationArea = All;
+                Visible = false;
                 Enabled = CanCreateMatRun;
 
                 trigger OnAction()
@@ -171,6 +172,7 @@ page 54031 "SI BP Role Card"
             {
                 Caption = 'Створити ERP-проєкцію';
                 ApplicationArea = All;
+                Visible = false;
                 Enabled = CanCreateProjection;
 
                 trigger OnAction()
@@ -213,6 +215,7 @@ page 54031 "SI BP Role Card"
             {
                 Caption = 'Видалити проєкцію';
                 ApplicationArea = All;
+                Visible = false;
                 Enabled = CanDeleteProjection;
 
                 trigger OnAction()
@@ -240,6 +243,7 @@ page 54031 "SI BP Role Card"
             {
                 Caption = 'Матеріалізувати проєкцію';
                 ApplicationArea = All;
+                Visible = false;
                 Enabled = CanMaterializeProjection;
 
                 trigger OnAction()
@@ -282,6 +286,7 @@ page 54031 "SI BP Role Card"
             {
                 Caption = 'Передати на узгодження';
                 ApplicationArea = All;
+                Visible = false;
                 Image = SendApprovalRequest;
                 Enabled = CanSubmit;
 
@@ -328,18 +333,26 @@ page 54031 "SI BP Role Card"
 
             action(Activate)
             {
-                Caption = 'Активувати';
+                Caption = 'Налаштувати та активувати роль';
                 ApplicationArea = All;
                 Image = Approve;
                 Enabled = CanActivate;
+                Promoted = true;
+                PromotedCategory = Process;
 
                 trigger OnAction()
                 var
-                    RoleMgt: Codeunit "SI BP Role Mgt.";
+                    ActivationWizard: Page "SI BP Role Activation Wizard";
+                    ActivationMgt: Codeunit "SI BP Role Activation Mgt.";
                     BPBankMgt: Codeunit "SI BP Bank Mgt.";
                     BankAccount: Record "SI BP Bank Account";
-                    BankVerifiedNow: Boolean;
+                    VATStatus: Enum "SI BP VAT Status";
                 begin
+                    // Banking details are a mandatory prerequisite for activation.
+                    // If they are missing, complete the independent banking subflow first.
+                    // Bank verification can write to the NBU directory and BP bank account,
+                    // therefore commit that completed subflow before opening the activation
+                    // wizard. This preserves the business order without RunModal-after-write.
                     if not BPBankMgt.HasVerifiedAccount(Rec) then begin
                         if not Confirm(
                             'Для активації ролі треба заповнити банківські реквізити. Зробити це зараз через онлайн-сервіс?',
@@ -347,28 +360,31 @@ page 54031 "SI BP Role Card"
                         then
                             exit;
 
-                        if not VerifyBankFromDialog(
-                            BankAccount)
-                        then
+                        if not VerifyBankFromDialog(BankAccount) then
                             exit;
 
-                        BankVerifiedNow :=
-                            true;
+                        if not BPBankMgt.HasVerifiedAccount(Rec) then
+                            Error(
+                                'Банківські реквізити не були успішно створені та перевірені. Активацію ролі зупинено.');
+
+                        Commit();
                     end;
 
-                    RoleMgt.ActivateRole(
+                    ActivationWizard.SetRole(Rec);
+
+                    if ActivationWizard.RunModal() <> Action::OK then
+                        exit;
+
+                    VATStatus := ActivationWizard.GetVATStatus();
+
+                    ActivationMgt.ActivateRole(
                         Rec,
-                        '',
-                        '');
+                        VATStatus);
 
                     CurrPage.Update(false);
 
-                    if BankVerifiedNow then
-                        ShowBankVerificationResult(
-                            BankAccount,
-                            true)
-                    else
-                        ShowRoleActivationResult();
+                    Message(
+                        'Роль успішно активовано. ERP-контрагента створено.');
                 end;
             }
 
@@ -471,8 +487,8 @@ page 54031 "SI BP Role Card"
             Rec.Status::Configured;
 
         CanActivate :=
-            Rec.Status =
-            Rec.Status::Configured;
+            (Rec.Status = Rec.Status::Draft) or
+            (Rec.Status = Rec.Status::Configured);
 
         CanBlock :=
             Rec.Status =
