@@ -69,5 +69,18 @@ codeunit 54082 "SI BP Role Activation Mgt."
                 'ERP-контрагента створено за стандартним шаблоном %1. Статус ПДВ: %2.',
                 TemplateCode,
                 Format(VATStatus)));
+
+        // Stage 1 is complete before any optional downstream process is invoked.
+        Commit();
+
+        if (Role."Role Type" = Role."Role Type"::Vendor) and
+           (Role."Vendor No." <> '')
+        then
+            OnVendorRoleActivated(Role.Code, Role."Vendor No.");
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnVendorRoleActivated(RoleCode: Code[50]; VendorNo: Code[20])
+    begin
     end;
 }
