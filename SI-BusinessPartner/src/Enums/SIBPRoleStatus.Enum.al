@@ -31,5 +31,7 @@ enum 54031 "SI BP Role Status"
     value(5; Closed)
     {
         Caption = 'Закрита';
+        ObsoleteState = Pending;
+        ObsoleteReason = 'Closed is a legacy status. Inactive is the terminal state of a role instance.';
     }
 }

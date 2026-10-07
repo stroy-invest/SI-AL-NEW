@@ -100,6 +100,8 @@ table 54030 "SI BP Role"
         {
             Caption = 'Закрито';
             Editable = false;
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Closed is a legacy status. Inactive is the terminal state of a role instance.';
         }
     }
 
@@ -147,6 +149,9 @@ table 54030 "SI BP Role"
         if "Business Partner No." = '' then
             exit;
 
+        if Status in [Status::Inactive, Status::Closed] then
+            exit;
+
         ExistingRole.SetRange(
             "Business Partner No.",
             "Business Partner No.");
@@ -160,9 +165,15 @@ table 54030 "SI BP Role"
             '<>%1',
             Code);
 
+        ExistingRole.SetFilter(
+            Status,
+            '<>%1&<>%2',
+            ExistingRole.Status::Inactive,
+            ExistingRole.Status::Closed);
+
         if not ExistingRole.IsEmpty() then
             Error(
-                'Для контрагента %1 вже існує роль типу %2.',
+                'Для контрагента %1 вже існує поточна роль типу %2.',
                 "Business Partner No.",
                 Format("Role Type"));
     end;

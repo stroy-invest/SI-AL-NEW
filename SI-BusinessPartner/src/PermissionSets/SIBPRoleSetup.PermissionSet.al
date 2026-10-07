@@ -16,5 +16,10 @@ permissionset 54032 "SI BP ROLE SETUP"
         page "SI BP Cust. Role Setup Part" = X,
         page "SI BP Vend. Role Setup Part" = X,
 
-        codeunit "SI BP Role Config Mgt." = X;
+        codeunit "SI BP Role Config Mgt." = X,
+
+        tabledata "SI BP Template Setting" = RIM,
+        table "SI BP Template Setting" = X,
+        page "SI BP Template Settings" = X,
+        codeunit "SI BP Template Resolver" = X;
 }

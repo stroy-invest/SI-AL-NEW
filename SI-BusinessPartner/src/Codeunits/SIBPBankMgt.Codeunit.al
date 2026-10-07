@@ -57,9 +57,9 @@ codeunit 54050 "SI BP Bank Mgt."
     begin
         Role.TestField(Code);
 
-        if Role.Status = Role.Status::Closed then
+        if Role.Status in [Role.Status::Inactive, Role.Status::Closed] then
             Error(
-                'Для закритої ролі банківські реквізити змінювати не можна.');
+                'Для неактивної ролі банківські реквізити змінювати не можна.');
 
         NormalizedIBAN :=
             IBANMgt.Normalize(IBAN);

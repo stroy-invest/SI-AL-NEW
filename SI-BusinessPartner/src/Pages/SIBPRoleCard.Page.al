@@ -111,10 +111,6 @@ page 54031 "SI BP Role Card"
                     ApplicationArea = All;
                 }
 
-                field("Closed At"; Rec."Closed At")
-                {
-                    ApplicationArea = All;
-                }
             }
 
             part(History; "SI BP Role History")
@@ -451,59 +447,6 @@ page 54031 "SI BP Role Card"
                 end;
             }
 
-            action(Reactivate)
-            {
-                Caption = 'Відновити співпрацю';
-                ApplicationArea = All;
-                Image = ReOpen;
-                Enabled = CanReactivate;
-
-                trigger OnAction()
-                var
-                    RoleMgt: Codeunit "SI BP Role Mgt.";
-                begin
-                    RoleMgt.ReactivateRole(
-                        Rec,
-                        '',
-                        '');
-
-                    CurrPage.Update(false);
-                end;
-            }
-
-            action(CloseRole)
-            {
-                Caption = 'Закрити роль';
-                ApplicationArea = All;
-                Image = Close;
-                Enabled = CanClose;
-
-                trigger OnAction()
-                var
-                    RoleMgt: Codeunit "SI BP Role Mgt.";
-                    Reason: Text;
-                    Comment: Text;
-                begin
-                    if not Confirm(
-                        'Закрита роль більше не може бути активована. Продовжити?',
-                        false)
-                    then
-                        exit;
-
-                    if not GetChangeData(
-                        Reason,
-                        Comment)
-                    then
-                        exit;
-
-                    RoleMgt.CloseRole(
-                        Rec,
-                        Reason,
-                        Comment);
-
-                    CurrPage.Update(false);
-                end;
-            }
         }
     }
 
@@ -545,17 +488,6 @@ page 54031 "SI BP Role Card"
             (Rec.Status =
              Rec.Status::Blocked);
 
-        CanReactivate :=
-            Rec.Status =
-            Rec.Status::Inactive;
-
-        CanClose :=
-            (Rec.Status =
-             Rec.Status::Active) or
-            (Rec.Status =
-             Rec.Status::Blocked) or
-            (Rec.Status =
-             Rec.Status::Inactive);
 
         IsCustomerRole :=
             Rec."Role Type" =
@@ -567,7 +499,7 @@ page 54031 "SI BP Role Card"
 
         CanEditBanking :=
             Rec.Status <>
-            Rec.Status::Closed;
+            Rec.Status::Inactive;
 
         CanCreateMatRun :=
             CanCreateMaterializationRun();
@@ -758,8 +690,6 @@ page 54031 "SI BP Role Card"
         CanBlock: Boolean;
         CanUnblock: Boolean;
         CanDeactivate: Boolean;
-        CanReactivate: Boolean;
-        CanClose: Boolean;
         IsCustomerRole: Boolean;
         IsVendorRole: Boolean;
         CanEditBanking: Boolean;

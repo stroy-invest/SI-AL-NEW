@@ -27,9 +27,15 @@ codeunit 54030 "SI BP Role Mgt."
             "Role Type",
             RoleType);
 
+        ExistingRole.SetFilter(
+            Status,
+            '<>%1&<>%2',
+            ExistingRole.Status::Inactive,
+            ExistingRole.Status::Closed);
+
         if ExistingRole.FindFirst() then
             Error(
-                'Для контрагента %1 вже існує роль типу %2 (%3).',
+                'Для контрагента %1 вже існує поточна роль типу %2 (%3). Спочатку завершіть її життєвий цикл.',
                 BusinessPartnerNo,
                 Format(RoleType),
                 ExistingRole.Code);
@@ -137,32 +143,6 @@ codeunit 54030 "SI BP Role Mgt."
             Enum::"SI BP Role Chg. Source"::Manual);
     end;
 
-    procedure ReactivateRole(
-        var Role: Record "SI BP Role";
-        Reason: Text;
-        Comment: Text)
-    begin
-        ChangeStatus(
-            Role,
-            Role.Status::Configured,
-            Reason,
-            Comment,
-            Enum::"SI BP Role Chg. Source"::Manual);
-    end;
-
-    procedure CloseRole(
-        var Role: Record "SI BP Role";
-        Reason: Text;
-        Comment: Text)
-    begin
-        ChangeStatus(
-            Role,
-            Role.Status::Closed,
-            Reason,
-            Comment,
-            Enum::"SI BP Role Chg. Source"::Manual);
-    end;
-
     procedure ChangeStatus(
         var Role: Record "SI BP Role";
         NewStatus: Enum "SI BP Role Status";
@@ -214,10 +194,6 @@ codeunit 54030 "SI BP Role Mgt."
             NewStatus::Inactive:
                 Role."Last Inactivated At" :=
                     CurrentDateTime;
-
-            NewStatus::Closed:
-                Role."Closed At" :=
-                    CurrentDateTime;
         end;
 
         Role.Modify(true);
@@ -242,42 +218,24 @@ codeunit 54030 "SI BP Role Mgt."
     begin
         case OldStatus of
             OldStatus::Draft:
-                exit(
-                    NewStatus =
-                    NewStatus::Configured);
+                exit(NewStatus = NewStatus::Configured);
 
             OldStatus::Configured:
                 exit(
-                    (NewStatus =
-                     NewStatus::Draft) or
-                    (NewStatus =
-                     NewStatus::Active));
+                    (NewStatus = NewStatus::Draft) or
+                    (NewStatus = NewStatus::Active));
 
             OldStatus::Active:
                 exit(
-                    (NewStatus =
-                     NewStatus::Blocked) or
-                    (NewStatus =
-                     NewStatus::Inactive) or
-                    (NewStatus =
-                     NewStatus::Closed));
+                    (NewStatus = NewStatus::Blocked) or
+                    (NewStatus = NewStatus::Inactive));
 
             OldStatus::Blocked:
                 exit(
-                    (NewStatus =
-                     NewStatus::Active) or
-                    (NewStatus =
-                     NewStatus::Inactive) or
-                    (NewStatus =
-                     NewStatus::Closed));
+                    (NewStatus = NewStatus::Active) or
+                    (NewStatus = NewStatus::Inactive));
 
-            OldStatus::Inactive:
-                exit(
-                    (NewStatus =
-                     NewStatus::Configured) or
-                    (NewStatus =
-                     NewStatus::Closed));
-
+            OldStatus::Inactive,
             OldStatus::Closed:
                 exit(false);
         end;
@@ -289,35 +247,45 @@ codeunit 54030 "SI BP Role Mgt."
         BusinessPartnerNo: Code[20];
         RoleType: Enum "SI BP Role Type"): Code[30]
     var
+        ExistingRole: Record "SI BP Role";
         RoleCode: Code[30];
+        BaseCode: Text;
         Suffix: Text;
+        SequenceNo: Integer;
     begin
         case RoleType of
             RoleType::Customer:
-                Suffix :=
-                    '-CUST';
+                Suffix := '-CUST';
 
             RoleType::Vendor:
-                Suffix :=
-                    '-VEND';
+                Suffix := '-VEND';
         end;
 
-        if StrLen(BusinessPartnerNo) +
-           StrLen(Suffix) >
-           MaxStrLen(RoleCode)
-        then
+        BaseCode := BusinessPartnerNo + Suffix;
+
+        if StrLen(BaseCode) > MaxStrLen(RoleCode) then
             Error(
                 'Неможливо сформувати код ролі для контрагента %1.',
                 BusinessPartnerNo);
 
-        RoleCode :=
-            CopyStr(
-                BusinessPartnerNo +
-                Suffix,
-                1,
-                MaxStrLen(RoleCode));
+        RoleCode := CopyStr(BaseCode, 1, MaxStrLen(RoleCode));
+        if not ExistingRole.Get(RoleCode) then
+            exit(RoleCode);
 
-        exit(RoleCode);
+        for SequenceNo := 2 to 999 do begin
+            RoleCode :=
+                CopyStr(
+                    StrSubstNo('%1-%2', BaseCode, SequenceNo),
+                    1,
+                    MaxStrLen(RoleCode));
+
+            if not ExistingRole.Get(RoleCode) then
+                exit(RoleCode);
+        end;
+
+        Error(
+            'Не вдалося сформувати унікальний код ролі для контрагента %1.',
+            BusinessPartnerNo);
     end;
 
     local procedure WriteHistory(

@@ -451,8 +451,8 @@ page 54004 "SI Business Partner Card"
         IsIndividualEntrepreneur := Rec."Entity Type" = Rec."Entity Type"::"Individual Entrepreneur";
         CanGetRegistryData := EDRPOURegistryMgt.IsCheckAvailable(Rec);
 
-        CanCreateCustomerRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Customer);
-        CanCreateVendorRole := not HasRole(BPRole, Enum::"SI BP Role Type"::Vendor);
+        CanCreateCustomerRole := not HasCurrentRole(BPRole, Enum::"SI BP Role Type"::Customer);
+        CanCreateVendorRole := not HasCurrentRole(BPRole, Enum::"SI BP Role Type"::Vendor);
         UpdateLegalFormGroupDescription();
 
         case Rec.Status of
@@ -487,7 +487,7 @@ page 54004 "SI Business Partner Card"
         LegalFormGroupDescription := LegalForm."Legal Form Group Desc.";
     end;
 
-    local procedure HasRole(
+    local procedure HasCurrentRole(
         var BPRole: Record "SI BP Role";
         RoleType: Enum "SI BP Role Type"): Boolean
     begin
@@ -497,6 +497,11 @@ page 54004 "SI Business Partner Card"
         BPRole.Reset();
         BPRole.SetRange("Business Partner No.", Rec."No.");
         BPRole.SetRange("Role Type", RoleType);
+        BPRole.SetFilter(
+            Status,
+            '<>%1&<>%2',
+            BPRole.Status::Inactive,
+            BPRole.Status::Closed);
 
         exit(not BPRole.IsEmpty());
     end;
