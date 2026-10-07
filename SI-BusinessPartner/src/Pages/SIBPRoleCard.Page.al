@@ -146,142 +146,6 @@ page 54031 "SI BP Role Card"
                 end;
             }
 
-            action(CreateMaterializationRun)
-            {
-                Caption = 'Створити запуск матеріалізації';
-                ApplicationArea = All;
-                Visible = false;
-                Enabled = CanCreateMatRun;
-
-                trigger OnAction()
-                var
-                    MatMgt: Codeunit "SI BP Materialization Mgt.";
-                    MatRun: Record "SI BP Materialization Run";
-                begin
-                    MatMgt.CreateRun(
-                        Rec,
-                        MatRun);
-
-                    Page.Run(
-                        Page::"SI BP Mat. Run Card",
-                        MatRun);
-                end;
-            }
-
-            action(CreateERPProjection)
-            {
-                Caption = 'Створити ERP-проєкцію';
-                ApplicationArea = All;
-                Visible = false;
-                Enabled = CanCreateProjection;
-
-                trigger OnAction()
-                var
-                    ProjectionMgt: Codeunit "SI BP Projection Mgt.";
-                    Projection: Record "SI BP ERP Projection";
-                begin
-                    ProjectionMgt.CreateProjection(
-                        Rec,
-                        Projection);
-
-                    CurrPage.Update(false);
-
-                    Page.Run(
-                        Page::"SI BP Projection Card",
-                        Projection);
-                end;
-            }
-
-            action(ViewERPProjection)
-            {
-                Caption = 'Переглянути проєкцію';
-                ApplicationArea = All;
-                Enabled = CanViewProjection;
-
-                trigger OnAction()
-                var
-                    Projection: Record "SI BP ERP Projection";
-                begin
-                    if not Projection.Get(Rec.Code) then
-                        exit;
-
-                    Page.Run(
-                        Page::"SI BP Projection Card",
-                        Projection);
-                end;
-            }
-
-            action(DeleteERPProjection)
-            {
-                Caption = 'Видалити проєкцію';
-                ApplicationArea = All;
-                Visible = false;
-                Enabled = CanDeleteProjection;
-
-                trigger OnAction()
-                var
-                    ProjectionMgt: Codeunit "SI BP Projection Mgt.";
-                begin
-                    Rec.CalcFields(
-                        "Business Partner Name");
-
-                    if not Confirm(
-                        'Видалити нематеріалізовану ERP-проєкцію ролі контрагента %1? Проєкцію можна буде сформувати повторно з актуальних даних ролі.',
-                        false,
-                        Rec."Business Partner Name")
-                    then
-                        exit;
-
-                    ProjectionMgt.DeleteProjection(
-                        Rec.Code);
-
-                    CurrPage.Update(false);
-                end;
-            }
-
-            action(MaterializeERPProjection)
-            {
-                Caption = 'Матеріалізувати проєкцію';
-                ApplicationArea = All;
-                Visible = false;
-                Enabled = CanMaterializeProjection;
-
-                trigger OnAction()
-                var
-                    ProjectionMgt: Codeunit "SI BP Projection Mgt.";
-                    Projection: Record "SI BP ERP Projection";
-                    ERPTypeCaption: Text;
-                begin
-                    if not Projection.Get(Rec.Code) then
-                        Error(
-                            'ERP-проєкцію не знайдено.');
-
-                    Rec.CalcFields(
-                        "Business Partner Name");
-
-                    ERPTypeCaption :=
-                        GetERPTypeCaption();
-
-                    if not Confirm(
-                        'Матеріалізувати проєкцію ролі контрагента %1 та створити нового %2?',
-                        false,
-                        Rec."Business Partner Name",
-                        ERPTypeCaption)
-                    then
-                        exit;
-
-                    ProjectionMgt.MaterializeProjection(
-                        Projection);
-
-                    CurrPage.Update(false);
-
-                    Message(
-                        'ERP-проєкцію успішно матеріалізовано. Створено %1 %2.',
-                        ERPTypeCaption,
-                        Projection."ERP No.");
-                end;
-            }
-
             action(Submit)
             {
                 Caption = 'Передати на узгодження';
@@ -517,66 +381,11 @@ page 54031 "SI BP Role Card"
             Rec.Status <>
             Rec.Status::Inactive;
 
-        CanCreateMatRun :=
-            CanCreateMaterializationRun();
-
-        SetProjectionActionStates();
-    end;
-
-    local procedure CanCreateMaterializationRun(): Boolean
-    var
-        Projection: Record "SI BP ERP Projection";
-        MatRun: Record "SI BP Materialization Run";
-        MatMgt: Codeunit "SI BP Materialization Mgt.";
-    begin
-        if Rec.Status <> Rec.Status::Active then
-            exit(false);
-
-        if not Projection.Get(Rec.Code) then
-            exit(false);
-
-        if Projection.Status <> Projection.Status::Ready then
-            exit(false);
-
-        if MatMgt.GetOpenRun(
-            Rec.Code,
-            MatRun)
-        then
-            exit(false);
-
-        exit(true);
-    end;
-
-    local procedure SetProjectionActionStates()
-    var
-        Projection: Record "SI BP ERP Projection";
-    begin
-        HasProjection :=
-            Projection.Get(
-                Rec.Code);
-
         HasMaterializedERP :=
-            HasProjection and
-            (Projection.Status = Projection.Status::Materialized) and
-            (Projection."ERP No." <> '');
-
-        CanCreateProjection :=
-            (Rec.Status =
-             Rec.Status::Active) and
-            (not HasProjection);
-
-        CanViewProjection :=
-            HasProjection;
-
-        CanDeleteProjection :=
-            HasProjection and
-            (Projection.Status <>
-             Projection.Status::Materialized);
-
-        CanMaterializeProjection :=
-            HasProjection and
-            (Projection.Status =
-             Projection.Status::Ready);
+            ((Rec."Role Type" = Rec."Role Type"::Customer) and
+             (Rec."Customer No." <> '')) or
+            ((Rec."Role Type" = Rec."Role Type"::Vendor) and
+             (Rec."Vendor No." <> ''));
     end;
 
     local procedure GetChangeData(
@@ -686,19 +495,6 @@ page 54031 "SI BP Role Card"
         end;
     end;
 
-    local procedure GetERPTypeCaption(): Text
-    begin
-        case Rec."Role Type" of
-            Rec."Role Type"::Customer:
-                exit('Покупця');
-
-            Rec."Role Type"::Vendor:
-                exit('Постачальника');
-        end;
-
-        exit('ERP-запис');
-    end;
-
     var
         CanSubmit: Boolean;
         CanReturnDraft: Boolean;
@@ -710,11 +506,5 @@ page 54031 "SI BP Role Card"
         IsVendorRole: Boolean;
         CanEditBanking: Boolean;
 
-        HasProjection: Boolean;
         HasMaterializedERP: Boolean;
-        CanCreateProjection: Boolean;
-        CanViewProjection: Boolean;
-        CanDeleteProjection: Boolean;
-        CanMaterializeProjection: Boolean;
-        CanCreateMatRun: Boolean;
 }

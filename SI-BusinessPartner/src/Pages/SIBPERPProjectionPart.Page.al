@@ -3,7 +3,7 @@ page 54062 "SI BP ERP Projection Part"
     PageType = ListPart;
     SourceTable = "SI BP Role";
     ApplicationArea = All;
-    Caption = 'ERP-проєкція';
+    Caption = 'Створений ERP-контрагент';
 
     InsertAllowed = false;
     ModifyAllowed = false;
@@ -64,31 +64,31 @@ page 54062 "SI BP ERP Projection Part"
 
     local procedure LoadProjectionSummary()
     var
-        Projection: Record "SI BP ERP Projection";
         BPAddressMgt: Codeunit "SI BP Address Mgt.";
         BPAddress: Record "SI BP Address";
+        BusinessPartner: Record "SI Business Partner";
     begin
         Clear(ERPNo);
         Clear(ERPName);
         Clear(RegistrationNo);
         Clear(LegalAddress);
 
-        if not Projection.Get(Rec.Code) then
-            exit;
-
-        if Projection.Status <> Projection.Status::Materialized then
-            exit;
-
-        ERPNo := Projection."ERP No.";
-        RegistrationNo := Projection."Registration No.";
-
         case Rec."Role Type" of
             Rec."Role Type"::Customer:
-                LoadCustomer(ERPNo);
+                begin
+                    ERPNo := Rec."Customer No.";
+                    LoadCustomer(ERPNo);
+                end;
 
             Rec."Role Type"::Vendor:
-                LoadVendor(ERPNo);
+                begin
+                    ERPNo := Rec."Vendor No.";
+                    LoadVendor(ERPNo);
+                end;
         end;
+
+        if BusinessPartner.Get(Rec."Business Partner No.") then
+            RegistrationNo := BusinessPartner."Registration No.";
 
         if BPAddressMgt.GetCurrentLegalAddress(
             Rec."Business Partner No.",
