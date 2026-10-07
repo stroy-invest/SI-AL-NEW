@@ -60,6 +60,51 @@ codeunit 54030 "SI BP Role Mgt."
 
     end;
 
+    procedure DeleteDraftRole(
+        var Role: Record "SI BP Role")
+    var
+        RoleHistory: Record "SI BP Role Status Entry";
+        Projection: Record "SI BP ERP Projection";
+        MatRun: Record "SI BP Materialization Run";
+        BankAccount: Record "SI BP Bank Account";
+        CustRoleSetup: Record "SI BP Cust. Role Setup";
+        VendRoleSetup: Record "SI BP Vend. Role Setup";
+    begin
+        Role.TestField(Code);
+
+        if not Role.Get(Role.Code) then
+            Error('Роль %1 не знайдено.', Role.Code);
+
+        if Role.Status <> Role.Status::Draft then
+            Error('Видалити можна лише роль у стані Чернетка.');
+
+        if (Role."Customer No." <> '') or (Role."Vendor No." <> '') then
+            Error('Роль %1 вже пов''язана з ERP-контрагентом і не може бути видалена.', Role.Code);
+
+        RoleHistory.SetRange("Role Code", Role.Code);
+        if not RoleHistory.IsEmpty() then
+            Error('Роль %1 вже має історію життєвого циклу і не може бути фізично видалена.', Role.Code);
+
+        Projection.SetRange("Role Code", Role.Code);
+        if not Projection.IsEmpty() then
+            Error('Для ролі %1 вже існує ERP-проєкція. Фізичне видалення заборонено.', Role.Code);
+
+        MatRun.SetRange("Role Code", Role.Code);
+        if not MatRun.IsEmpty() then
+            Error('Для ролі %1 вже існує запуск матеріалізації. Фізичне видалення заборонено.', Role.Code);
+
+        BankAccount.SetRange("Role Code", Role.Code);
+        BankAccount.DeleteAll(true);
+
+        CustRoleSetup.SetRange("Role Code", Role.Code);
+        CustRoleSetup.DeleteAll(true);
+
+        VendRoleSetup.SetRange("Role Code", Role.Code);
+        VendRoleSetup.DeleteAll(true);
+
+        Role.Delete(true);
+    end;
+
     procedure SubmitRole(
         var Role: Record "SI BP Role";
         Reason: Text;

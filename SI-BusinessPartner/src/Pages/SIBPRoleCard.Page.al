@@ -146,6 +146,32 @@ page 54031 "SI BP Role Card"
                 end;
             }
 
+            action(DeleteDraftRole)
+            {
+                Caption = 'Видалити роль';
+                ApplicationArea = All;
+                Image = Delete;
+                Enabled = CanDeleteDraftRole;
+
+                trigger OnAction()
+                var
+                    RoleMgt: Codeunit "SI BP Role Mgt.";
+                    RoleCode: Code[30];
+                begin
+                    if not Confirm(
+                        'Видалити роль %1? Цю дію неможливо скасувати.',
+                        false,
+                        Rec.Code)
+                    then
+                        exit;
+
+                    RoleCode := Rec.Code;
+                    RoleMgt.DeleteDraftRole(Rec);
+                    Message('Роль %1 видалено.', RoleCode);
+                    CurrPage.Close();
+                end;
+            }
+
             action(Submit)
             {
                 Caption = 'Передати на узгодження';
@@ -342,6 +368,10 @@ page 54031 "SI BP Role Card"
 
     local procedure SetActionStates()
     begin
+        CanDeleteDraftRole :=
+            Rec.Status =
+            Rec.Status::Draft;
+
         CanSubmit :=
             Rec.Status =
             Rec.Status::Draft;
@@ -496,6 +526,7 @@ page 54031 "SI BP Role Card"
     end;
 
     var
+        CanDeleteDraftRole: Boolean;
         CanSubmit: Boolean;
         CanReturnDraft: Boolean;
         CanActivate: Boolean;
