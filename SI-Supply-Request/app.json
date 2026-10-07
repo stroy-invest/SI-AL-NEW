@@ -2,7 +2,7 @@
   "id": "bca54530-bd7f-45ec-b290-81531873ad33",
   "name": "SI Supply Request Engine",
   "publisher": "STROYINVEST",
-  "version": "1.0.0.44",
+  "version": "1.0.0.46",
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
   "idRanges": [
@@ -16,7 +16,7 @@
       "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
       "name": "STROYINVEST Foundation",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.63"
+      "version": "1.0.0.72"
     },
     {
       "id": "e7e9d6bb-52d8-4f68-93ad-d8c390cbbf73",

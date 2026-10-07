@@ -3,7 +3,7 @@ page 61060 "SI VSC Wizard"
     PageType = NavigatePage;
     SourceTable = "SI VSC Wizard Buffer";
     SourceTableTemporary = true;
-    Caption = 'Налаштування каналів постачання';
+    Caption = 'Канали та умови постачання';
     ApplicationArea = All;
 
     layout
@@ -13,33 +13,57 @@ page 61060 "SI VSC Wizard"
             group(VendorGroup)
             {
                 Caption = 'Постачальник';
-                field(VendorName; VendorName) { ApplicationArea = All; Caption = 'Постачальник'; Editable = false; }
-            }
-            group(CategoryStep)
-            {
-                Caption = '1. Виберіть категорії товарів'; Visible = StepNo = 1;
-                usercontrol(CategoryTree; "SI VSC Category Tree")
+                field(VendorName; VendorName)
                 {
                     ApplicationArea = All;
-                    trigger ControlReady() begin CurrPage.CategoryTree.RenderTree(GetCategoryTreeJson()); end;
-                    trigger CategoryToggled(CategoryCode: Text; IsSelected: Boolean) begin ToggleCategory(CopyStr(CategoryCode, 1, 20), IsSelected); end;
+                    Caption = 'Постачальник';
+                    Editable = false;
                 }
             }
-            group(TermsStep)
+            group(CategoriesStep)
             {
-                Caption = '2. Налаштуйте умови постачання'; Visible = StepNo = 2;
-                group(SelectedCategoryGroup)
+                Caption = 'Показати категорії';
+                group(CategoryActionGroup)
                 {
-                    Caption = 'Вибрані категорії';
-                    repeater(SelectedCategories)
+                    ShowCaption = false;
+                    usercontrol(AddCategoryButton; "SI VSC Add Category Button")
                     {
-                        field("Category Name"; Rec."Category Name") { ApplicationArea = All; Caption = 'Категорія'; Editable = false; }
-                        field("Default UoM Code"; Rec."Default UoM Code") { ApplicationArea = All; Caption = 'Од. виміру'; Editable = false; }
+                        ApplicationArea = All;
+
+                        trigger AddCategory()
+                        begin
+                            SelectAndAddCategory();
+                        end;
                     }
                 }
+                group(CategoriesGroup)
+                {
+                    ShowCaption = false;
+                    InstructionalText = 'Виберіть категорії товарів, які може постачати цей постачальник.';
+                    repeater(SelectedCategories)
+                    {
+                        field("Category Name"; Rec."Category Name")
+                        {
+                            ApplicationArea = All;
+                            Caption = 'Категорія';
+                            Editable = false;
+                        }
+                    }
+                }
+            }
+            group(ConditionsStep)
+            {
+                Caption = 'Показати умови постачання';
                 group(ConditionsGroup)
                 {
                     Caption = 'Умови постачання';
+                    InstructionalText = 'Для вибраної категорії додайте один або кілька каналів та задайте умови постачання.';
+                    field(CurrentCategoryName; CurrentCategoryName)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Категорія';
+                        Editable = false;
+                    }
                     usercontrol(ConditionsGrid; "SI VSC Conditions Grid")
                     {
                         ApplicationArea = All;
@@ -47,7 +71,7 @@ page 61060 "SI VSC Wizard"
                         trigger ControlReady()
                         begin
                             ConditionsGridReady := true;
-                            RenderConditions();
+                            UpdateConditionsCategory();
                         end;
 
                         trigger AddRow()
@@ -76,68 +100,154 @@ page 61060 "SI VSC Wizard"
     {
         area(Processing)
         {
-            action(Back)
+            action(AddCategory)
             {
-                ApplicationArea = All; Caption = 'Назад'; InFooterBar = true; Image = PreviousRecord; Visible = StepNo = 2;
-                trigger OnAction() begin StepNo := 1; Rec.Reset(); CurrPage.Update(false); CurrPage.CategoryTree.RenderTree(GetCategoryTreeJson()); end;
-            }
-            action(Next)
-            {
-                ApplicationArea = All; Caption = 'Далі'; InFooterBar = true; Image = NextRecord; Visible = StepNo = 1;
+                ApplicationArea = All;
+                Caption = 'Додати категорію';
+                ToolTip = 'Додати категорію товарів до налаштування каналів постачання.';
+                Image = New;
+
                 trigger OnAction()
                 begin
-                    if Rec.IsEmpty() then Error(SelectCategoryErr);
-                    StepNo := 2; Rec.Reset(); if Rec.FindFirst() then; CurrPage.Update(false); UpdateConditionsCategory();
+                    SelectAndAddCategory();
+                end;
+            }
+            action(RemoveCategory)
+            {
+                ApplicationArea = All;
+                Caption = 'Видалити категорію';
+                ToolTip = 'Видалити вибрану категорію та введені для неї умови з майстра.';
+                Image = Delete;
+                Enabled = CurrentCategoryCode <> '';
+
+                trigger OnAction()
+                begin
+                    RemoveCurrentCategory();
                 end;
             }
             action(Finish)
             {
-                ApplicationArea = All; Caption = 'Завершити'; InFooterBar = true; Image = Approve; Visible = StepNo = 2;
-                trigger OnAction() begin FinishWizard(); CurrPage.Close(); end;
+                ApplicationArea = All;
+                Caption = 'Завершити';
+                InFooterBar = true;
+                Image = Approve;
+
+                trigger OnAction()
+                begin
+                    FinishWizard();
+                    CurrPage.Close();
+                end;
             }
             action(Cancel)
             {
-                ApplicationArea = All; Caption = 'Скасувати'; InFooterBar = true; Image = Cancel;
-                trigger OnAction() begin CurrPage.Close(); end;
+                ApplicationArea = All;
+                Caption = 'Скасувати';
+                InFooterBar = true;
+                Image = Cancel;
+
+                trigger OnAction()
+                begin
+                    CurrPage.Close();
+                end;
             }
         }
     }
 
     trigger OnOpenPage()
     begin
-        if VendorNo = '' then Error(VendorRequiredErr);
-        StepNo := 1;
-        if Vendor.Get(VendorNo) then VendorName := Vendor.Name;
+        if VendorNo = '' then
+            Error(VendorRequiredErr);
+        if Vendor.Get(VendorNo) then
+            VendorName := Vendor.Name;
+    end;
+
+    trigger OnAfterGetCurrRecord()
+    begin
+        UpdateConditionsCategory();
     end;
 
     procedure SetVendor(NewVendorNo: Code[20])
-    begin VendorNo := NewVendorNo; end;
-
-    local procedure ToggleCategory(CategoryCode: Code[20]; IsSelected: Boolean)
-    var ItemCategory: Record "Item Category";
     begin
-        Rec.Reset(); Rec.SetRange("Category Code", CategoryCode);
-        if IsSelected then begin
-            if not Rec.IsEmpty() then begin Rec.Reset(); exit; end;
-            if not ItemCategory.Get(CategoryCode) then begin Rec.Reset(); exit; end;
-            Rec.Reset(); Rec.Init(); Rec."Entry No." := NextCategoryEntryNo(); Rec."Category Code" := CategoryCode;
-            Rec."Category Name" := CopyStr(ItemCategory.Description, 1, MaxStrLen(Rec."Category Name"));
-            if Rec."Category Name" = '' then Rec."Category Name" := ItemCategory.Code;
-            Rec."Default UoM Code" := ItemCategory."SI Default Base UoM Code"; Rec.Insert();
-        end else
-            if Rec.FindFirst() then begin ClearCategoryConditions(CategoryCode); Rec.Delete(); end;
+        VendorNo := NewVendorNo;
+    end;
+
+    local procedure SelectAndAddCategory()
+    var
+        CategorySelectorMgt: Codeunit "SI Category Selector Mgt.";
+        CategoryCode: Code[20];
+    begin
+        CategoryCode := CurrentCategoryCode;
+        if not CategorySelectorMgt.SelectCategory(CategoryCode) then
+            exit;
+
+        AddCategoryToBuffer(CategoryCode);
+    end;
+
+    local procedure AddCategoryToBuffer(CategoryCode: Code[20])
+    var
+        ItemCategory: Record "Item Category";
+        ExistingCategory: Record "SI VSC Wizard Buffer" temporary;
+    begin
+        ExistingCategory.Copy(Rec, true);
+        ExistingCategory.Reset();
+        ExistingCategory.SetRange("Category Code", CategoryCode);
+        if ExistingCategory.FindFirst() then begin
+            Rec.Get(ExistingCategory."Entry No.");
+            CurrPage.Update(false);
+            UpdateConditionsCategory();
+            exit;
+        end;
+
+        if not ItemCategory.Get(CategoryCode) then
+            Error(CategoryNotFoundErr, CategoryCode);
+
         Rec.Reset();
+        Rec.Init();
+        Rec."Entry No." := NextCategoryEntryNo();
+        Rec."Category Code" := CategoryCode;
+        Rec."Category Name" := CopyStr(ItemCategory.Description, 1, MaxStrLen(Rec."Category Name"));
+        if Rec."Category Name" = '' then
+            Rec."Category Name" := ItemCategory.Code;
+        Rec."Default UoM Code" := ItemCategory."SI Default Base UoM Code";
+        Rec.Insert();
+        CurrPage.Update(false);
+        UpdateConditionsCategory();
+    end;
+
+    local procedure RemoveCurrentCategory()
+    var
+        CategoryCode: Code[20];
+    begin
+        if CurrentCategoryCode = '' then
+            exit;
+
+        CategoryCode := CurrentCategoryCode;
+        ClearCategoryConditions(CategoryCode);
+        if Rec.Get(Rec."Entry No.") then
+            Rec.Delete();
+
+        Clear(CurrentCategoryCode);
+        Clear(CurrentCategoryName);
+        Clear(CurrentDefaultUoMCode);
+
+        Rec.Reset();
+        if Rec.FindFirst() then;
+        CurrPage.Update(false);
+        UpdateConditionsCategory();
     end;
 
     local procedure UpdateConditionsCategory()
     begin
-        if StepNo <> 2 then
-            exit;
-        // Clear the browser-side detail editor before switching category context.
-        // Otherwise controls can retain the last rendered row while the new
-        // category has no conditions yet.
         if ConditionsGridReady then
             CurrPage.ConditionsGrid.ClearGrid();
+
+        if Rec."Category Code" = '' then begin
+            Clear(CurrentCategoryCode);
+            Clear(CurrentCategoryName);
+            Clear(CurrentDefaultUoMCode);
+            RenderConditions();
+            exit;
+        end;
 
         CurrentCategoryCode := Rec."Category Code";
         CurrentCategoryName := Rec."Category Name";
@@ -149,6 +259,8 @@ page 61060 "SI VSC Wizard"
     var
         CreatedCount: Integer;
     begin
+        if Rec.IsEmpty() then
+            Error(SelectCategoryErr);
         ValidateAllConditions();
         CreatedCount := CreateCapabilities();
         Message(CreatedMsg, CreatedCount, VendorName);
@@ -157,9 +269,8 @@ page 61060 "SI VSC Wizard"
     local procedure AddCondition()
     begin
         if CurrentCategoryCode = '' then
-            exit;
-        // Do not let values from the previously current temporary record leak into a new condition.
-        // Init() preserves primary-key values and record state can survive navigation, so clear explicitly.
+            Error(SelectCurrentCategoryErr);
+
         Clear(ConditionBuffer);
         ConditionBuffer.Init();
         ConditionBuffer."Entry No." := NextConditionEntryNo();
@@ -226,8 +337,6 @@ page 61060 "SI VSC Wizard"
     local procedure RenderConditions()
     begin
         if not ConditionsGridReady then
-            exit;
-        if StepNo <> 2 then
             exit;
         CurrPage.ConditionsGrid.Render(GetConditionsJson(), GetShipmentMethodsJson(), GetUnitsOfMeasureJson(), CurrentCategoryName);
     end;
@@ -365,26 +474,14 @@ page 61060 "SI VSC Wizard"
     end;
 
     local procedure NextCategoryEntryNo(): Integer
-    var B: Record "SI VSC Wizard Buffer" temporary;
-    begin B.Copy(Rec, true); B.Reset(); if B.FindLast() then exit(B."Entry No." + 1); exit(1); end;
-    local procedure GetCategoryTreeJson(): Text
-    var ItemCategory: Record "Item Category";
-    begin ItemCategory.SetRange("Parent Category", ''); exit(BuildCategoryJson(ItemCategory)); end;
-    local procedure BuildCategoryJson(var ItemCategory: Record "Item Category"): Text
-    var J: Text; First: Boolean;
-    begin J := '['; First := true; if ItemCategory.FindSet() then repeat if not First then J += ','; J += BuildCategoryNodeJson(ItemCategory); First := false; until ItemCategory.Next() = 0; exit(J + ']'); end;
-    local procedure BuildCategoryNodeJson(ItemCategory: Record "Item Category"): Text
-    var Child: Record "Item Category"; Name: Text; Selected: Boolean;
+    var
+        B: Record "SI VSC Wizard Buffer" temporary;
     begin
-        Name := ItemCategory.Description; if Name = '' then Name := ItemCategory.Code; Rec.Reset(); Rec.SetRange("Category Code", ItemCategory.Code); Selected := not Rec.IsEmpty(); Rec.Reset();
-        Child.SetRange("Parent Category", ItemCategory.Code);
-        exit('{' + '"code":"' + JsonEscape(ItemCategory.Code) + '",' + '"name":"' + JsonEscape(Name) + '",' + '"baseUomCode":"' + JsonEscape(ItemCategory."SI Default Base UoM Code") + '",' + '"selected":' + BooleanToJson(Selected) + ',' + '"children":' + BuildCategoryJson(Child) + '}');
-    end;
-    local procedure BooleanToJson(Value: Boolean): Text
-    begin
-        if Value then
-            exit('true');
-        exit('false');
+        B.Copy(Rec, true);
+        B.Reset();
+        if B.FindLast() then
+            exit(B."Entry No." + 1);
+        exit(1);
     end;
 
     local procedure JsonEscape(Value: Text): Text
@@ -398,12 +495,6 @@ page 61060 "SI VSC Wizard"
         exit(Value);
     end;
 
-    trigger OnAfterGetCurrRecord()
-    begin
-        if StepNo = 2 then
-            UpdateConditionsCategory();
-    end;
-
     var
         Vendor: Record Vendor;
         ConditionBuffer: Record "SI VSC Wizard Condition" temporary;
@@ -412,10 +503,11 @@ page 61060 "SI VSC Wizard"
         CurrentCategoryCode: Code[20];
         CurrentCategoryName: Text[100];
         CurrentDefaultUoMCode: Code[10];
-        StepNo: Integer;
         ConditionsGridReady: Boolean;
         VendorRequiredErr: Label 'Не визначено постачальника.';
         SelectCategoryErr: Label 'Виберіть хоча б одну категорію товарів.';
+        SelectCurrentCategoryErr: Label 'Спочатку виберіть категорію товарів.';
+        CategoryNotFoundErr: Label 'Категорію товарів %1 не знайдено.';
         NoConditionsErr: Label 'Додайте хоча б одну умову постачання.';
         ShipmentMethodRequiredErr: Label 'Для категорії %1 виберіть спосіб постачання.';
         UoMRequiredErr: Label 'Для кількісних умов категорії %1 потрібно вказати одиницю виміру.';
