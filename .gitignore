@@ -27,3 +27,6 @@ cache_*
 **/.vscode/settings.json
 **/docs/
 **/scripts/
+
+# Generated app.json copies for ZIP packaging
+**/*_app.json

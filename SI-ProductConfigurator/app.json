@@ -2,7 +2,7 @@
   "id": "3eb7e01e-4653-4f7d-873e-a4a1f62f7692",
   "name": "SI Product Configurator",
   "publisher": "STROYINVEST",
-  "version": "1.5.0.49",
+  "version": "1.5.0.50",
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
   "idRanges": [
@@ -16,13 +16,13 @@
       "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
       "name": "STROYINVEST Foundation",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.59"
+      "version": "1.0.0.77"
     },
     {
       "id": "39320ea1-c92d-4838-b833-4080842bc10e",
       "name": "SI Master Data Toolkit",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.23"
+      "version": "1.0.0.24"
     }
   ],
   "resourceExposurePolicy": {

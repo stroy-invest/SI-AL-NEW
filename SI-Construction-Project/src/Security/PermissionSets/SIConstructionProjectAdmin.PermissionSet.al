@@ -1,3 +1,4 @@
+
 permissionset 60000 "SI CP ADMIN"
 {
     Assignable = true;
@@ -15,7 +16,10 @@ permissionset 60000 "SI CP ADMIN"
         tabledata "SI Project Assignment" = RIMD,
         tabledata "SI Construction Site" = RIM,
         tabledata "SI Site Assignment" = RIMD,
+        tabledata "SI Eligible Employee" = RIMD,
+        tabledata "SI Employee Project Role" = RIMD,
         table "SI Eligible Employee" = X,
+        table "SI Employee Project Role" = X,
         table "SI Project Role" = X,
         table "SI Project Assignment" = X,
         table "SI Construction Site" = X,

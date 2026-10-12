@@ -4,6 +4,26 @@ permissionset 54030 "SI BP ROLE ADMIN"
     Caption = 'SI BP: Адміністратор ролей';
 
     Permissions =
+        // Core Business Partner tables: PTE0004 coverage for Production validation.
+        tabledata "SI BP Address" = RIMD,
+        table "SI BP Address" = X,
+        tabledata "SI BP Bank Account" = RIMD,
+        table "SI BP Bank Account" = X,
+        tabledata "SI BP Contact Point" = RIMD,
+        table "SI BP Contact Point" = X,
+        tabledata "SI BP Customer Setup" = RIMD,
+        table "SI BP Customer Setup" = X,
+        tabledata "SI BP Materialization Run" = RIMD,
+        table "SI BP Materialization Run" = X,
+        tabledata "SI BP Materialization Step" = RIMD,
+        table "SI BP Materialization Step" = X,
+        tabledata "SI BP Vendor Setup" = RIMD,
+        table "SI BP Vendor Setup" = X,
+        tabledata "SI Business Partner" = RIMD,
+        table "SI Business Partner" = X,
+        tabledata "SI Foreign Bank" = RIMD,
+        table "SI Foreign Bank" = X,
+
         tabledata "SI BP Role" = RIMD,
         tabledata "SI BP Role Status Entry" = RIMD,
 
