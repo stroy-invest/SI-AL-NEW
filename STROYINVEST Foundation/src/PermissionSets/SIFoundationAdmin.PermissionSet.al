@@ -168,5 +168,17 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         page "SI EDS Wiz Param Lines" = X,
         tabledata "SI EDS Wiz Rate Buffer" = RIMD,
         table "SI EDS Wiz Rate Buffer" = X,
-        page "SI EDS Wiz Rate Lines" = X;
+        page "SI EDS Wiz Rate Lines" = X,
+
+        tabledata "SI EDS Transport Preview" = RIMD,
+        table "SI EDS Transport Preview" = X,
+        page "SI EDS Transport Preview" = X,
+
+        // Workforce: persistent capability registry and management UI.
+        tabledata "SI Workforce Capability" = RIMD,
+        table "SI Workforce Capability" = X,
+        page "SI Workforce Capabilities" = X,
+        codeunit "SI Workforce Mgt." = X,
+        codeunit "SI EDS Config Transport" = X,
+        page "SI EDS Config Transport" = X;
 }
