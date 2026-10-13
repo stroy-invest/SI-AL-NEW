@@ -45,6 +45,36 @@ page 50471 "SI EDS Admin Role Center"
                 action(SetupWizard) { ApplicationArea = All; Caption = 'Майстер налаштування'; RunObject = page "SI EDS Setup Wizard"; }
                 action(HealthCheck) { ApplicationArea = All; Caption = 'Перевірка конфігурації'; RunObject = page "SI EDS Health Check"; }
             }
+            group(SystemAdministration)
+            {
+                Caption = 'Системне адміністрування';
+                action(ApplicationRegistry)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Додатки та залежності';
+                    RunObject = page "SI Application Registry";
+                }
+                action(SystemJobQueue)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Черга завдань';
+                    ToolTip = 'Відкрити стандартну чергу фонових завдань Business Central.';
+                    RunObject = page "Job Queue Entries";
+                }
+                action(SystemJobQueueLog)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Журнал виконання завдань';
+                    ToolTip = 'Відкрити стандартний журнал виконання фонових завдань.';
+                    RunObject = page "Job Queue Log Entries";
+                }
+                action(ServiceEmailQueue)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Черга службової пошти';
+                    RunObject = page "Service Email Queue";
+                }
+            }
             group(Monitoring)
             {
                 Caption = 'Моніторинг';
@@ -53,6 +83,7 @@ page 50471 "SI EDS Admin Role Center"
                 action(InboundEvents) { ApplicationArea = All; Caption = 'Вхідні події'; RunObject = page "SI EDS Inbound Events"; }
             }
         }
+        // System administration: read-only application diagnostics.
         area(Embedding)
         {
             action(ServicesEmbedded) { ApplicationArea = All; Caption = 'Сервіси'; RunObject = page "SI EDS Services"; }

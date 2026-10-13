@@ -180,5 +180,13 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         page "SI Workforce Capabilities" = X,
         codeunit "SI Workforce Mgt." = X,
         codeunit "SI EDS Config Transport" = X,
-        page "SI EDS Config Transport" = X;
+        page "SI EDS Config Transport" = X,
+
+        // Application Registry (read-only, temporary buffers).
+        tabledata "NAV App Installed App" = R,
+        table "SI App Registry Buffer" = X,
+        table "SI App Dependency Buffer" = X,
+        page "SI Application Registry" = X,
+        page "SI App Dependencies" = X,
+        codeunit "SI App Registry Mgt." = X;
 }
