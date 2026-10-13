@@ -47,5 +47,8 @@ permissionset 54031 "SI BP ROLE USER"
         table "SI BP Template Setting" = X,
         codeunit "SI BP Template Resolver" = X,
         page "SI BP Role Activation Wizard" = X,
-        codeunit "SI BP Role Activation Mgt." = X;
+        codeunit "SI BP Role Activation Mgt." = X,
+
+        codeunit "SI BP Contact Linking" = X,
+        codeunit "SI BP Contact Insert Guard" = X;
 }

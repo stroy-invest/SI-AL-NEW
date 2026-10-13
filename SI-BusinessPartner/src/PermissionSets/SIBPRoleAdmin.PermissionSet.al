@@ -65,6 +65,8 @@ permissionset 54030 "SI BP ROLE ADMIN"
         page "SI BP Template Settings" = X,
         codeunit "SI BP Template Resolver" = X,
         page "SI BP Role Activation Wizard" = X,
+
         codeunit "SI BP Role Activation Mgt." = X,
-        codeunit "SI BP Contact Linking" = X;
+        codeunit "SI BP Contact Linking" = X,
+        codeunit "SI BP Contact Insert Guard" = X;
 }
