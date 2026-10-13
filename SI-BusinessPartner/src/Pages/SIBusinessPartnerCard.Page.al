@@ -333,6 +333,27 @@ page 54004 "SI Business Partner Card"
                 }
             }
 
+            action(CheckAndSetupContact)
+            {
+                Caption = 'Перевірити й налаштувати Contact';
+                ApplicationArea = All;
+                Image = ContactPerson;
+                ToolTip = 'Перевіряє та налаштовує стандартні зв''язки Customer/Vendor з одним Company Contact. Конфліктні контакти не об''єднує.';
+
+                trigger OnAction()
+                var
+                    ContactLinking: Codeunit "SI BP Contact Linking";
+                    ResultText: Text;
+                begin
+                    CurrPage.SaveRecord();
+                    Rec.TestField("No.");
+                    if not Confirm('Перевірити та за потреби створити стандартні зв''язки Contact для контрагента %1?', false, Rec."No.") then
+                        exit;
+                    ResultText := ContactLinking.EnsureLinks(Rec."No.");
+                    Message(ResultText);
+                end;
+            }
+
             action(GetRegistryData)
             {
                 ApplicationArea = All;

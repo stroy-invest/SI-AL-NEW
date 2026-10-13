@@ -11,6 +11,7 @@ codeunit 54082 "SI BP Role Activation Mgt."
         TemplateResolver: Codeunit "SI BP Template Resolver";
         ProjectionMgt: Codeunit "SI BP Projection Mgt.";
         TemplateCode: Code[20];
+        ContactLinking: Codeunit "SI BP Contact Linking";
     begin
         Role.Get(Role.Code);
 
@@ -61,6 +62,10 @@ codeunit 54082 "SI BP Role Activation Mgt."
         ProjectionMgt.MaterializeProjection(
             Projection,
             TemplateCode);
+
+        // Ensure standard Customer/Vendor relations share one Company Contact.
+        // Failure rolls back the new ERP materialization (before the stage-1 COMMIT).
+        ContactLinking.EnsureLinks(Role."Business Partner No.");
 
         RoleMgt.ActivateRole(
             Role,

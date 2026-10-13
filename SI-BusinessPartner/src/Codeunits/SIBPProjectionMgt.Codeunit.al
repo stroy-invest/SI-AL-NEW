@@ -220,6 +220,7 @@ codeunit 54060 "SI BP Projection Mgt."
         TemplateCode: Code[20])
     var
         Role: Record "SI BP Role";
+        ContactInsertGuard: Codeunit "SI BP Contact Insert Guard";
         Vendor: Record Vendor;
         VendorTempl: Record "Vendor Templ.";
         VendorTemplMgt: Codeunit "Vendor Templ. Mgt.";
@@ -243,8 +244,12 @@ codeunit 54060 "SI BP Projection Mgt."
         if not VendorTempl.Get(TemplateCode) then
             Error('Шаблон постачальника %1 не знайдено.', TemplateCode);
 
+        // Reuse the existing opposite-role Company Contact. The one-shot
+        // context prevents standard BC from creating a second Company Contact.
+        ContactInsertGuard.Prepare(Role."Business Partner No.", 'Vendor');
         Vendor.Init();
         Vendor.Insert(true);
+        ContactInsertGuard.ClearPending();
 
         VendorTemplMgt.ApplyVendorTemplate(
             Vendor,
@@ -297,6 +302,7 @@ codeunit 54060 "SI BP Projection Mgt."
         TemplateCode: Code[20])
     var
         Role: Record "SI BP Role";
+        ContactInsertGuard: Codeunit "SI BP Contact Insert Guard";
         Customer: Record Customer;
         CustomerTempl: Record "Customer Templ.";
         CustomerTemplMgt: Codeunit "Customer Templ. Mgt.";
@@ -320,8 +326,12 @@ codeunit 54060 "SI BP Projection Mgt."
         if not CustomerTempl.Get(TemplateCode) then
             Error('Шаблон покупця %1 не знайдено.', TemplateCode);
 
+        // Reuse the existing opposite-role Company Contact. The one-shot
+        // context prevents standard BC from creating a second Company Contact.
+        ContactInsertGuard.Prepare(Role."Business Partner No.", 'Customer');
         Customer.Init();
         Customer.Insert(true);
+        ContactInsertGuard.ClearPending();
 
         CustomerTemplMgt.ApplyCustomerTemplate(
             Customer,
