@@ -112,6 +112,9 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if LowerCase(OrderUuidText) <> LowerCase(Format(ProdRequest."Proktek Order UUID", 0, 4)) then
             Error('Production %1 належить іншому Proktek Order.', ProductionUuidText);
 
+        // Record.Init() does not reset primary key fields.
+        // The same var Fact is reused when importing multiple productions.
+        Clear(Fact);
         Fact.Init();
         Evaluate(Fact."Production UUID", ProductionUuidText);
         Fact."Production ID" := GetInteger(Root, 'productionId');
@@ -134,6 +137,8 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if FormulaUuidText <> '' then
             Evaluate(Fact."Formula UUID", FormulaUuidText);
         Fact."Formula Code" := CopyStr(GetNestedText(Root, 'formula', 'code'), 1, MaxStrLen(Fact."Formula Code"));
+        Fact."Simulation" := IsSimulated(Root);
+        ReadTruckFromCanonical(Root, Fact);
         Fact."Ordered Quantity M3" := ProdRequest.Quantity;
         Fact.Status := Fact.Status::Received;
         Fact."Ready for Posting" := true;
@@ -152,6 +157,49 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
 
         ValidateFact(Fact);
         RefreshOrderTotals(Fact."Order UUID");
+    end;
+
+    procedure RepairSimulationTruckFields(OrderUuid: Guid)
+    var
+        Fact: Record "SI Prok Production Fact";
+        Root: JsonObject;
+        CanonicalText: Text;
+    begin
+        Fact.SetRange("Order UUID", OrderUuid);
+        Fact.SetRange("Simulation", true);
+        Fact.SetRange("Truck Code", '');
+        if Fact.FindSet(true) then
+            repeat
+                CanonicalText := Fact.GetCanonicalJson();
+                if (CanonicalText <> '') and Root.ReadFrom(CanonicalText) then begin
+                    ReadTruckFromCanonical(Root, Fact);
+                    if Fact."Truck Code" <> '' then
+                        Fact.Modify(false);
+                end;
+                Clear(Root);
+            until Fact.Next() = 0;
+    end;
+
+    local procedure ReadTruckFromCanonical(Root: JsonObject; var Fact: Record "SI Prok Production Fact")
+    var
+        TransportToken: JsonToken;
+        TruckToken: JsonToken;
+        TransportJson: JsonObject;
+        TruckJson: JsonObject;
+    begin
+        if not Root.Get('transport', TransportToken) then
+            exit;
+        if not TransportToken.IsObject() then
+            exit;
+        TransportJson := TransportToken.AsObject();
+        if not TransportJson.Get('truck', TruckToken) then
+            exit;
+        if not TruckToken.IsObject() then
+            exit;
+        TruckJson := TruckToken.AsObject();
+        Fact."Truck UUID" := CopyStr(GetText(TruckJson, 'uuid'), 1, MaxStrLen(Fact."Truck UUID"));
+        Fact."Truck Code" := CopyStr(GetText(TruckJson, 'code'), 1, MaxStrLen(Fact."Truck Code"));
+        Fact."Truck Plate" := CopyStr(GetText(TruckJson, 'plate'), 1, MaxStrLen(Fact."Truck Plate"));
     end;
 
     local procedure InsertMaterial(Fact: Record "SI Prok Production Fact"; SequenceNo: Integer; MaterialJson: JsonObject)
@@ -233,7 +281,20 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Fact."Ready for Posting" := true;
             Fact."Validation Message" := 'Production Fact валідний та готовий до наступного етапу.';
         end;
+        if Fact."Simulation" then begin
+            Fact."Ready for Posting" := false;
+            Fact."Validation Message" := 'SIMULATION: заборонено проведення тестового факту.';
+        end;
         Fact.Modify(true);
+    end;
+
+    local procedure IsSimulated(Root: JsonObject): Boolean
+    var
+        Token: JsonToken;
+    begin
+        if Root.Get('simulated', Token) and Token.IsValue() then
+            exit(Token.AsValue().AsBoolean());
+        exit(false);
     end;
 
     local procedure RefreshOrderTotals(OrderUuid: Guid)

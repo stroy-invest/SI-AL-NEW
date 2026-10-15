@@ -38,6 +38,9 @@ page 57093 "SI Prok Production Fact Card"
             {
                 Caption = 'Кількість';
                 field("Ordered Quantity M3"; Rec."Ordered Quantity M3") { ApplicationArea = All; }
+                field("Simulation"; Rec."Simulation") { ApplicationArea = All; }
+                field("Truck Code"; Rec."Truck Code") { ApplicationArea = All; }
+                field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; }
                 field("Produced Quantity M3"; Rec."Produced Quantity M3") { ApplicationArea = All; }
                 field("Order Produced Total M3"; Rec."Order Produced Total M3") { ApplicationArea = All; }
                 field("Order Remaining M3"; Rec."Order Remaining M3") { ApplicationArea = All; }

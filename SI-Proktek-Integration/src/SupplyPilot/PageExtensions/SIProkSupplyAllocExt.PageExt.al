@@ -59,6 +59,24 @@ pageextension 57076 "SI Prok Supply Alloc Ext" extends "SI Supply Allocations"
                 end;
             }
 
+            action(SimulateTruckScenario)
+            {
+                ApplicationArea = All;
+                Caption = 'Імітувати вивантаження по заявці';
+                Image = TestReport;
+                Enabled = Rec."Supply Method" = Rec."Supply Method"::Production;
+                ToolTip = 'Sandbox: 27 замісів / 6 автоміксерів / 51,3 м³. Без проведення.';
+
+                trigger OnAction()
+                var
+                    Simulator: Codeunit "SI Prok Prod Simulator";
+                begin
+                    CurrPage.SaveRecord();
+                    Simulator.RunTruckScenario(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
+
             action(SimulateProktekProdPart1)
             {
                 ApplicationArea = All;

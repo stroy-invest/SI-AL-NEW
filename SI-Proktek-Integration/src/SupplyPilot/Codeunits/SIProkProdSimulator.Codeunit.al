@@ -62,6 +62,171 @@ codeunit 57077 "SI Prok Prod Simulator"
         ResultPage.RunModal();
     end;
 
+
+    // Sandbox-only, deterministic 6-truck / 27-mix scenario. Uses the production
+    // canonical parser and persistent fact pipeline, never the real Proktek API.
+    procedure RunTruckScenario(Allocation: Record "SI Supply Allocation")
+    var
+        ProdRequest: Record "SI Concrete Prod Request";
+        Fact: Record "SI Prok Production Fact";
+        FactMgt: Codeunit "SI Prok Prod Fact Mgt.";
+        ExportMgt: Codeunit "SI Prok Production Export Mgt.";
+        ProductionsText: Text;
+        DetailsText: Text;
+        MaterialsText: Text;
+        CanonicalText: Text;
+        ProductionRoot: JsonObject;
+        Batch: Record "SI Prok Sim Truck Batch";
+        DetailsRoot: JsonObject;
+        Production: JsonObject;
+        ProductionToken: JsonToken;
+        ProductionArray: JsonArray;
+        TruckNo: Integer;
+        MixNo: Integer;
+        GlobalMixNo: Integer;
+        MixCount: Integer;
+        TargetQty: Decimal;
+        MixQty: Decimal;
+        TotalQty: Decimal;
+        CreatedCount: Integer;
+        ExistingCount: Integer;
+        MixUuid: Text;
+    begin
+        if not IsSandbox() then
+            Error('Імітація виробництва дозволена виключно в Sandbox.');
+        ValidateAllocation(Allocation, ProdRequest);
+        if (ProdRequest."Source No." <> 'REQ-00055') or
+           (ProdRequest."Project No." <> 'SI-PRJ-00006') or
+           (ProdRequest."Customer No." <> 'CUST-000010') then
+            Error('Симулятор призначений лише для REQ-00055 / SI-PRJ-00006 / CUST-000010.');
+        if ProdRequest."Recipe Revision No." <> 2 then
+            Error('Цей тестовий сценарій призначений для Recipe Revision 2.');
+        if ProdRequest.Quantity <> 50 then
+            Error('Цей тестовий сценарій призначений для заявки на 50 м³.');
+        if not Confirm('Створити 27 тестових замісів для шести автоміксерів (51,3 м³)? Дані не можна проводити.', false) then
+            exit;
+
+        for TruckNo := 1 to 6 do begin
+            case TruckNo of
+                1: begin TargetQty := 11.6; MixCount := 6; end;
+                2: begin TargetQty := 11.4; MixCount := 6; end;
+                3: begin TargetQty := 7.2; MixCount := 4; end;
+                4: begin TargetQty := 7.6; MixCount := 4; end;
+                5: begin TargetQty := 7.7; MixCount := 4; end;
+                6: begin TargetQty := 5.8; MixCount := 3; end;
+            end;
+            for MixNo := 1 to MixCount do begin
+                GlobalMixNo += 1;
+                if MixNo < MixCount then
+                    MixQty := 2
+                else
+                    MixQty := TargetQty - 2 * (MixCount - 1);
+                if (MixQty <= 0) or (MixQty > 2) then
+                    Error('Некоректний обсяг замісу %1: %2 м³.', GlobalMixNo, MixQty);
+
+                BuildProduction01(ProdRequest, 1, 'TRUCK-SIM', ProductionsText, DetailsText, MaterialsText);
+                if not DetailsRoot.ReadFrom(DetailsText) then
+                    Error('Некоректний JSON ProductionDetails.');
+                if not DetailsRoot.Get('production', ProductionToken) then
+                    Error('ProductionDetails не містить production.');
+                Production := ProductionToken.AsObject();
+                MixUuid := StrSubstNo('77777777-7777-4777-8777-%1', Pad12(GlobalMixNo));
+                Production.Replace('uuid', MixUuid);
+                Production.Replace('kod', 910000 + GlobalMixNo);
+                Production.Replace('metrekup', MixQty);
+                Production.Replace('irsaliye_no', TruckNo);
+                Production.Add('kamyon_uuid', StrSubstNo('88888888-8888-4888-8888-%1', Pad12(TruckNo)));
+                Production.Add('kamyon_index', StrSubstNo('SIM-TRUCK-%1', TruckNo));
+                Production.Add('kamyon_plk', StrSubstNo('SIM-%1', TruckNo));
+                AdjustMaterialSlots(Production, MixQty, ProdRequest.Quantity * 0.75, GlobalMixNo);
+                DetailsRoot.Replace('production', Production);
+                DetailsRoot.WriteTo(DetailsText);
+                Clear(ProductionRoot);
+                Clear(ProductionArray);
+                ProductionArray.Add(Production);
+                ProductionRoot.Add('responseStatus', true);
+                ProductionRoot.Add('responseMessage', 'TRUCK-SIM');
+                ProductionRoot.Add('productions', ProductionArray);
+                ProductionRoot.Add('totalrecords', 1);
+                ProductionRoot.Add('totalmetercubes', MixQty);
+                ProductionRoot.Add('totalpages', 1);
+                ProductionRoot.Add('perpage', 100);
+                ProductionRoot.Add('page', 1);
+                ProductionRoot.WriteTo(ProductionsText);
+                ExportMgt.ParsePilotRawResponses(ProductionsText, DetailsText, MaterialsText, MixUuid, CanonicalText);
+                MarkCanonicalSimulation(CanonicalText);
+                if FactMgt.PersistCanonicalIfNew(ProdRequest, CanonicalText, Fact) then
+                    CreatedCount += 1
+                else
+                    ExistingCount += 1;
+                if not Fact."Simulation" then
+                    Error('Production UUID вже належить реальному факту.');
+                TotalQty += MixQty;
+            end;
+            if not Batch.Get(ProdRequest."Proktek Order UUID", TruckNo) then begin
+                Batch.Init();
+                Batch."Order UUID" := ProdRequest."Proktek Order UUID";
+                Batch."Truck No." := TruckNo;
+                Batch."Truck Code" := CopyStr(StrSubstNo('SIM-TRUCK-%1', TruckNo), 1, MaxStrLen(Batch."Truck Code"));
+                Batch."Truck Capacity M3" := 8;
+                if TruckNo <= 2 then
+                    Batch."Truck Capacity M3" := 12;
+                Batch.Insert(true);
+            end;
+            Batch."Supply Request No." := ProdRequest."Source No.";
+            Batch."Mix Count" := MixCount;
+            Batch."Produced M3" := TargetQty;
+            Batch.Modify(true);
+        end;
+        Commit();
+        Message('Симуляцію завершено: %1 замісів, 6 автоміксерів, %2 м³. Нових: %3, повторних: %4. Проведення заблоковано.', GlobalMixNo, TotalQty, CreatedCount, ExistingCount);
+        Batch.Reset();
+        Batch.SetRange("Order UUID", ProdRequest."Proktek Order UUID");
+        Page.Run(Page::"SI Prok Sim Truck Batches", Batch);
+    end;
+
+    local procedure AdjustMaterialSlots(var Production: JsonObject; MixQty: Decimal; BaseQty: Decimal; MixNumber: Integer)
+    var
+        Hopper: Integer;
+        SlotKey: Text;
+        Token: JsonToken;
+        RequestedKg: Decimal;
+        ActualKg: Decimal;
+        VariancePercent: Decimal;
+    begin
+        for Hopper := 1 to 6 do begin
+            SlotKey := StrSubstNo('agrega%1_ist', Hopper);
+            if Production.Get(SlotKey, Token) then begin
+                RequestedKg := Round(Token.AsValue().AsDecimal() * MixQty / BaseQty, 1, '=');
+                // Deterministic -4..+4%, non-zero deviation for every component.
+                VariancePercent := ((MixNumber * 3 + Hopper * 5) mod 9) - 4;
+                if VariancePercent = 0 then
+                    VariancePercent := 1;
+                ActualKg := Round(RequestedKg * (1 + VariancePercent / 100), 1, '=');
+                Production.Replace(SlotKey, RequestedKg);
+                Production.Replace(StrSubstNo('agrega%1_tart', Hopper), RequestedKg);
+                Production.Replace(StrSubstNo('agrega%1_ver', Hopper), ActualKg);
+            end;
+        end;
+    end;
+
+    local procedure IsSandbox(): Boolean
+    var
+        EnvironmentInformation: Codeunit "Environment Information";
+    begin
+        exit(EnvironmentInformation.IsSandbox());
+    end;
+
+    local procedure MarkCanonicalSimulation(var CanonicalText: Text)
+    var
+        Canonical: JsonObject;
+    begin
+        if not Canonical.ReadFrom(CanonicalText) then
+            Error('Invalid canonical JSON for simulation.');
+        Canonical.Add('simulated', true);
+        Canonical.WriteTo(CanonicalText);
+    end;
+
     local procedure ValidateAllocation(
         Allocation: Record "SI Supply Allocation";
         var ProdRequest: Record "SI Concrete Prod Request")

@@ -33,6 +33,10 @@ table 57091 "SI Prok Production Fact"
         field(250; "Validation Message"; Text[250]) { Caption = 'Результат перевірки'; }
         field(260; "Received At"; DateTime) { Caption = 'Отримано'; Editable = false; }
         field(270; "Received By"; Text[100]) { Caption = 'Отримав'; Editable = false; }
+        field(281; "Simulation"; Boolean) { Caption = 'Симуляція'; Editable = false; }
+        field(282; "Truck UUID"; Text[50]) { Caption = 'UUID автоміксера'; Editable = false; }
+        field(283; "Truck Code"; Text[100]) { Caption = 'Код автоміксера'; Editable = false; }
+        field(284; "Truck Plate"; Text[50]) { Caption = 'Номер автоміксера'; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 
