@@ -185,6 +185,29 @@ page 62103 "SI Recipe Revision Card"
                     Page.Run(Page::"SI Recipe Revision Card", NewRevision);
                 end;
             }
+            action(RebuildProductionBOM)
+            {
+                Caption = 'Створити / оновити виробничу специфікацію';
+                ApplicationArea = All;
+                Image = BOM;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedOnly = true;
+                Enabled = IsCertified;
+                ToolTip = 'Створити відсутню або звірити й оновити наявну виробничу специфікацію для сертифікованої ревізії без зміни її сертифікації та чинності.';
+
+                trigger OnAction()
+                var
+                    BOMProjection: Codeunit "SI Recipe BOM Projection";
+                begin
+                    Rec.TestField(Status, Rec.Status::Certified);
+                    if not Confirm(RebuildBOMQst, false) then
+                        exit;
+
+                    BOMProjection.ProjectRevision(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
             action(OpenProductionBOMVersion)
             {
                 Caption = 'Відкрити версію виробничої специфікації';
@@ -352,6 +375,7 @@ page 62103 "SI Recipe Revision Card"
         HasProjection: Boolean;
         ApplicabilityDisplay: Text[30];
         ProductionBOMVersionDisplay: Text[60];
+        RebuildBOMQst: Label 'Створити або оновити виробничу специфікацію для цієї сертифікованої ревізії?';
         CertifyQst: Label 'Рецептуру буде сертифіковано. Також для неї буде створено стандартну виробничу специфікацію. Продовжити дію?';
         DeactivateQst: Label 'Деактивувати ревізію %1 рецептури "%2"? Ревізія залишиться сертифікованою, але не зможе використовуватися до повторної активації.';
         ActivateQst: Label 'Активувати ревізію %1 рецептури "%2"? Якщо поточна дата входить у період її валідності, ревізія одразу стане актуальною.';
