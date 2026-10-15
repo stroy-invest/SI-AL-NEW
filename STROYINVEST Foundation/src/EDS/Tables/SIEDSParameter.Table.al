@@ -158,9 +158,10 @@ table 50418 "SI EDS Parameter"
                 Code);
 
         if Source = Source::Credential then begin
-            if Location <> Location::Header then
+            // 79-C1: Query credentials are configurable. Secure URI handling is delivered in 79-C2/C3.
+            if not (Location in [Location::Header, Location::Query]) then
                 Error(
-                    'Credential-параметр %1 дозволено використовувати лише в HTTP Header.',
+                    'Credential-параметр %1 дозволено лише в HTTP Header або Query.',
                     Code);
 
             if "Credential Code" = '' then

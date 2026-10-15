@@ -18,6 +18,7 @@ table 50485 "SI EDS Wiz Param Buffer"
         field(10; "Credential Code"; Code[50]) { Caption = 'Облікові дані'; }
         field(11; "Value Prefix"; Text[50]) { Caption = 'Префікс'; }
         field(12; Required; Boolean) { Caption = 'Обов''язковий'; }
+        field(14; "Operation Code"; Code[50]) { Caption = 'Операція'; }
         field(13; "Existing"; Boolean) { Caption = 'Наявний'; }
     }
     keys { key(PK; "Entry No.") { Clustered = true; } key(CodeKey; Code) { } }

@@ -6,6 +6,7 @@ codeunit 50477 "SI EDS Setup Wizard Mgt."
         CreateEndpoint: Boolean; EndpointCode: Code[50]; EndpointDescription: Text[250]; BaseUrl: Text[250]; EndpointPriority: Integer;
         CreateOperation: Boolean; OperationCode: Code[50]; OperationDescription: Text[250]; HttpMethod: Enum "SI EDS HTTP Method"; RelativePath: Text[250];
         RoutePriority: Integer;
+        CreateOperationGroup: Boolean; OperationGroupCode: Code[50]; OperationGroupDescription: Text[250]; OperationGroupPathPrefix: Text[250]; OperationGroupSequence: Integer; OperationGroupEnabled: Boolean;
         ConfigureCredential: Boolean; CreateCredential: Boolean; CredentialCode: Code[50]; CredentialDescription: Text[250]; CredentialType: Enum "SI EDS Credential Type"; CredentialSecret: Text; CredentialSecretDefined: Boolean;
         ConfigureParameter: Boolean; ParameterCode: Code[50]; ParameterSequence: Integer; ParameterExternalName: Text[100]; ParameterLocation: Enum "SI EDS Param. Location"; ParameterSource: Enum "SI EDS Param. Source"; ParameterRuntimeKey: Code[50]; ParameterFixedValue: Text[250]; ParameterCredentialCode: Code[50]; ParameterValuePrefix: Text[50]; ParameterRequired: Boolean;
         ConfigureRateLimit: Boolean; RateLimitSequence: Integer; RateLimitWindowSeconds: Integer; RateLimitMaxRequests: Integer; RateLimitSafetyMargin: Decimal; RateLimitDescription: Text[100])
@@ -14,6 +15,7 @@ codeunit 50477 "SI EDS Setup Wizard Mgt."
         Provider: Record "SI EDS Provider";
         Endpoint: Record "SI EDS Endpoint";
         Operation: Record "SI EDS Operation";
+        OperationGroup: Record "SI EDS Operation Group";
         Route: Record "SI EDS Provider Route";
         Credential: Record "SI EDS Credential";
         Parameter: Record "SI EDS Parameter";
@@ -56,6 +58,25 @@ codeunit 50477 "SI EDS Setup Wizard Mgt."
         end else
             Endpoint.Get(ProviderCode, EndpointCode);
 
+        if CreateOperationGroup then begin
+            if not CreateOperation then
+                Error('Нову групу можна створити лише разом із новою операцією.');
+            if OperationGroupCode = '' then
+                Error('Код групи операцій є обов''язковим.');
+            if OperationGroup.Get(ServiceCode, OperationGroupCode) then
+                Error('Група операцій %1 уже існує.', OperationGroupCode);
+            OperationGroup.Init();
+            OperationGroup."Service Code" := ServiceCode;
+            OperationGroup.Code := OperationGroupCode;
+            OperationGroup.Description := OperationGroupDescription;
+            OperationGroup."Path Prefix" := OperationGroupPathPrefix;
+            OperationGroup.Sequence := OperationGroupSequence;
+            OperationGroup.Enabled := OperationGroupEnabled;
+            OperationGroup.Insert(true);
+        end else
+            if OperationGroupCode <> '' then
+                OperationGroup.Get(ServiceCode, OperationGroupCode);
+
         if CreateOperation then begin
             Operation.Init();
             Operation."Service Code" := ServiceCode;
@@ -63,6 +84,7 @@ codeunit 50477 "SI EDS Setup Wizard Mgt."
             Operation.Description := OperationDescription;
             Operation."HTTP Method" := HttpMethod;
             Operation."Relative Path" := RelativePath;
+            Operation.Validate("Operation Group Code", OperationGroupCode);
             Operation.Enabled := true;
             Operation.Insert(true);
         end else
@@ -135,6 +157,109 @@ codeunit 50477 "SI EDS Setup Wizard Mgt."
         end;
     end;
 
+    procedure ValidateBatchDrafts(
+        ServiceCode: Code[50]; ProviderCode: Code[50]; RoutePriority: Integer;
+        LegacyOperationCode: Code[50]; LegacyOperationGroupCode: Code[50];
+        var DraftGroups: Record "SI EDS Wiz Group Buffer" temporary;
+        var DraftOperations: Record "SI EDS Wiz Operation Buffer" temporary)
+    var
+        Group: Record "SI EDS Operation Group";
+        Operation: Record "SI EDS Operation";
+    begin
+        if DraftGroups.FindSet() then
+            repeat
+                if DraftGroups."Service Code" <> ServiceCode then
+                    Error('Група %1 належить іншому сервісу.', DraftGroups.Code);
+                if DraftGroups.Code = '' then
+                    Error('У чернетці є група без коду.');
+                if Group.Get(ServiceCode, DraftGroups.Code) then
+                    Error('Група %1 вже існує. Не створюйте її повторно.', DraftGroups.Code);
+            until DraftGroups.Next() = 0;
+
+        if DraftOperations.FindSet() then
+            repeat
+                if DraftOperations."Service Code" <> ServiceCode then
+                    Error('Операція %1 належить іншому сервісу.', DraftOperations.Code);
+                if DraftOperations.Code = '' then
+                    Error('У чернетці є операція без коду.');
+                if DraftOperations.Code = LegacyOperationCode then begin
+                    if DraftOperations."Operation Group Code" <> LegacyOperationGroupCode then
+                        Error('Група операції %1 не збігається з основною операцією майстра.', DraftOperations.Code);
+                end else begin
+                    if Operation.Get(ServiceCode, DraftOperations.Code) then begin
+                        if not DraftOperations.Existing then
+                            Error('Операція %1 вже існує. Виберіть її як наявну.', DraftOperations.Code);
+                        if DraftOperations."Operation Group Code" <> Operation."Operation Group Code" then
+                            Error('Група наявної операції %1 не збігається з довідником.', DraftOperations.Code);
+                    end else
+                        if DraftOperations.Existing then
+                            Error('Позначена як наявна операція %1 не існує.', DraftOperations.Code);
+                    ValidateUniqueRoutePriority(ServiceCode, DraftOperations.Code, ProviderCode, RoutePriority);
+                end;
+                if DraftOperations."Operation Group Code" <> '' then
+                    if not Group.Get(ServiceCode, DraftOperations."Operation Group Code") then
+                        if not DraftGroups.Get(ServiceCode, DraftOperations."Operation Group Code") then
+                            if DraftOperations."Operation Group Code" <> LegacyOperationGroupCode then
+                                Error('Група %1 для операції %2 не існує в сервісі або чернетці.',
+                                    DraftOperations."Operation Group Code", DraftOperations.Code);
+            until DraftOperations.Next() = 0;
+    end;
+
+    procedure SaveBatchDrafts(
+        ServiceCode: Code[50]; ProviderCode: Code[50]; RoutePriority: Integer;
+        LegacyOperationCode: Code[50]; LegacyOperationGroupCode: Code[50];
+        var DraftGroups: Record "SI EDS Wiz Group Buffer" temporary;
+        var DraftOperations: Record "SI EDS Wiz Operation Buffer" temporary)
+    var
+        Group: Record "SI EDS Operation Group";
+        Operation: Record "SI EDS Operation";
+        Route: Record "SI EDS Provider Route";
+    begin
+        // Called after the legacy FinishSetup has created the service and the first operation.
+        // The caller must not COMMIT between FinishSetup and this procedure.
+        if DraftGroups.FindSet() then
+            repeat
+                if not Group.Get(ServiceCode, DraftGroups.Code) then begin
+                    Group.Init();
+                    Group."Service Code" := ServiceCode;
+                    Group.Code := DraftGroups.Code;
+                    Group.Description := DraftGroups.Description;
+                    Group."Path Prefix" := DraftGroups."Path Prefix";
+                    Group.Sequence := DraftGroups.Sequence;
+                    Group.Enabled := DraftGroups.Enabled;
+                    Group.Insert(true);
+                end else
+                    if DraftGroups.Code <> LegacyOperationGroupCode then
+                        Error('Група %1 з''явилася під час завершення майстра.', DraftGroups.Code);
+            until DraftGroups.Next() = 0;
+
+        if DraftOperations.FindSet() then
+            repeat
+                if DraftOperations.Code <> LegacyOperationCode then begin
+                    if not Operation.Get(ServiceCode, DraftOperations.Code) then begin
+                        Operation.Init();
+                        Operation."Service Code" := ServiceCode;
+                        Operation.Code := DraftOperations.Code;
+                        Operation.Description := DraftOperations.Description;
+                        Operation."HTTP Method" := DraftOperations."HTTP Method";
+                        Operation."Relative Path" := DraftOperations."Relative Path";
+                        Operation.Validate("Operation Group Code", DraftOperations."Operation Group Code");
+                        Operation.Enabled := DraftOperations.Enabled;
+                        Operation.Insert(true);
+                    end;
+                    if not Route.Get(ServiceCode, DraftOperations.Code, RoutePriority, ProviderCode) then begin
+                        Route.Init();
+                        Route."Service Code" := ServiceCode;
+                        Route."Operation Code" := DraftOperations.Code;
+                        Route.Priority := RoutePriority;
+                        Route."Provider Code" := ProviderCode;
+                        Route.Enabled := true;
+                        Route.Insert(true);
+                    end;
+                end;
+            until DraftOperations.Next() = 0;
+    end;
+
     procedure ValidateExtendedInput(
         ProviderCode: Code[50]; ConfigureCredential: Boolean; CreateCredential: Boolean; CredentialCode: Code[50]; CredentialSecretDefined: Boolean;
         ServiceCode: Code[50]; OperationCode: Code[50]; ConfigureParameter: Boolean; ParameterCode: Code[50]; ParameterExternalName: Text[100]; ParameterLocation: Enum "SI EDS Param. Location"; ParameterSource: Enum "SI EDS Param. Source"; ParameterRuntimeKey: Code[50]; ParameterCredentialCode: Code[50];
@@ -150,8 +275,6 @@ codeunit 50477 "SI EDS Setup Wizard Mgt."
             if CreateCredential then begin
                 if Credential.Get(ProviderCode, CredentialCode) then
                     Error('Облікові дані %1 / %2 уже наявні. Виберіть наявні.', ProviderCode, CredentialCode);
-                if not CredentialSecretDefined then
-                    Error('Для нових облікових даних необхідно встановити секрет.');
             end else
                 if not Credential.Get(ProviderCode, CredentialCode) then
                     Error('Облікові дані %1 / %2 не знайдено.', ProviderCode, CredentialCode);
@@ -163,8 +286,8 @@ codeunit 50477 "SI EDS Setup Wizard Mgt."
             if (ParameterSource = ParameterSource::Runtime) and (ParameterRuntimeKey = '') then
                 Error('Для runtime-параметра необхідно вказати Runtime key.');
             if ParameterSource = ParameterSource::Credential then begin
-                if ParameterLocation <> ParameterLocation::Header then
-                    Error('Credential-параметр дозволено використовувати лише в HTTP Header.');
+                if not (ParameterLocation in [ParameterLocation::Header, ParameterLocation::Query]) then
+                    Error('Credential-параметр дозволено лише в HTTP Header або Query.');
                 if ParameterCredentialCode = '' then
                     Error('Для credential-параметра необхідно вказати облікові дані.');
                 if ConfigureCredential and (ParameterCredentialCode = CredentialCode) then begin end

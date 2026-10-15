@@ -1,4 +1,4 @@
-page 50484 "SI EDS Setup Wizard"
+﻿page 50484 "SI EDS Setup Wizard"
 {
     PageType = NavigatePage;
     Caption = 'Майстер налаштування EDS';
@@ -202,6 +202,22 @@ page 50484 "SI EDS Setup Wizard"
                 Caption = '4. Операція і маршрут';
                 Visible = CurrentStep = 5;
 
+                group(MultiOperationDraft)
+                {
+                    Caption = 'Операції та групи сервісу';
+                    part(WizardGroupLines; "SI EDS Wiz Group Lines")
+                    {
+                        ApplicationArea = All;
+                    }
+                    part(WizardOperationLines; "SI EDS Wiz Operation Lines")
+                    {
+                        ApplicationArea = All;
+                    }
+                }
+                group(LegacyOperationFields)
+                {
+                    Caption = 'Поля сумісності (одна операція)';
+                    Visible = false;
                 field(CreateOperation; CreateOperation)
                 {
                     ApplicationArea = All;
@@ -212,7 +228,83 @@ page 50484 "SI EDS Setup Wizard"
                         Clear(OperationCode);
                         Clear(OperationDescription);
                         Clear(RelativePath);
+                        Clear(OperationGroupCode);
+                        CreateOperationGroup := false;
                     end;
+                }
+                field(CreateOperationGroup; CreateOperationGroup)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Створити нову групу операцій';
+                    ToolTip = 'Вимкніть для вибору наявної групи або залиште код порожнім для операції без групи.';
+                    trigger OnValidate()
+                    begin
+                        Clear(OperationGroupCode);
+                        Clear(OperationGroupDescription);
+                        Clear(OperationGroupPathPrefix);
+                        OperationGroupSequence := 0;
+                        OperationGroupEnabled := true;
+                    end;
+                }
+                field(OperationGroupCode; OperationGroupCode)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Група операцій';
+                    trigger OnLookup(var Text: Text): Boolean
+                    var
+                        OperationGroup: Record "SI EDS Operation Group";
+                    begin
+                        if CreateOperationGroup then
+                            exit(false);
+                        OperationGroup.SetRange("Service Code", ServiceCode);
+                        if Page.RunModal(Page::"SI EDS Operation Groups", OperationGroup) = Action::LookupOK then begin
+                            OperationGroupCode := OperationGroup.Code;
+                            OperationGroupDescription := OperationGroup.Description;
+                            OperationGroupPathPrefix := OperationGroup."Path Prefix";
+                            OperationGroupSequence := OperationGroup.Sequence;
+                            OperationGroupEnabled := OperationGroup.Enabled;
+                            Text := OperationGroup.Code;
+                            exit(true);
+                        end;
+                        exit(false);
+                    end;
+                    trigger OnValidate()
+                    var
+                        OperationGroup: Record "SI EDS Operation Group";
+                    begin
+                        if CreateOperationGroup or (OperationGroupCode = '') then
+                            exit;
+                        if not OperationGroup.Get(ServiceCode, OperationGroupCode) then
+                            Error('Групу операцій %1 для сервісу %2 не знайдено.', OperationGroupCode, ServiceCode);
+                        OperationGroupDescription := OperationGroup.Description;
+                        OperationGroupPathPrefix := OperationGroup."Path Prefix";
+                        OperationGroupSequence := OperationGroup.Sequence;
+                        OperationGroupEnabled := OperationGroup.Enabled;
+                    end;
+                }
+                field(OperationGroupDescription; OperationGroupDescription)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Опис групи';
+                    Editable = CreateOperationGroup;
+                }
+                field(OperationGroupPathPrefix; OperationGroupPathPrefix)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Префікс шляху групи';
+                    Editable = CreateOperationGroup;
+                }
+                field(OperationGroupSequence; OperationGroupSequence)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Послідовність групи';
+                    Editable = CreateOperationGroup;
+                }
+                field(OperationGroupEnabled; OperationGroupEnabled)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Групу увімкнено';
+                    Editable = CreateOperationGroup;
                 }
                 field(OperationCode; OperationCode)
                 {
@@ -230,6 +322,9 @@ page 50484 "SI EDS Setup Wizard"
                             OperationDescription := Operation.Description;
                             HttpMethod := Operation."HTTP Method";
                             RelativePath := Operation."Relative Path";
+                            OperationGroupCode := Operation."Operation Group Code";
+                            CreateOperationGroup := false;
+                            LoadSelectedOperationGroup();
                             Text := Operation.Code;
                             exit(true);
                         end;
@@ -253,6 +348,7 @@ page 50484 "SI EDS Setup Wizard"
                     ApplicationArea = All;
                     Caption = 'Відносний шлях';
                     Editable = CreateOperation;
+                }
                 }
                 field(RoutePriority; RoutePriority)
                 {
@@ -462,20 +558,38 @@ page 50484 "SI EDS Setup Wizard"
                 var
                     WizardMgt: Codeunit "SI EDS Setup Wizard Mgt.";
                 begin
+                    ResolvePrimaryOperationFromDraft();
                     ValidateAll();
+                    CurrPage.WizardGroupLines.Page.GetDraftGroups(DraftGroups);
+                    CurrPage.WizardOperationLines.Page.GetDraftOperations(DraftOperations);
+                    WizardMgt.ValidateBatchDrafts(ServiceCode, ProviderCode, RoutePriority,
+                        OperationCode, OperationGroupCode, DraftGroups, DraftOperations);
+                    CurrPage.ParameterLines.Page.ValidateOperationReferences(ServiceCode, DraftOperations);
+                    // A new credential may be configured now and supplied with a secret later.
+                    // Confirm before any persistent EDS records are created.
+                    if ConfigureCredential and CreateCredential and not CredentialSecretDefined then
+                        if not Confirm(
+                            'Секрет для облікових даних %1 не встановлено. Конфігурацію буде збережено без секрету; його можна додати пізніше. Продовжити?',
+                            false, CredentialCode)
+                        then
+                            exit;
                     WizardMgt.FinishSetup(
                         CreateService, ServiceCode, ServiceDescription,
                         CreateProvider, ProviderCode, ProviderDescription,
                         CreateEndpoint, EndpointCode, EndpointDescription, BaseUrl, EndpointPriority,
                         CreateOperation, OperationCode, OperationDescription, HttpMethod, RelativePath,
                         RoutePriority,
+                        CreateOperationGroup, OperationGroupCode, OperationGroupDescription, OperationGroupPathPrefix, OperationGroupSequence, OperationGroupEnabled,
                         ConfigureCredential, CreateCredential, CredentialCode, CredentialDescription, CredentialType, CredentialSecret, CredentialSecretDefined,
                         false, '', 0, '', ParameterLocation, ParameterSource, '', '', '', '', false,
                         false, 0, 0, 0, 80, '');
-                    CurrPage.ParameterLines.Page.FinishToEDS(ServiceCode, OperationCode, ProviderCode);
+                    WizardMgt.SaveBatchDrafts(ServiceCode, ProviderCode, RoutePriority,
+                        OperationCode, OperationGroupCode, DraftGroups, DraftOperations);
+                    CurrPage.ParameterLines.Page.FinishToEDS(ServiceCode, ProviderCode);
                     CurrPage.RateLimitLines.Page.FinishToEDS(ProviderCode);
-                    Message('Налаштування EDS успішно збережено. Зараз буде виконано перевірку створеної конфігурації.');
-                    OpenHealthCheck();
+                    // Do not open a modal page after writes in the same transaction.
+                    // The health check can be launched separately after the wizard closes.
+                    Message('Налаштування EDS успішно збережено. Для перевірки відкрийте сторінку «SI EDS Health Check» окремо.');
                     CurrPage.Close();
                 end;
             }
@@ -497,7 +611,9 @@ page 50484 "SI EDS Setup Wizard"
         RateLimitSafetyMargin := 80;
         CredentialSecretStatus := 'Не задано';
         WelcomeText := 'Майстер допоможе створити нову або доповнити наявну конфігурацію EDS. На кожному етапі можна використати наявний елемент або створити новий. Зміни записуються лише після завершення майстра.';
-        RoutePriorityHint := 'Пріоритет є обов''язковою частиною маршрутизації EDS. Менше значення — вищий пріоритет. Не залишайте порядок primary → fallback невизначеним.';
+        RoutePriorityDefined := true; // Zero is a valid default priority.
+        OperationGroupEnabled := true;
+        RoutePriorityHint := 'Пріоритет 0 є допустимим і має найвищий пріоритет. Менше значення — вищий пріоритет.';
         UpdateStep();
     end;
 
@@ -530,7 +646,7 @@ page 50484 "SI EDS Setup Wizard"
             Clear(ProviderDescription);
             Clear(OperationCode);
             Clear(OperationDescription);
-            RoutePriorityDefined := false;
+            RoutePriorityDefined := true;
             CurrentStep := 3;
             exit;
         end;
@@ -546,6 +662,9 @@ page 50484 "SI EDS Setup Wizard"
             OperationDescription := Operation.Description;
             HttpMethod := Operation."HTTP Method";
             RelativePath := Operation."Relative Path";
+            OperationGroupCode := Operation."Operation Group Code";
+            CreateOperationGroup := false;
+            LoadSelectedOperationGroup();
         end;
 
         RoutePriority := Route.Priority;
@@ -594,6 +713,45 @@ page 50484 "SI EDS Setup Wizard"
         CurrentStep := 6;
     end;
 
+    local procedure LoadSelectedOperationGroup()
+    var
+        OperationGroup: Record "SI EDS Operation Group";
+    begin
+        Clear(OperationGroupDescription);
+        Clear(OperationGroupPathPrefix);
+        OperationGroupSequence := 0;
+        OperationGroupEnabled := true;
+        if (OperationGroupCode <> '') and OperationGroup.Get(ServiceCode, OperationGroupCode) then begin
+            OperationGroupDescription := OperationGroup.Description;
+            OperationGroupPathPrefix := OperationGroup."Path Prefix";
+            OperationGroupSequence := OperationGroup.Sequence;
+            OperationGroupEnabled := OperationGroup.Enabled;
+        end;
+    end;
+
+    local procedure ValidateOperationGroupSelection()
+    var
+        OperationGroup: Record "SI EDS Operation Group";
+        Operation: Record "SI EDS Operation";
+    begin
+        if CreateOperationGroup then begin
+            if not CreateOperation then
+                Error('Нову групу можна створити лише разом із новою операцією.');
+            if OperationGroupCode = '' then
+                Error('Вкажіть код нової групи операцій.');
+            if OperationGroup.Get(ServiceCode, OperationGroupCode) then
+                Error('Група операцій %1 уже існує.', OperationGroupCode);
+        end else
+            if (OperationGroupCode <> '') and (not OperationGroup.Get(ServiceCode, OperationGroupCode)) then
+                Error('Групу операцій %1 не знайдено.', OperationGroupCode);
+        if not CreateOperation then begin
+            if not Operation.Get(ServiceCode, OperationCode) then
+                Error('Операцію %1 не знайдено.', OperationCode);
+            if Operation."Operation Group Code" <> OperationGroupCode then
+                Error('Для наявної операції групу змінюють у картці операції, а не через майстер.');
+        end;
+    end;
+
     local procedure ValidateCurrentStep()
     begin
         case CurrentStep of
@@ -612,19 +770,73 @@ page 50484 "SI EDS Setup Wizard"
                 end;
             5:
                 begin
+                    ResolvePrimaryOperationFromDraft();
                     if OperationCode = '' then
                         Error('Вкажіть операцію EDS.');
-                    if not RoutePriorityDefined then
-                        Error('Обов''язково задайте пріоритет провайдера. Менше значення означає вищий пріоритет.');
+                    ValidateOperationGroupSelection();
                 end;
             6:
                 if ConfigureCredential and (CredentialCode = '') then
                     Error('Вкажіть код облікових даних.');
             7:
-                CurrPage.ParameterLines.Page.ValidateLines(ProviderCode, CredentialCode, ConfigureCredential and CreateCredential);
+                begin
+                    CurrPage.ParameterLines.Page.ValidateLines(ProviderCode, CredentialCode, ConfigureCredential and CreateCredential);
+                    CurrPage.WizardOperationLines.Page.GetDraftOperations(DraftOperations);
+                    CurrPage.ParameterLines.Page.ValidateOperationReferences(ServiceCode, DraftOperations);
+                end;
             8:
                 CurrPage.RateLimitLines.Page.ValidateLines();
         end;
+    end;
+
+    local procedure ResolvePrimaryOperationFromDraft()
+    var
+        PrimaryDraft: Record "SI EDS Wiz Operation Buffer" temporary;
+        GroupDraft: Record "SI EDS Wiz Group Buffer" temporary;
+        ExistingGroup: Record "SI EDS Operation Group";
+    begin
+        // B2 Fix 1: the legacy FinishSetup still requires one primary operation.
+        // Select it from the temporary multi-operation list, without writing to EDS.
+        // Explicitly selected legacy operation takes precedence for compatibility.
+        if OperationCode <> '' then
+            exit;
+
+        CurrPage.WizardOperationLines.Page.GetDraftOperations(PrimaryDraft);
+        PrimaryDraft.SetRange("Service Code", ServiceCode);
+        if not PrimaryDraft.FindFirst() then
+            exit;
+        if PrimaryDraft.Code = '' then
+            Error('Заповніть код першої підготовленої операції.');
+
+        OperationCode := PrimaryDraft.Code;
+        OperationDescription := PrimaryDraft.Description;
+        HttpMethod := PrimaryDraft."HTTP Method";
+        RelativePath := PrimaryDraft."Relative Path";
+        OperationGroupCode := PrimaryDraft."Operation Group Code";
+        CreateOperation := not PrimaryDraft.Existing;
+
+        CreateOperationGroup := false;
+        Clear(OperationGroupDescription);
+        Clear(OperationGroupPathPrefix);
+        OperationGroupSequence := 0;
+        OperationGroupEnabled := true;
+        if OperationGroupCode = '' then
+            exit;
+
+        CurrPage.WizardGroupLines.Page.GetDraftGroups(GroupDraft);
+        if GroupDraft.Get(ServiceCode, OperationGroupCode) then begin
+            CreateOperationGroup := true;
+            OperationGroupDescription := GroupDraft.Description;
+            OperationGroupPathPrefix := GroupDraft."Path Prefix";
+            OperationGroupSequence := GroupDraft.Sequence;
+            OperationGroupEnabled := GroupDraft.Enabled;
+        end else
+            if ExistingGroup.Get(ServiceCode, OperationGroupCode) then begin
+                OperationGroupDescription := ExistingGroup.Description;
+                OperationGroupPathPrefix := ExistingGroup."Path Prefix";
+                OperationGroupSequence := ExistingGroup.Sequence;
+                OperationGroupEnabled := ExistingGroup.Enabled;
+            end;
     end;
 
     local procedure ValidateAll()
@@ -639,14 +851,15 @@ page 50484 "SI EDS Setup Wizard"
             Error('Вкажіть точку підключення EDS.');
         if OperationCode = '' then
             Error('Вкажіть операцію EDS.');
-        if not RoutePriorityDefined then
-            Error('Пріоритет провайдера не задано. Налаштування маршрутизації не може бути завершене.');
+        ValidateOperationGroupSelection();
         WizardMgt.ValidateUniqueRoutePriority(ServiceCode, OperationCode, ProviderCode, RoutePriority);
         WizardMgt.ValidateExtendedInput(
             ProviderCode, ConfigureCredential, CreateCredential, CredentialCode, CredentialSecretDefined,
             ServiceCode, OperationCode, false, '', '', ParameterLocation, ParameterSource, '', '',
             false, 0, 0, 0, 80);
         CurrPage.ParameterLines.Page.ValidateLines(ProviderCode, CredentialCode, ConfigureCredential and CreateCredential);
+        CurrPage.WizardOperationLines.Page.GetDraftOperations(DraftOperations);
+        CurrPage.ParameterLines.Page.ValidateOperationReferences(ServiceCode, DraftOperations);
         CurrPage.RateLimitLines.Page.ValidateLines();
     end;
 
@@ -655,12 +868,39 @@ page 50484 "SI EDS Setup Wizard"
         SummaryText :=
             StrSubstNo('Сервіс: %1 (%2)\\Провайдер: %3 (%4)\\Точка підключення: %5 (%6)\\Операція: %7 (%8)\\Пріоритет провайдера: %9',
                 ServiceCode, StateText(CreateService), ProviderCode, StateText(CreateProvider), EndpointCode, StateText(CreateEndpoint), OperationCode, StateText(CreateOperation), RoutePriority);
+        SummaryText += '\\Група операцій: ' + OperationGroupCode;
         SummaryText += '\\Облікові дані: ' + CredentialSummary();
         SummaryText += '\\\\Параметри операції:';
         SummaryText += CurrPage.ParameterLines.Page.BuildSummary();
         SummaryText += '\\\\Ліміти запитів:';
         SummaryText += CurrPage.RateLimitLines.Page.BuildSummary();
         SummaryText += '\\\\Менше значення означає вищий пріоритет. Зміни будуть записані лише після завершення майстра.';
+    end;
+
+    local procedure BuildDraftSummary(): Text
+    var
+        Groups: Record "SI EDS Wiz Group Buffer" temporary;
+        Operations: Record "SI EDS Wiz Operation Buffer" temporary;
+        ResultText: Text;
+        GroupLabel: Text;
+    begin
+        CurrPage.WizardGroupLines.Page.GetDraftGroups(Groups);
+        CurrPage.WizardOperationLines.Page.GetDraftOperations(Operations);
+        ResultText := '\\Групи операцій:';
+        if Groups.FindSet() then
+            repeat
+                ResultText += StrSubstNo('\\  %1 — %2', Groups.Code, Groups.Description);
+            until Groups.Next() = 0;
+        ResultText += '\\Операції:';
+        if Operations.FindSet() then
+            repeat
+                GroupLabel := Operations."Operation Group Code";
+                if GroupLabel = '' then
+                    GroupLabel := '(без групи)';
+                ResultText += StrSubstNo('\\  %1 / %2 / %3 / %4', Operations.Code,
+                    GroupLabel, Format(Operations."HTTP Method"), Operations."Relative Path");
+            until Operations.Next() = 0;
+        exit(ResultText);
     end;
 
     local procedure StateText(CreateNew: Boolean): Text
@@ -687,14 +927,6 @@ page 50484 "SI EDS Setup Wizard"
         exit(StrSubstNo('%1 (наявний)', CredentialCode));
     end;
 
-    local procedure OpenHealthCheck()
-    var
-        HealthCheckPage: Page "SI EDS Health Check";
-    begin
-        HealthCheckPage.SetConfigurationContext(ServiceCode, OperationCode, ProviderCode);
-        HealthCheckPage.RunModal();
-    end;
-
     local procedure OptionalRateState(): Text
     begin
         if not ConfigureRateLimit then
@@ -704,10 +936,18 @@ page 50484 "SI EDS Setup Wizard"
 
     local procedure UpdateStep()
     begin
+        if CurrentStep = 7 then
+            CurrPage.ParameterLines.Page.SetDefaultOperationCode(OperationCode);
+        if CurrentStep = 5 then begin
+            CurrPage.WizardGroupLines.Page.SetServiceCode(ServiceCode);
+            CurrPage.WizardOperationLines.Page.SetServiceCode(ServiceCode);
+        end;
         CurrPage.Update(false);
     end;
 
     var
+        DraftGroups: Record "SI EDS Wiz Group Buffer" temporary;
+        DraftOperations: Record "SI EDS Wiz Operation Buffer" temporary;
         CurrentStep: Integer;
         WelcomeText: Text[1024];
         CreateService: Boolean;
@@ -727,6 +967,12 @@ page 50484 "SI EDS Setup Wizard"
         HttpMethod: Enum "SI EDS HTTP Method";
         RelativePath: Text[250];
         RoutePriority: Integer;
+        CreateOperationGroup: Boolean;
+        OperationGroupCode: Code[50];
+        OperationGroupDescription: Text[250];
+        OperationGroupPathPrefix: Text[250];
+        OperationGroupSequence: Integer;
+        OperationGroupEnabled: Boolean;
         RoutePriorityDefined: Boolean;
         RoutePriorityHint: Text[500];
         ConfigureCredential: Boolean;
