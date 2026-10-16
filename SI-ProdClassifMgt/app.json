@@ -18,6 +18,18 @@
             "version": "27.22.6496.0"
         },
         {
+            "id": "031c7c7f-e6c6-4d92-9c89-74cfdfd81746",
+            "name": "IW Foundation",
+            "publisher": "Innoware Ukraine LLC",
+            "version": "27.16.6473.0"
+        },
+        {
+            "id": "d0edbc8f-64e6-4811-ac5f-9e0244de3233",
+            "name": "IW Ukrainian Localization VAT",
+            "publisher": "Innoware Ukraine LLC",
+            "version": "27.6.6488.0"
+        },			
+        {
             "id": "e7e9d6bb-52d8-4f68-93ad-d8c390cbbf73",
             "name": "SI Construction Project",
             "publisher": "STROYINVEST",
