@@ -41,10 +41,15 @@ codeunit 50430 "SI EDS HTTP Transport"
         RequestUrl :=
             BuildUrl(RequestBuffer);
 
+        // Diagnostic URL is set before credential resolution.
         SetRequestUrl(
             RequestBuffer,
             ResponseBuffer,
-            RequestUrl);
+            BuildDiagnosticUrl(RequestBuffer, RequestUrl));
+
+        // 79-C2 is compile-only. 79-C3 must audit all error/log paths
+        // before allowing an HTTP request containing query credentials.
+        RequestUrl := AppendCredentialQueryParameters(RequestBuffer, RequestUrl);
 
         RateLimitMgt.WaitForSlot(RequestBuffer."Provider Code");
 
@@ -54,6 +59,19 @@ codeunit 50430 "SI EDS HTTP Transport"
         case RequestBuffer."HTTP Method" of
             RequestBuffer."HTTP Method"::GET:
                 begin
+                    if HasEnabledQueryCredential(RequestBuffer) then begin
+                        if not TryGetWithQueryCredential(
+                            HttpClient, RequestUrl, HttpResponse)
+                        then begin
+                            FinishedAt := CurrentDateTime;
+                            SetTransportFailure(
+                                ResponseBuffer, StartedAt, FinishedAt,
+                                'HTTP_SEND_FAILED',
+                                'Не вдалося виконати HTTP-запит до зовнішнього сервісу.');
+                            ResponseBuffer.Insert();
+                            exit;
+                        end;
+                    end else
                     if not HttpClient.Get(
                         RequestUrl,
                         HttpResponse)
@@ -85,31 +103,36 @@ codeunit 50430 "SI EDS HTTP Transport"
                         HttpContent,
                         RequestBuffer."Content Type");
 
-                    HttpRequest.SetRequestUri(
-                        RequestUrl);
+                    if HasEnabledQueryCredential(RequestBuffer) then begin
+                        if not TryPostWithQueryCredential(
+                            HttpClient, HttpRequest, HttpContent,
+                            RequestUrl, HttpResponse)
+                        then begin
+                            FinishedAt := CurrentDateTime;
+                            SetTransportFailure(
+                                ResponseBuffer, StartedAt, FinishedAt,
+                                'HTTP_SEND_FAILED',
+                                'Не вдалося виконати HTTP-запит до зовнішнього сервісу.');
+                            ResponseBuffer.Insert();
+                            exit;
+                        end;
+                    end else begin
+                        HttpRequest.SetRequestUri(RequestUrl);
+                        HttpRequest.Method('POST');
+                        HttpRequest.Content(HttpContent);
 
-                    HttpRequest.Method(
-                        'POST');
-
-                    HttpRequest.Content(
-                        HttpContent);
-
-                    if not HttpClient.Send(
-                        HttpRequest,
-                        HttpResponse)
-                    then begin
-                        FinishedAt :=
-                            CurrentDateTime;
-
-                        SetTransportFailure(
-                            ResponseBuffer,
-                            StartedAt,
-                            FinishedAt,
-                            'HTTP_SEND_FAILED',
-                            'Не вдалося виконати HTTP-запит до зовнішнього сервісу.');
-
-                        ResponseBuffer.Insert();
-                        exit;
+                        if not HttpClient.Send(
+                            HttpRequest,
+                            HttpResponse)
+                        then begin
+                            FinishedAt := CurrentDateTime;
+                            SetTransportFailure(
+                                ResponseBuffer, StartedAt, FinishedAt,
+                                'HTTP_SEND_FAILED',
+                                'Не вдалося виконати HTTP-запит до зовнішнього сервісу.');
+                            ResponseBuffer.Insert();
+                            exit;
+                        end;
                     end;
                 end;
 
@@ -135,7 +158,8 @@ codeunit 50430 "SI EDS HTTP Transport"
             HttpResponse,
             StartedAt,
             ResponseBuffer,
-            ResponseText);
+            ResponseText,
+            HasEnabledQueryCredential(RequestBuffer));
     end;
 
     procedure ExecuteSecretBody(
@@ -181,10 +205,15 @@ codeunit 50430 "SI EDS HTTP Transport"
         RequestUrl :=
             BuildUrl(RequestBuffer);
 
+        // Diagnostic URL is set before credential resolution.
         SetRequestUrl(
             RequestBuffer,
             ResponseBuffer,
-            RequestUrl);
+            BuildDiagnosticUrl(RequestBuffer, RequestUrl));
+
+        // 79-C2 is compile-only. 79-C3 must audit all error/log paths
+        // before allowing an HTTP request containing query credentials.
+        RequestUrl := AppendCredentialQueryParameters(RequestBuffer, RequestUrl);
 
         RateLimitMgt.WaitForSlot(RequestBuffer."Provider Code");
 
@@ -215,38 +244,71 @@ codeunit 50430 "SI EDS HTTP Transport"
             HttpContent,
             RequestBuffer."Content Type");
 
-        HttpRequest.SetRequestUri(
-            RequestUrl);
+        if HasEnabledQueryCredential(RequestBuffer) then begin
+            if not TryPostWithQueryCredential(
+                HttpClient, HttpRequest, HttpContent,
+                RequestUrl, HttpResponse)
+            then begin
+                FinishedAt := CurrentDateTime;
+                SetTransportFailure(
+                    ResponseBuffer, StartedAt, FinishedAt,
+                    'HTTP_SEND_FAILED',
+                    'Не вдалося виконати HTTP-запит до зовнішнього сервісу.');
+                ResponseBuffer.Insert();
+                exit;
+            end;
+        end else begin
+            HttpRequest.SetRequestUri(RequestUrl);
+            HttpRequest.Method('POST');
+            HttpRequest.Content(HttpContent);
 
-        HttpRequest.Method(
-            'POST');
-
-        HttpRequest.Content(
-            HttpContent);
-
-        if not HttpClient.Send(
-            HttpRequest,
-            HttpResponse)
-        then begin
-            FinishedAt :=
-                CurrentDateTime;
-
-            SetTransportFailure(
-                ResponseBuffer,
-                StartedAt,
-                FinishedAt,
-                'HTTP_SEND_FAILED',
-                'Не вдалося виконати HTTP-запит до зовнішнього сервісу.');
-
-            ResponseBuffer.Insert();
-            exit;
+            if not HttpClient.Send(HttpRequest, HttpResponse) then begin
+                FinishedAt := CurrentDateTime;
+                SetTransportFailure(
+                    ResponseBuffer, StartedAt, FinishedAt,
+                    'HTTP_SEND_FAILED',
+                    'Не вдалося виконати HTTP-запит до зовнішнього сервісу.');
+                ResponseBuffer.Insert();
+                exit;
+            end;
         end;
 
         FinishResponse(
             HttpResponse,
             StartedAt,
             ResponseBuffer,
-            ResponseText);
+            ResponseText,
+            HasEnabledQueryCredential(RequestBuffer));
+    end;
+
+    // Fix 5: a narrow exception boundary for query-credential HTTP calls.
+    // Never propagate GetLastErrorText() or a raw request URI to EDS buffers.
+    // This does not control internal Business Central platform telemetry.
+    [TryFunction]
+    [NonDebuggable]
+    local procedure TryGetWithQueryCredential(
+        var Client: HttpClient;
+        RequestUrl: Text;
+        var Response: HttpResponseMessage)
+    begin
+        if not Client.Get(RequestUrl, Response) then
+            Error('EDS HTTP request failed.');
+    end;
+
+    [TryFunction]
+    [NonDebuggable]
+    local procedure TryPostWithQueryCredential(
+        var Client: HttpClient;
+        var Request: HttpRequestMessage;
+        var Content: HttpContent;
+        RequestUrl: Text;
+        var Response: HttpResponseMessage)
+    begin
+        Request.SetRequestUri(RequestUrl);
+        Request.Method('POST');
+        Request.Content(Content);
+        if not Client.Send(Request, Response) then
+            Error('EDS HTTP request failed.');
     end;
 
     local procedure InitializeResponseBuffer(
@@ -300,7 +362,8 @@ codeunit 50430 "SI EDS HTTP Transport"
         var HttpResponse: HttpResponseMessage;
         StartedAt: DateTime;
         var ResponseBuffer: Record "SI EDS Response Buffer" temporary;
-        var ResponseText: Text)
+        var ResponseText: Text;
+        HasQueryCredential: Boolean)
     var
         FinishedAt: DateTime;
         RateLimitMgt: Codeunit "SI EDS Rate Limit Mgt.";
@@ -316,12 +379,16 @@ codeunit 50430 "SI EDS HTTP Transport"
         ResponseBuffer."HTTP Status Code" :=
             HttpResponse.HttpStatusCode();
 
-        ResponseBuffer."HTTP Reason Phrase" :=
-            CopyStr(
-                HttpResponse.ReasonPhrase(),
-                1,
-                MaxStrLen(
-                    ResponseBuffer."HTTP Reason Phrase"));
+        // C7 Fix 1: upstream reason phrases are untrusted and may echo
+        // the requested URI, including query credentials.
+        if HasQueryCredential then
+            ResponseBuffer."HTTP Reason Phrase" := 'REDACTED'
+        else
+            ResponseBuffer."HTTP Reason Phrase" :=
+                CopyStr(
+                    HttpResponse.ReasonPhrase(),
+                    1,
+                    MaxStrLen(ResponseBuffer."HTTP Reason Phrase"));
 
         ResponseBuffer."Blocked By Environment" :=
             HttpResponse.IsBlockedByEnvironment();
@@ -339,9 +406,14 @@ codeunit 50430 "SI EDS HTTP Transport"
         // in the inserted temporary-table row.
         ResponseBuffer.Insert();
 
-        ResponseBuffer.SetHeaders(
-            BuildResponseHeadersText(
-                HttpResponse));
+        // C7 Fix 1: never persist raw response headers for an operation
+        // that sends a credential in the query string (e.g. Location).
+        if HasQueryCredential then
+            ResponseBuffer.SetHeaders('REDACTED: Query Credential operation')
+        else
+            ResponseBuffer.SetHeaders(
+                BuildResponseHeadersText(
+                    HttpResponse));
 
         if ResponseText <> '' then
             ResponseBuffer.SetBody(
@@ -592,6 +664,115 @@ codeunit 50430 "SI EDS HTTP Transport"
             (NormalizedName = 'SET-COOKIE') or
             (NormalizedName = 'COOKIE'));
     end;
+
+    local procedure HasEnabledQueryCredential(
+        RequestBuffer: Record "SI EDS Request Buffer" temporary): Boolean
+    var
+        EDSParameter: Record "SI EDS Parameter";
+    begin
+        EDSParameter.SetRange("Service Code", RequestBuffer."Service Code");
+        EDSParameter.SetRange("Operation Code", RequestBuffer."Operation Code");
+        EDSParameter.SetRange("Provider Code", RequestBuffer."Provider Code");
+        EDSParameter.SetRange(Location, EDSParameter.Location::Query);
+        EDSParameter.SetRange(Source, EDSParameter.Source::Credential);
+        EDSParameter.SetRange(Enabled, true);
+        exit(not EDSParameter.IsEmpty());
+    end;
+
+    local procedure BuildDiagnosticUrl(
+        RequestBuffer: Record "SI EDS Request Buffer" temporary;
+        BaseRequestUrl: Text): Text
+    var
+        EDSParameter: Record "SI EDS Parameter";
+        QueryPosition: Integer;
+    begin
+        EDSParameter.SetRange("Service Code", RequestBuffer."Service Code");
+        EDSParameter.SetRange("Operation Code", RequestBuffer."Operation Code");
+        EDSParameter.SetRange("Provider Code", RequestBuffer."Provider Code");
+        EDSParameter.SetRange(Location, EDSParameter.Location::Query);
+        EDSParameter.SetRange(Source, EDSParameter.Source::Credential);
+        EDSParameter.SetRange(Enabled, true);
+        if EDSParameter.IsEmpty() then
+            exit(BaseRequestUrl);
+
+        // C3: redact the entire query, including runtime/fixed values.
+        // Never use the actual URI in request/response buffers or EDS logs.
+        QueryPosition := StrPos(BaseRequestUrl, '?');
+        if QueryPosition > 0 then
+            exit(CopyStr(BaseRequestUrl, 1, QueryPosition - 1) + '?[REDACTED]');
+
+        exit(BaseRequestUrl + '?[REDACTED]');
+    end;
+
+    [NonDebuggable]
+    local procedure AppendCredentialQueryParameters(
+        RequestBuffer: Record "SI EDS Request Buffer" temporary;
+        BaseRequestUrl: Text): Text
+    var
+        EDSParameter: Record "SI EDS Parameter";
+        CredentialMgt: Codeunit "SI EDS Credential Mgt.";
+        TypeHelper: Codeunit "Type Helper";
+        ActualUrl: Text;
+        CredentialValue: Text;
+        EncodedName: Text;
+        EncodedValue: Text;
+    begin
+        EDSParameter.SetRange("Service Code", RequestBuffer."Service Code");
+        EDSParameter.SetRange("Operation Code", RequestBuffer."Operation Code");
+        EDSParameter.SetRange("Provider Code", RequestBuffer."Provider Code");
+        EDSParameter.SetRange(Location, EDSParameter.Location::Query);
+        EDSParameter.SetRange(Source, EDSParameter.Source::Credential);
+        EDSParameter.SetRange(Enabled, true);
+        if not EDSParameter.FindSet() then
+            exit(BaseRequestUrl);
+
+        // C4 controlled enablement gate: fail closed until explicit approval.
+        // HTTPS is mandatory for every Query Credential operation.
+        if not BaseRequestUrl.StartsWith('https://') then
+            Error('EDS Query Credential вимагає HTTPS endpoint.');
+
+        // C7: compile-time opt-in, disabled in ordinary builds.
+        // NEVER define EDS_C7_SANDBOX_ENABLE for production builds.
+#if EDS_C7_SANDBOX_ENABLE
+        if not IsSandboxEnvironment() then
+            Error('EDS Query Credentials: дозволено лише в Sandbox.');
+#else
+        Error('EDS Query Credentials: C7 validation disabled in this build.');
+#endif
+
+        // The plaintext URL exists transiently in this NonDebuggable procedure.
+        // Enabling C7 requires an explicit security decision and canary tests.
+        ActualUrl := BaseRequestUrl;
+        repeat
+            if EDSParameter.Format <> EDSParameter.Format::"Name Value" then
+                Error('Credential Query %1 повинен мати формат Name=Value.', EDSParameter.Code);
+            CredentialValue := CredentialMgt.GetSecretText(
+                RequestBuffer."Provider Code", EDSParameter."Credential Code");
+            if EDSParameter.Required and (CredentialValue = '') then
+                Error('Credential Query %1 не має значення.', EDSParameter.Code);
+            if StrPos(ActualUrl, '?') = 0 then
+                ActualUrl += '?'
+            else
+                ActualUrl += '&';
+            EncodedName := EDSParameter.GetExternalName();
+            EncodedValue := EDSParameter."Value Prefix" + CredentialValue;
+            TypeHelper.UrlEncode(EncodedName);
+            TypeHelper.UrlEncode(EncodedValue);
+            ActualUrl += EncodedName + '=' + EncodedValue;
+            Clear(CredentialValue);
+            Clear(EncodedValue);
+        until EDSParameter.Next() = 0;
+        exit(ActualUrl);
+    end;
+
+#if EDS_C7_SANDBOX_ENABLE
+    local procedure IsSandboxEnvironment(): Boolean
+    var
+        EnvironmentInformation: Codeunit "Environment Information";
+    begin
+        exit(EnvironmentInformation.IsSandbox());
+    end;
+#endif
 
     local procedure BuildUrl(
         RequestBuffer: Record "SI EDS Request Buffer" temporary): Text

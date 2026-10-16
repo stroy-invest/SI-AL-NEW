@@ -640,19 +640,23 @@ codeunit 50431 "SI EDS Orchestrator"
             exit('');
 
         repeat
-            ParameterValue :=
-                ResolveParameterValue(
-                    EDSParameter,
-                    RuntimeParam);
+            // 79-C2: Credential values must never enter the request buffer.
+            // Transport resolves these parameters only at the HTTP boundary.
+            if EDSParameter.Source <> EDSParameter.Source::Credential then begin
+                ParameterValue :=
+                    ResolveParameterValue(
+                        EDSParameter,
+                        RuntimeParam);
 
-            if ShouldIncludeParameter(
-                EDSParameter,
-                ParameterValue)
-            then
-                AppendQueryParameter(
-                    QueryString,
+                if ShouldIncludeParameter(
                     EDSParameter,
-                    ParameterValue);
+                    ParameterValue)
+                then
+                    AppendQueryParameter(
+                        QueryString,
+                        EDSParameter,
+                        ParameterValue);
+            end;
         until EDSParameter.Next() = 0;
 
         exit(QueryString);
@@ -716,17 +720,18 @@ codeunit 50431 "SI EDS Orchestrator"
         EDSParameter: Record "SI EDS Parameter";
         ParameterValue: Text)
     var
+        TypeHelper: Codeunit "Type Helper";
         QueryPart: Text;
+        EncodedValue: Text;
     begin
-        QueryPart :=
-            EDSParameter.GetExternalName();
+        QueryPart := EDSParameter.GetExternalName();
+        TypeHelper.UrlEncode(QueryPart);
 
-        if EDSParameter.Format =
-           EDSParameter.Format::"Name Value"
-        then
-            QueryPart +=
-                '=' +
-                ParameterValue;
+        if EDSParameter.Format = EDSParameter.Format::"Name Value" then begin
+            EncodedValue := ParameterValue;
+            TypeHelper.UrlEncode(EncodedValue);
+            QueryPart += '=' + EncodedValue;
+        end;
 
         if QueryString = '' then
             QueryString :=
@@ -851,10 +856,38 @@ codeunit 50431 "SI EDS Orchestrator"
         Operation: Record "SI EDS Operation";
         ResponseBody: Text;
         LogResponseBody: Boolean;
+        EDSParameter: Record "SI EDS Parameter";
+        SafeRequestUrl: Text;
+        SafeErrorMessage: Text;
+        QueryPosition: Integer;
+        HasQueryCredential: Boolean;
     begin
+        EDSParameter.SetRange("Service Code", ServiceCode);
+        EDSParameter.SetRange("Operation Code", OperationCode);
+        EDSParameter.SetRange("Provider Code", RequestBuffer."Provider Code");
+        EDSParameter.SetRange(Location, EDSParameter.Location::Query);
+        EDSParameter.SetRange(Source, EDSParameter.Source::Credential);
+        EDSParameter.SetRange(Enabled, true);
+        HasQueryCredential := not EDSParameter.IsEmpty();
+
+        SafeRequestUrl := RequestBuffer."Request URL";
+        SafeErrorMessage := ResponseBuffer."Error Message";
+
+        if HasQueryCredential then begin
+            QueryPosition := StrPos(SafeRequestUrl, '?');
+            if QueryPosition > 0 then
+                SafeRequestUrl := CopyStr(SafeRequestUrl, 1, QueryPosition - 1) + '?[REDACTED]'
+            else
+                SafeRequestUrl := '[REDACTED]';
+            // A remote service can echo the supplied key in its response.
+            // Do not persist its body or raw error message.
+            SafeErrorMessage := 'Помилка HTTP-запиту з Credential у Query. Деталі приховано.';
+        end;
+
         LogResponseBody :=
             Operation.Get(ServiceCode, OperationCode) and
-            Operation."Log Response Body";
+            Operation."Log Response Body" and
+            (not HasQueryCredential);
 
         if LogResponseBody then
             ResponseBody := ResponseBuffer.GetBodyText();
@@ -865,14 +898,14 @@ codeunit 50431 "SI EDS Orchestrator"
             OperationCode,
             RequestBuffer."Provider Code",
             RequestBuffer."Endpoint Code",
-            RequestBuffer."Request URL",
+            SafeRequestUrl,
             StartedAt,
             FinishedAt,
             ResponseBuffer."Duration (ms)",
             ResponseBuffer."HTTP Status Code",
             ResponseBuffer."Result Type",
             ResponseBuffer."Error Code",
-            ResponseBuffer."Error Message",
+            SafeErrorMessage,
             LogResponseBody,
             ResponseBody);
     end;

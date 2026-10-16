@@ -48,7 +48,10 @@ codeunit 50467 "SI EDS Async Worker"
             AsyncRequest.Get(EntryNo);
             AsyncRequest.Status := AsyncRequest.Status::Error;
             AsyncRequest."Next Attempt At" := 0DT;
-            AsyncRequest."Error Message" := CopyStr(GetLastErrorText(), 1, MaxStrLen(AsyncRequest."Error Message"));
+            if UsesQueryCredential(AsyncRequest."Service Code", AsyncRequest."Operation Code") then
+                AsyncRequest."Error Message" := 'EDS async failed (Query Credential); details suppressed.'
+            else
+                AsyncRequest."Error Message" := CopyStr(GetLastErrorText(), 1, MaxStrLen(AsyncRequest."Error Message"));
             AsyncRequest.Modify();
         end;
     end;
@@ -104,13 +107,27 @@ codeunit 50467 "SI EDS Async Worker"
         AsyncRequest."Last Attempt At" := CurrentDateTime;
         AsyncRequest."Provider Code" := ResponseBuffer."Provider Code";
         AsyncRequest."HTTP Status Code" := ResponseBuffer."HTTP Status Code";
-        AsyncRequest."HTTP Reason Phrase" := ResponseBuffer."HTTP Reason Phrase";
-        AsyncRequest."Error Message" := CopyStr(ResponseBuffer."Error Message", 1, MaxStrLen(AsyncRequest."Error Message"));
+        if UsesQueryCredential(AsyncRequest."Service Code", AsyncRequest."Operation Code") then begin
+            AsyncRequest."HTTP Reason Phrase" := '';
+            if ResponseBuffer."Error Message" <> '' then
+                AsyncRequest."Error Message" := 'EDS HTTP error (Query Credential); details suppressed.'
+            else
+                AsyncRequest."Error Message" := '';
+        end else begin
+            AsyncRequest."HTTP Reason Phrase" := ResponseBuffer."HTTP Reason Phrase";
+            AsyncRequest."Error Message" := CopyStr(ResponseBuffer."Error Message", 1, MaxStrLen(AsyncRequest."Error Message"));
+        end;
 
         case ResponseBuffer."HTTP Status Code" of
             200:
                 begin
-                    AsyncRequest.SetResponseBody(ResponseBuffer.GetBodyText());
+                    // C7 Fix 2: never persist an untrusted response body for
+                    // operations that may use Query Credentials.
+                    // Clear any body left from an earlier attempt as well.
+                    if UsesQueryCredential(AsyncRequest."Service Code", AsyncRequest."Operation Code") then
+                        Clear(AsyncRequest."Response Body")
+                    else
+                        AsyncRequest.SetResponseBody(ResponseBuffer.GetBodyText());
                     AsyncRequest.Status := AsyncRequest.Status::Completed;
                     AsyncRequest."Completed At" := CurrentDateTime;
                     AsyncRequest."Next Attempt At" := 0DT;
@@ -146,7 +163,7 @@ codeunit 50467 "SI EDS Async Worker"
                     if AsyncRequest."Error Message" = '' then
                         AsyncRequest."Error Message" :=
                             CopyStr(
-                                StrSubstNo('Unexpected HTTP status %1 %2.', ResponseBuffer."HTTP Status Code", ResponseBuffer."HTTP Reason Phrase"),
+                                StrSubstNo('Unexpected HTTP status %1.', ResponseBuffer."HTTP Status Code"),
                                 1,
                                 MaxStrLen(AsyncRequest."Error Message"));
                 end;
@@ -154,4 +171,17 @@ codeunit 50467 "SI EDS Async Worker"
         AsyncRequest.Modify();
     end;
 
+
+    // Provider can be selected by routing after the request is queued.
+    local procedure UsesQueryCredential(ServiceCode: Code[50]; OperationCode: Code[50]): Boolean
+    var
+        EDSParameter: Record "SI EDS Parameter";
+    begin
+        EDSParameter.SetRange("Service Code", ServiceCode);
+        EDSParameter.SetRange("Operation Code", OperationCode);
+        EDSParameter.SetRange(Location, EDSParameter.Location::Query);
+        EDSParameter.SetRange(Source, EDSParameter.Source::Credential);
+        EDSParameter.SetRange(Enabled, true);
+        exit(not EDSParameter.IsEmpty());
+    end;
 }
