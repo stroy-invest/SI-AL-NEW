@@ -333,6 +333,29 @@ page 54004 "SI Business Partner Card"
                 }
             }
 
+            action(SyncExistingERPIdentifiers)
+            {
+                Caption = 'Синхронізувати ідентифікатори ERP';
+                ApplicationArea = All;
+                Image = Refresh;
+                ToolTip = 'Адміністративне оновлення реєстраційного номера наявних Customer/Vendor та полів локалізації через підписників. Лише юридичні особи UA.';
+                AccessByPermission = codeunit "SI BP Projection Mgt." = X;
+
+                trigger OnAction()
+                var
+                    ProjectionMgt: Codeunit "SI BP Projection Mgt.";
+                    CustomerCount: Integer;
+                    VendorCount: Integer;
+                begin
+                    CurrPage.SaveRecord();
+                    Rec.TestField("No.");
+                    if not Confirm('Синхронізувати ідентифікатори наявних Customer/Vendor для %1? Зміни буде внесено до ERP-карток.', false, Rec."No.") then
+                        exit;
+                    ProjectionMgt.SyncExistingERPIdentifiers(Rec."No.", CustomerCount, VendorCount);
+                    Message('Синхронізовано Customer: %1, Vendor: %2.', CustomerCount, VendorCount);
+                end;
+            }
+
             action(CheckAndSetupContact)
             {
                 Caption = 'Перевірити й налаштувати Contact';

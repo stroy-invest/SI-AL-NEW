@@ -271,6 +271,10 @@ codeunit 54060 "SI BP Projection Mgt."
             Projection,
             Vendor);
 
+        // UA legal entities: propagate the registry-verified EDRPOU to
+        // the standard ERP registration field. Do not change FOP behavior.
+        ApplyVendorLegalRegistration(Projection, Vendor);
+
         if Projection."Tax Registration No." <> '' then
             Vendor.Validate(
                 "VAT Registration No.",
@@ -280,6 +284,7 @@ codeunit 54060 "SI BP Projection Mgt."
                     MaxStrLen(
                         Vendor."VAT Registration No.")));
 
+        OnBeforeVendorProjectionModify(Vendor, Projection."Business Partner No.");
         Vendor.Modify(true);
 
         MaterializeVendorBanks(
@@ -353,6 +358,10 @@ codeunit 54060 "SI BP Projection Mgt."
             Projection,
             Customer);
 
+        // UA legal entities: propagate the registry-verified EDRPOU to
+        // the standard ERP registration field. Do not change FOP behavior.
+        ApplyCustomerLegalRegistration(Projection, Customer);
+
         if Projection."Tax Registration No." <> '' then
             Customer.Validate(
                 "VAT Registration No.",
@@ -362,6 +371,7 @@ codeunit 54060 "SI BP Projection Mgt."
                     MaxStrLen(
                         Customer."VAT Registration No.")));
 
+        OnBeforeCustomerProjectionModify(Customer, Projection."Business Partner No.");
         Customer.Modify(true);
 
         MaterializeCustomerBanks(
@@ -377,6 +387,58 @@ codeunit 54060 "SI BP Projection Mgt."
             Projection,
             Customer."No.",
             Customer.SystemId);
+    end;
+
+    local procedure ApplyVendorLegalRegistration(
+        Projection: Record "SI BP ERP Projection";
+        var Vendor: Record Vendor)
+    var
+        BusinessPartner: Record "SI Business Partner";
+    begin
+        if Projection."Country/Region Code" <> 'UA' then
+            exit;
+
+        if not BusinessPartner.Get(Projection."Business Partner No.") then
+            exit;
+
+        if BusinessPartner."Entity Type" <> BusinessPartner."Entity Type"::"Legal Entity" then
+            exit;
+
+        if BusinessPartner."Registration No." = '' then
+            exit;
+
+        Vendor.Validate(
+            "Registration Number",
+            CopyStr(
+                BusinessPartner."Registration No.",
+                1,
+                MaxStrLen(Vendor."Registration Number")));
+    end;
+
+    local procedure ApplyCustomerLegalRegistration(
+        Projection: Record "SI BP ERP Projection";
+        var Customer: Record Customer)
+    var
+        BusinessPartner: Record "SI Business Partner";
+    begin
+        if Projection."Country/Region Code" <> 'UA' then
+            exit;
+
+        if not BusinessPartner.Get(Projection."Business Partner No.") then
+            exit;
+
+        if BusinessPartner."Entity Type" <> BusinessPartner."Entity Type"::"Legal Entity" then
+            exit;
+
+        if BusinessPartner."Registration No." = '' then
+            exit;
+
+        Customer.Validate(
+            "Registration Number",
+            CopyStr(
+                BusinessPartner."Registration No.",
+                1,
+                MaxStrLen(Customer."Registration Number")));
     end;
 
     local procedure CompleteMaterialization(
@@ -1050,6 +1112,79 @@ codeunit 54060 "SI BP Projection Mgt."
             exit(BusinessPartner."Short Name BK");
 
         exit(BusinessPartner.Name);
+    end;
+
+    // Administrator-only reconciliation of existing ERP identifiers.
+    // Does not create or reactivate roles and does not alter VAT identifiers.
+    procedure SyncExistingERPIdentifiers(BusinessPartnerNo: Code[20]; var CustomerCount: Integer; var VendorCount: Integer)
+    var
+        BP: Record "SI Business Partner";
+        Role: Record "SI BP Role";
+        Projection: Record "SI BP ERP Projection";
+        Customer: Record Customer;
+        Vendor: Record Vendor;
+    begin
+        CustomerCount := 0;
+        VendorCount := 0;
+        BP.Get(BusinessPartnerNo);
+        if (BP."Country/Region Code" <> 'UA') or
+           (BP."Entity Type" <> BP."Entity Type"::"Legal Entity") then
+            Error('Синхронізація доступна лише для юридичних осіб України.');
+        BP.TestField("Registration No.");
+
+        Role.SetRange("Business Partner No.", BusinessPartnerNo);
+        if not Role.FindSet() then
+            Error('Для контрагента %1 немає ролей.', BusinessPartnerNo);
+        repeat
+            if Role.Status in [Role.Status::Active, Role.Status::Blocked] then begin
+                if not Projection.Get(Role.Code) then
+                    Error('Не знайдено ERP-проєкцію ролі %1.', Role.Code);
+                if Projection.Status <> Projection.Status::Materialized then
+                    Error('ERP-проєкція ролі %1 не матеріалізована.', Role.Code);
+                case Role."Role Type" of
+                    Role."Role Type"::Customer:
+                        begin
+                            Role.TestField("Customer No.");
+                            Projection.TestField("ERP No.");
+                            if Projection."ERP No." <> Role."Customer No." then
+                                Error('Невідповідність номера Customer для ролі %1.', Role.Code);
+                            Customer.Get(Role."Customer No.");
+                            if (Projection."ERP SystemId" <> Customer.SystemId) then
+                                Error('Невідповідність SystemId Customer для ролі %1.', Role.Code);
+                            Customer.Validate("Registration Number", BP."Registration No.");
+                            OnBeforeCustomerProjectionModify(Customer, BusinessPartnerNo);
+                            Customer.Modify(true);
+                            CustomerCount += 1;
+                        end;
+                    Role."Role Type"::Vendor:
+                        begin
+                            Role.TestField("Vendor No.");
+                            Projection.TestField("ERP No.");
+                            if Projection."ERP No." <> Role."Vendor No." then
+                                Error('Невідповідність номера Vendor для ролі %1.', Role.Code);
+                            Vendor.Get(Role."Vendor No.");
+                            if (Projection."ERP SystemId" <> Vendor.SystemId) then
+                                Error('Невідповідність SystemId Vendor для ролі %1.', Role.Code);
+                            Vendor.Validate("Registration Number", BP."Registration No.");
+                            OnBeforeVendorProjectionModify(Vendor, BusinessPartnerNo);
+                            Vendor.Modify(true);
+                            VendorCount += 1;
+                        end;
+                end;
+            end;
+        until Role.Next() = 0;
+    end;
+
+    // Extension point for country/localization-specific ERP fields.
+    // Subscribers must not COMMIT; changes participate in role activation.
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeVendorProjectionModify(var Vendor: Record Vendor; BusinessPartnerNo: Code[20])
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeCustomerProjectionModify(var Customer: Record Customer; BusinessPartnerNo: Code[20])
+    begin
     end;
 
 }
