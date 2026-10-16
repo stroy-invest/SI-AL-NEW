@@ -1,0 +1,50 @@
+{
+  "id": "6c1daff9-7dd1-4566-ac9c-74868de040b3",
+  "name": "SI IW Localization Adapter",
+  "publisher": "STROYINVEST",
+  "version": "1.0.0.1",
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "idRanges": [
+    {
+      "from": 65000,
+      "to": 65199
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+      "name": "STROYINVEST Foundation",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.78"
+    },
+    {
+      "id": "031c7c7f-e6c6-4d92-9c89-74cfdfd81746",
+      "name": "IW Foundation",
+      "publisher": "Innoware Ukraine LLC",
+      "version": "27.16.6473.0"
+    },
+    {
+      "id": "d0edbc8f-64e6-4811-ac5f-9e0244de3233",
+      "name": "IW Ukrainian Localization VAT",
+      "publisher": "Innoware Ukraine LLC",
+      "version": "27.6.6488.0"
+    },
+    {
+      "id": "f53b19c4-75c9-4351-b2bb-ac84112997da",
+      "name": "SI Business Partner",
+      "publisher": "STROYINVEST",
+      "version": "1.1.2.26"
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "17.0",
+  "features": [
+    "NoImplicitWith",
+    "TranslationFile"
+  ]
+}
