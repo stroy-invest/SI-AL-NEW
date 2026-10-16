@@ -23,6 +23,12 @@ page 62103 "SI Recipe Revision Card"
                     ApplicationArea = All;
                     Editable = false;
                 }
+                field(RevisionDisplayName; RevisionDisplayName)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Назва ревізії';
+                    Editable = false;
+                }
                 field("Revision No."; Rec."Revision No.")
                 {
                     ApplicationArea = All;
@@ -65,6 +71,36 @@ page 62103 "SI Recipe Revision Card"
                     ApplicationArea = All;
                     Editable = IsTemporaryDraft;
                 }
+                field(Season; Rec.Season)
+                {
+                    ApplicationArea = All;
+                    Editable = IsDraft;
+
+                    trigger OnValidate()
+                    begin
+                        RevisionDisplayName := Rec.GetDisplayName();
+                        CurrPage.Update(false);
+                    end;
+                }
+                field("Cement Manufacturer Code"; Rec."Cement Manufacturer Code")
+                {
+                    ApplicationArea = All;
+                    Editable = IsDraft;
+
+                    trigger OnLookup(var Text: Text): Boolean
+                    var
+                        CementMfrMgt: Codeunit "SI Recipe Cement Mfr Mgt.";
+                        SelectedCode: Code[20];
+                    begin
+                        SelectedCode := Rec."Cement Manufacturer Code";
+                        if CementMfrMgt.LookupManufacturer(SelectedCode) then begin
+                            Rec.Validate("Cement Manufacturer Code", SelectedCode);
+                            RevisionDisplayName := Rec.GetDisplayName();
+                            Text := Rec."Cement Manufacturer Code";
+                        end;
+                        exit(true);
+                    end;
+                }
                 field("Source Revision No."; Rec."Source Revision No.")
                 {
                     ApplicationArea = All;
@@ -84,6 +120,14 @@ page 62103 "SI Recipe Revision Card"
                         OpenProjectedBOMVersion();
                     end;
                 }
+            }
+            part(Lines; "SI Recipe Lines Part")
+            {
+                ApplicationArea = All;
+                SubPageLink = "Recipe No." = field("Recipe No."),
+                              "Revision No." = field("Revision No.");
+                UpdatePropagation = Both;
+                Editable = IsDraft;
             }
             group(Projection)
             {
@@ -128,14 +172,6 @@ page 62103 "SI Recipe Revision Card"
                     ApplicationArea = All;
                     Editable = false;
                 }
-            }
-            part(Lines; "SI Recipe Lines Part")
-            {
-                ApplicationArea = All;
-                SubPageLink = "Recipe No." = field("Recipe No."),
-                              "Revision No." = field("Revision No.");
-                UpdatePropagation = Both;
-                Editable = IsDraft;
             }
         }
     }
@@ -311,6 +347,7 @@ page 62103 "SI Recipe Revision Card"
 
     local procedure UpdateState()
     begin
+        RevisionDisplayName := Rec.GetDisplayName();
         IsDraft := Rec.Status = Rec.Status::Draft;
         IsCertified := Rec.Status = Rec.Status::Certified;
         IsTemporaryDraft := IsDraft and (Rec."Validity Type" = Rec."Validity Type"::Temporary);
@@ -367,6 +404,7 @@ page 62103 "SI Recipe Revision Card"
     end;
 
     var
+        RevisionDisplayName: Text;
         IsDraft: Boolean;
         IsCertified: Boolean;
         IsTemporaryDraft: Boolean;

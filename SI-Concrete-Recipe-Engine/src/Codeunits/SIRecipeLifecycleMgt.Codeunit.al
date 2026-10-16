@@ -5,11 +5,13 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
     procedure CertifyRevision(var RecipeRevision: Record "SI Concrete Recipe Revision")
     var
         RecipeBOMProjection: Codeunit "SI Recipe BOM Projection";
+        CementMfrMgt: Codeunit "SI Recipe Cement Mfr Mgt.";
     begin
         RecipeRevision.Get(RecipeRevision."Recipe No.", RecipeRevision."Revision No.");
         RecipeRevision.TestField(Status, RecipeRevision.Status::Draft);
         RecipeRevision.ValidateValidity();
         ValidateRecipeLines(RecipeRevision);
+        CementMfrMgt.ValidateManufacturer(RecipeRevision."Cement Manufacturer Code");
 
         RecipeRevision.MarkCertified();
         RecipeRevision.SetProjectionState(
@@ -32,6 +34,8 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
         NewRevision.Validate("Recipe No.", SourceRevision."Recipe No.");
         NewRevision."Source Revision No." := SourceRevision."Revision No.";
         NewRevision."Validity Type" := SourceRevision."Validity Type";
+        NewRevision.Season := SourceRevision.Season;
+        NewRevision."Cement Manufacturer Code" := SourceRevision."Cement Manufacturer Code";
         NewRevision."Valid From" := 0D;
         NewRevision."Valid To" := 0D;
         NewRevision.Insert(true);
@@ -99,6 +103,8 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
 
         repeat
             RecipeLine.TestField("Item No.");
+            RecipeLine.TestField("Material Type Value ID");
+            RecipeLine.ValidateMaterialClassification();
             RecipeLine.TestField("Unit of Measure Code");
             if RecipeLine.Quantity <= 0 then
                 Error(LineQuantityErr, RecipeLine."Line No.");
@@ -132,6 +138,7 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
             NewLine."Recipe No." := NewRevision."Recipe No.";
             NewLine."Revision No." := NewRevision."Revision No.";
             NewLine."Line No." := SourceLine."Line No.";
+            NewLine."Material Type Value ID" := SourceLine."Material Type Value ID";
             NewLine."Item No." := SourceLine."Item No.";
             NewLine."Variant Code" := SourceLine."Variant Code";
             NewLine.Description := SourceLine.Description;

@@ -35,5 +35,7 @@ permissionset 62300 "SI RECIPE ADMIN"
         codeunit "SI Recipe BOM Resolver" = X,
         codeunit "SI Recipe BOM Projection" = X,
         codeunit "SI Recipe Resolver" = X,
-        codeunit "SI Recipe Workspace Mgt." = X;
+        codeunit "SI Recipe Workspace Mgt." = X,
+        codeunit "SI Recipe Material Type Mgt." = X,
+        codeunit "SI Recipe Cement Mfr Mgt." = X;
 }

@@ -223,7 +223,7 @@
                 var tr = el('tr', 'data');
 
                 var rev = el('td','c-rev');
-                var revLink = el('span','si-link',String(row.revisionNo || ''));
+                var revLink = el('span','si-link',row.revisionName || String(row.revisionNo || ''));
                 revLink.onclick = function(e) {
                     e.stopPropagation();
                     invoke('RevisionOpen',[row.recipeNo || '', Number(row.revisionNo || 0)]);

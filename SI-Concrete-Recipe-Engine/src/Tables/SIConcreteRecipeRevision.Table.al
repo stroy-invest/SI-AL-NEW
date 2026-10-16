@@ -70,6 +70,24 @@ table 62021 "SI Concrete Recipe Revision"
                     Error(InvalidValidityRangeErr);
             end;
         }
+        field(15; "Season"; Enum "SI Recipe Season")
+        {
+            Caption = 'Сезонність';
+            ToolTip = 'Вказує сезонність цієї ревізії рецептури.';
+        }
+        field(16; "Cement Manufacturer Code"; Code[20])
+        {
+            Caption = 'Виробник цементу';
+            TableRelation = "SI Manufacturer".Code where(Blocked = const(false));
+            ToolTip = 'Вказує обраного технологом виробника цементу; поле необов’язкове.';
+
+            trigger OnValidate()
+            var
+                CementMfrMgt: Codeunit "SI Recipe Cement Mfr Mgt.";
+            begin
+                CementMfrMgt.ValidateManufacturer("Cement Manufacturer Code");
+            end;
+        }
         field(20; "Source Revision No."; Integer)
         {
             Caption = '№ вихідної ревізії';
@@ -190,6 +208,27 @@ table 62021 "SI Concrete Recipe Revision"
             exit(RecipeRevision."Revision No." + 1);
 
         exit(1);
+    end;
+
+    procedure GetDisplayName(): Text
+    var
+        Recipe: Record "SI Concrete Recipe";
+        ResultName: Text;
+    begin
+        if Recipe.Get("Recipe No.") then
+            ResultName := Recipe.Description
+        else
+            ResultName := "Recipe No.";
+        ResultName += StrSubstNo(' v.%1', "Revision No.");
+        case Season of
+            Season::Summer:
+                ResultName += ' /Л';
+            Season::Winter:
+                ResultName += ' /З';
+        end;
+        if "Cement Manufacturer Code" <> '' then
+            ResultName += ' /' + "Cement Manufacturer Code";
+        exit(ResultName);
     end;
 
     procedure ValidateValidity()

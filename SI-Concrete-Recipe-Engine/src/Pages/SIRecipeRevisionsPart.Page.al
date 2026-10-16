@@ -14,6 +14,12 @@ page 62102 "SI Recipe Revisions Part"
         {
             repeater(Revisions)
             {
+                field(RevisionDisplayName; RevisionDisplayName)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Назва ревізії';
+                    Editable = false;
+                }
                 field("Revision No."; Rec."Revision No.")
                 {
                     ApplicationArea = All;
@@ -23,6 +29,16 @@ page 62102 "SI Recipe Revisions Part"
                 {
                     ApplicationArea = All;
                     Caption = 'Статус сертифікації';
+                    Editable = false;
+                }
+                field(Season; Rec.Season)
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                }
+                field("Cement Manufacturer Code"; Rec."Cement Manufacturer Code")
+                {
+                    ApplicationArea = All;
                     Editable = false;
                 }
                 field("Administrative Status"; Rec."Administrative Status")
@@ -116,6 +132,7 @@ page 62102 "SI Recipe Revisions Part"
 
     trigger OnAfterGetRecord()
     begin
+        RevisionDisplayName := Rec.GetDisplayName();
         UpdateApplicability();
     end;
 
@@ -144,6 +161,7 @@ page 62102 "SI Recipe Revisions Part"
     end;
 
     var
+        RevisionDisplayName: Text;
         ApplicabilityDisplay: Text[30];
         RecipeNoMissingErr: Label 'Контекст рецептури відсутній.';
 }

@@ -26,6 +26,19 @@ table 62022 "SI Concrete Recipe Line"
             Caption = '№ рядка';
             ToolTip = 'Вказує номер рядка рецептури.';
         }
+        field(9; "Material Type Value ID"; Integer)
+        {
+            Caption = 'Тип матеріалу';
+            ToolTip = 'Значення атрибута REC_MAT_TYPE, успадкованого категоріями товарів.';
+
+            trigger OnValidate()
+            var
+                MaterialMgt: Codeunit "SI Recipe Material Type Mgt.";
+            begin
+                MaterialMgt.ValidateMaterialValue("Material Type Value ID");
+                MaterialMgt.ValidateItem("Material Type Value ID", "Item No.");
+            end;
+        }
         field(10; "Item No."; Code[20])
         {
             Caption = 'Код товару';
@@ -35,6 +48,7 @@ table 62022 "SI Concrete Recipe Line"
             trigger OnValidate()
             var
                 Item: Record Item;
+                MaterialMgt: Codeunit "SI Recipe Material Type Mgt.";
             begin
                 if "Item No." = xRec."Item No." then
                     exit;
@@ -43,6 +57,7 @@ table 62022 "SI Concrete Recipe Line"
                 "Unit of Measure Code" := '';
                 Description := '';
 
+                MaterialMgt.ValidateItem("Material Type Value ID", "Item No.");
                 if Item.Get("Item No.") then begin
                     Description := Item.Description;
                     "Unit of Measure Code" := Item."Base Unit of Measure";
@@ -111,6 +126,7 @@ table 62022 "SI Concrete Recipe Line"
     trigger OnInsert()
     begin
         EnsureDraftRevision();
+        ValidateMaterialClassification();
         if "Line No." = 0 then
             "Line No." := GetNextLineNo();
     end;
@@ -118,6 +134,7 @@ table 62022 "SI Concrete Recipe Line"
     trigger OnModify()
     begin
         EnsureDraftRevision();
+        ValidateMaterialClassification();
     end;
 
     trigger OnDelete()
@@ -128,6 +145,14 @@ table 62022 "SI Concrete Recipe Line"
     trigger OnRename()
     begin
         EnsureDraftRevision();
+    end;
+
+    procedure ValidateMaterialClassification()
+    var
+        MaterialMgt: Codeunit "SI Recipe Material Type Mgt.";
+    begin
+        MaterialMgt.ValidateMaterialValue("Material Type Value ID");
+        MaterialMgt.ValidateItem("Material Type Value ID", "Item No.");
     end;
 
     local procedure GetNextLineNo(): Integer

@@ -214,6 +214,7 @@ codeunit 62206 "SI Recipe Workspace Mgt."
             '{' +
                 '"recipeNo":"' + JsonEscape(Revision."Recipe No.") + '",' +
                 '"revisionNo":' + Format(Revision."Revision No.", 0, 9) + ',' +
+                '"revisionName":"' + JsonEscape(Revision.GetDisplayName()) + '",' +
                 '"certificationStatus":"' + JsonEscape(Format(Revision.Status)) + '",' +
                 '"administrativeStatus":"' + JsonEscape(Format(Revision."Administrative Status")) + '",' +
                 '"applicability":"' + JsonEscape(Format(Revision.GetApplicability(Today()))) + '",' +
