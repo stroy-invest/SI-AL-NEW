@@ -28,8 +28,6 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
     begin
         SourceRevision.Get(SourceRevision."Recipe No.", SourceRevision."Revision No.");
 
-        EnsureNoExistingDraft(SourceRevision."Recipe No.");
-
         NewRevision.Init();
         NewRevision.Validate("Recipe No.", SourceRevision."Recipe No.");
         NewRevision."Source Revision No." := SourceRevision."Revision No.";
@@ -107,16 +105,6 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
         until RecipeLine.Next() = 0;
     end;
 
-    local procedure EnsureNoExistingDraft(RecipeNo: Code[50])
-    var
-        DraftRevision: Record "SI Concrete Recipe Revision";
-    begin
-        DraftRevision.SetRange("Recipe No.", RecipeNo);
-        DraftRevision.SetRange(Status, DraftRevision.Status::Draft);
-        if DraftRevision.FindFirst() then
-            Error(DraftAlreadyExistsErr, RecipeNo, DraftRevision."Revision No.");
-    end;
-
     local procedure RemoveOrphanLinesForFreshRevision(NewRevision: Record "SI Concrete Recipe Revision")
     var
         RecipeLine: Record "SI Concrete Recipe Line";
@@ -178,5 +166,4 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
     var
         RecipeMustHaveLinesErr: Label 'Рецептуру %1, ревізію %2, не можна сертифікувати, оскільки вона не містить рядків.';
         LineQuantityErr: Label 'Рядок рецептури %1 повинен мати кількість більшу за нуль.';
-        DraftAlreadyExistsErr: Label 'Рецептура %1 уже має чернеткову ревізію %2. Відкрийте наявну чернетку замість створення нової.';
 }

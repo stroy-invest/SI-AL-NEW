@@ -3,7 +3,7 @@ namespace STROYINVEST.ConcreteRecipeEngine;
 page 62109 "SI Concrete Recipes Tree"
 {
     PageType = Card;
-    Caption = 'Рецептури бетону';
+    Caption = 'Рецептури бетону (Дерево)';
     ApplicationArea = All;
     UsageCategory = Lists;
     Editable = false;
