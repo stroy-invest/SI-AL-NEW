@@ -37,5 +37,6 @@ permissionset 62300 "SI RECIPE ADMIN"
         codeunit "SI Recipe Resolver" = X,
         codeunit "SI Recipe Workspace Mgt." = X,
         codeunit "SI Recipe Material Type Mgt." = X,
-        codeunit "SI Recipe Cement Mfr Mgt." = X;
+        codeunit "SI Recipe Cement Mfr Mgt." = X,
+        codeunit "SI Recipe Admin Edit Access" = X;
 }

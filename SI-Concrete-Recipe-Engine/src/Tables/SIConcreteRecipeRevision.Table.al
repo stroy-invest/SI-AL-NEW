@@ -175,6 +175,11 @@ table 62021 "SI Concrete Recipe Revision"
         if AllowLifecycleModify then
             exit;
 
+        if AllowAdminMetadataModify then begin
+            CheckAdminMetadataChanges();
+            exit;
+        end;
+
         if xRec.Status <> xRec.Status::Draft then
             Error(ControlledRevisionModifyErr, "Recipe No.", "Revision No.");
 
@@ -208,6 +213,42 @@ table 62021 "SI Concrete Recipe Revision"
             exit(RecipeRevision."Revision No." + 1);
 
         exit(1);
+    end;
+
+    procedure ApplyAdminMetadata(NewValidityType: Enum "SI Recipe Validity Type"; NewValidFrom: Date; NewValidTo: Date; NewSeason: Enum "SI Recipe Season"; NewManufacturer: Code[20])
+    var
+        AdminAccess: Codeunit "SI Recipe Admin Edit Access";
+    begin
+        AdminAccess.RequireSuper();
+        if ("Validity Type" <> NewValidityType) then
+            Validate("Validity Type", NewValidityType);
+        Validate("Valid From", NewValidFrom);
+        if "Validity Type" = "Validity Type"::Temporary then
+            Validate("Valid To", NewValidTo);
+        Validate(Season, NewSeason);
+        Validate("Cement Manufacturer Code", NewManufacturer);
+        if ("Valid From" <> 0D) and ("Valid To" <> 0D) and ("Valid To" < "Valid From") then
+            Error(InvalidValidityRangeErr);
+        AllowAdminMetadataModify := true;
+        Modify(true);
+        AllowAdminMetadataModify := false;
+    end;
+
+    local procedure CheckAdminMetadataChanges()
+    begin
+        if (Status <> xRec.Status) or
+           ("Administrative Status" <> xRec."Administrative Status") or
+           ("Recipe No." <> xRec."Recipe No.") or
+           ("Revision No." <> xRec."Revision No.") or
+           ("Source Revision No." <> xRec."Source Revision No.") or
+           ("Production BOM Version Code" <> xRec."Production BOM Version Code") or
+           ("Projection Status" <> xRec."Projection Status") or
+           ("Projection Error" <> xRec."Projection Error") or
+           ("Certified At" <> xRec."Certified At") or
+           ("Certified By" <> xRec."Certified By") or
+           ("Closed At" <> xRec."Closed At") or
+           ("Closed By" <> xRec."Closed By") then
+            Error(AdminMetadataOnlyErr);
     end;
 
     procedure GetDisplayName(): Text
@@ -344,6 +385,8 @@ table 62021 "SI Concrete Recipe Revision"
 
     var
         AllowLifecycleModify: Boolean;
+        AllowAdminMetadataModify: Boolean;
+        AdminMetadataOnlyErr: Label 'Адміністративний режим дозволяє змінювати лише метадані ревізії.';
         ControlledRevisionModifyErr: Label 'Рецептура %1, ревізія %2, сертифікована або неактивна і не може редагуватися безпосередньо. Створіть нову чернеткову ревізію.';
         ControlledRevisionDeleteErr: Label 'Рецептура %1, ревізія %2, сертифікована або неактивна і не може бути видалена.';
         InvalidValidityRangeErr: Label 'Дата «Чинна до» не може бути ранішою за дату «Чинна з».';

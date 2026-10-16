@@ -50,53 +50,68 @@ page 62103 "SI Recipe Revision Card"
                     Caption = 'Актуальність';
                     Editable = false;
                 }
-                field("Validity Type"; Rec."Validity Type")
+                field("Validity Type"; AdminValidityType)
                 {
                     ApplicationArea = All;
-                    Editable = IsDraft;
+                    Editable = IsDraft or AdminEdit;
 
                     trigger OnValidate()
                     begin
+                        SaveAdminMetadata();
                         UpdateState();
                         CurrPage.Update(false);
                     end;
                 }
-                field("Valid From"; Rec."Valid From")
+                field("Valid From"; AdminValidFrom)
                 {
                     ApplicationArea = All;
-                    Editable = IsDraft;
+                    Editable = IsDraft or AdminEdit;
+                    trigger OnValidate()
+                    begin
+                        SaveAdminMetadata();
+                    end;
                 }
-                field("Valid To"; Rec."Valid To")
+                field("Valid To"; AdminValidTo)
                 {
                     ApplicationArea = All;
-                    Editable = IsTemporaryDraft;
+                    Editable = IsTemporaryDraft or (AdminEdit and (AdminValidityType = AdminValidityType::Temporary));
+                    trigger OnValidate()
+                    begin
+                        SaveAdminMetadata();
+                    end;
                 }
-                field(Season; Rec.Season)
+                field(Season; AdminSeason)
                 {
                     ApplicationArea = All;
-                    Editable = IsDraft;
+                    Editable = IsDraft or AdminEdit;
 
                     trigger OnValidate()
                     begin
+                        SaveAdminMetadata();
                         RevisionDisplayName := Rec.GetDisplayName();
                         CurrPage.Update(false);
                     end;
                 }
-                field("Cement Manufacturer Code"; Rec."Cement Manufacturer Code")
+                field("Cement Manufacturer Code"; AdminCementManufacturer)
                 {
                     ApplicationArea = All;
-                    Editable = IsDraft;
+                    Editable = IsDraft or AdminEdit;
+                    trigger OnValidate()
+                    begin
+                        SaveAdminMetadata();
+                    end;
 
                     trigger OnLookup(var Text: Text): Boolean
                     var
                         CementMfrMgt: Codeunit "SI Recipe Cement Mfr Mgt.";
                         SelectedCode: Code[20];
                     begin
-                        SelectedCode := Rec."Cement Manufacturer Code";
+                        SelectedCode := AdminCementManufacturer;
                         if CementMfrMgt.LookupManufacturer(SelectedCode) then begin
-                            Rec.Validate("Cement Manufacturer Code", SelectedCode);
+                            AdminCementManufacturer := SelectedCode;
+                            SaveAdminMetadata();
                             RevisionDisplayName := Rec.GetDisplayName();
-                            Text := Rec."Cement Manufacturer Code";
+                            Text := AdminCementManufacturer;
                         end;
                         exit(true);
                     end;
@@ -127,7 +142,7 @@ page 62103 "SI Recipe Revision Card"
                 SubPageLink = "Recipe No." = field("Recipe No."),
                               "Revision No." = field("Revision No.");
                 UpdatePropagation = Both;
-                Editable = IsDraft;
+                Editable = IsDraft or AdminEdit;
             }
             group(Projection)
             {
@@ -180,6 +195,33 @@ page 62103 "SI Recipe Revision Card"
     {
         area(Processing)
         {
+            action(StartAdminEdit)
+            {
+                Caption = 'Start admin edit';
+                ApplicationArea = All;
+                Image = Edit;
+                Visible = IsSuperUser and not AdminEdit;
+                trigger OnAction()
+                begin
+                    AdminAccess.RequireSuper();
+                    AdminEdit := true;
+                    CurrPage.Lines.Page.SetAdminEdit(true);
+                    CurrPage.Update(false);
+                end;
+            }
+            action(EndAdminEdit)
+            {
+                Caption = 'End admin edit';
+                ApplicationArea = All;
+                Image = Lock;
+                Visible = IsSuperUser and AdminEdit;
+                trigger OnAction()
+                begin
+                    AdminEdit := false;
+                    CurrPage.Lines.Page.SetAdminEdit(false);
+                    CurrPage.Update(false);
+                end;
+            }
             action(Certify)
             {
                 Caption = 'Сертифікувати';
@@ -335,6 +377,11 @@ page 62103 "SI Recipe Revision Card"
         }
     }
 
+    trigger OnOpenPage()
+    begin
+        IsSuperUser := AdminAccess.IsSuper();
+    end;
+
     trigger OnAfterGetRecord()
     begin
         UpdateState();
@@ -348,6 +395,11 @@ page 62103 "SI Recipe Revision Card"
     local procedure UpdateState()
     begin
         RevisionDisplayName := Rec.GetDisplayName();
+        AdminValidityType := Rec."Validity Type";
+        AdminValidFrom := Rec."Valid From";
+        AdminValidTo := Rec."Valid To";
+        AdminSeason := Rec.Season;
+        AdminCementManufacturer := Rec."Cement Manufacturer Code";
         IsDraft := Rec.Status = Rec.Status::Draft;
         IsCertified := Rec.Status = Rec.Status::Certified;
         IsTemporaryDraft := IsDraft and (Rec."Validity Type" = Rec."Validity Type"::Temporary);
@@ -363,6 +415,21 @@ page 62103 "SI Recipe Revision Card"
             ApplicabilityDisplay := Format(Rec.GetApplicability(Today()))
         else
             Clear(ApplicabilityDisplay);
+    end;
+
+    local procedure SaveAdminMetadata()
+    begin
+        if not AdminEdit then begin
+            Rec.Validate("Validity Type", AdminValidityType);
+            Rec.Validate("Valid From", AdminValidFrom);
+            if AdminValidityType = AdminValidityType::Temporary then
+                Rec.Validate("Valid To", AdminValidTo);
+            Rec.Validate(Season, AdminSeason);
+            Rec.Validate("Cement Manufacturer Code", AdminCementManufacturer);
+            exit;
+        end;
+        AdminAccess.RequireSuper();
+        Rec.ApplyAdminMetadata(AdminValidityType, AdminValidFrom, AdminValidTo, AdminSeason, AdminCementManufacturer);
     end;
 
     local procedure UpdateProductionBOMVersionDisplay()
@@ -404,6 +471,14 @@ page 62103 "SI Recipe Revision Card"
     end;
 
     var
+        AdminAccess: Codeunit "SI Recipe Admin Edit Access";
+        AdminEdit: Boolean;
+        IsSuperUser: Boolean;
+        AdminValidityType: Enum "SI Recipe Validity Type";
+        AdminValidFrom: Date;
+        AdminValidTo: Date;
+        AdminSeason: Enum "SI Recipe Season";
+        AdminCementManufacturer: Code[20];
         RevisionDisplayName: Text;
         IsDraft: Boolean;
         IsCertified: Boolean;

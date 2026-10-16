@@ -133,6 +133,11 @@ table 62022 "SI Concrete Recipe Line"
 
     trigger OnModify()
     begin
+        if AllowAdminMaterialModify then begin
+            CheckAdminMaterialOnly();
+            ValidateMaterialClassification();
+            exit;
+        end;
         EnsureDraftRevision();
         ValidateMaterialClassification();
     end;
@@ -145,6 +150,30 @@ table 62022 "SI Concrete Recipe Line"
     trigger OnRename()
     begin
         EnsureDraftRevision();
+    end;
+
+    procedure ApplyAdminMaterialType(NewValueId: Integer)
+    var
+        AdminAccess: Codeunit "SI Recipe Admin Edit Access";
+    begin
+        AdminAccess.RequireSuper();
+        Validate("Material Type Value ID", NewValueId);
+        AllowAdminMaterialModify := true;
+        Modify(true);
+        AllowAdminMaterialModify := false;
+    end;
+
+    local procedure CheckAdminMaterialOnly()
+    begin
+        if ("Recipe No." <> xRec."Recipe No.") or
+           ("Revision No." <> xRec."Revision No.") or
+           ("Line No." <> xRec."Line No.") or
+           ("Item No." <> xRec."Item No.") or
+           ("Variant Code" <> xRec."Variant Code") or
+           (Description <> xRec.Description) or
+           ("Unit of Measure Code" <> xRec."Unit of Measure Code") or
+           (Quantity <> xRec.Quantity) then
+            Error(AdminMaterialOnlyErr);
     end;
 
     procedure ValidateMaterialClassification()
@@ -183,6 +212,8 @@ table 62022 "SI Concrete Recipe Line"
     end;
 
     var
+        AllowAdminMaterialModify: Boolean;
+        AdminMaterialOnlyErr: Label 'Адміністративний режим дозволяє змінювати лише тип матеріалу.';
         QuantityPositiveErr: Label 'Кількість має бути більшою за нуль.';
         ControlledRevisionLineErr: Label 'Рядки рецептури %1 ревізії %2 не можна змінювати, оскільки ревізія сертифікована або неактивна.';
 }

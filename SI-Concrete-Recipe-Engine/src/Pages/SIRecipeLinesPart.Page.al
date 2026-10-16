@@ -26,6 +26,7 @@ page 62104 "SI Recipe Lines Part"
                 {
                     ApplicationArea = All;
                     Caption = 'Тип матеріалу';
+                    Editable = true;
                     trigger OnLookup(var Text: Text): Boolean
                     var
                         MaterialMgt: Codeunit "SI Recipe Material Type Mgt.";
@@ -33,7 +34,10 @@ page 62104 "SI Recipe Lines Part"
                     begin
                         ValueId := Rec."Material Type Value ID";
                         if MaterialMgt.LookupMaterialType(ValueId) then begin
-                            Rec.Validate("Material Type Value ID", ValueId);
+                            if AdminEdit then
+                                Rec.ApplyAdminMaterialType(ValueId)
+                            else
+                                Rec.Validate("Material Type Value ID", ValueId);
                             RefreshMaterialTypeDisplay();
                             Text := MaterialTypeDisplay;
                         end;
@@ -43,6 +47,7 @@ page 62104 "SI Recipe Lines Part"
                 field("Item No."; Rec."Item No.")
                 {
                     ApplicationArea = All;
+                    Editable = not AdminEdit;
                     trigger OnLookup(var Text: Text): Boolean
                     var
                         MaterialMgt: Codeunit "SI Recipe Material Type Mgt.";
@@ -59,22 +64,32 @@ page 62104 "SI Recipe Lines Part"
                 field("Variant Code"; Rec."Variant Code")
                 {
                     ApplicationArea = All;
+                    Editable = not AdminEdit;
                 }
                 field(Description; Rec.Description)
                 {
                     ApplicationArea = All;
+                    Editable = not AdminEdit;
                 }
                 field("Unit of Measure Code"; Rec."Unit of Measure Code")
                 {
                     ApplicationArea = All;
+                    Editable = not AdminEdit;
                 }
                 field(Quantity; Rec.Quantity)
                 {
                     ApplicationArea = All;
+                    Editable = not AdminEdit;
                 }
             }
         }
     }
+
+    procedure SetAdminEdit(NewValue: Boolean)
+    begin
+        AdminEdit := NewValue;
+        CurrPage.Update(false);
+    end;
 
     trigger OnAfterGetRecord()
     begin
@@ -94,5 +109,6 @@ page 62104 "SI Recipe Lines Part"
     end;
 
     var
+        AdminEdit: Boolean;
         MaterialTypeDisplay: Text[250];
 }
