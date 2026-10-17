@@ -19,13 +19,13 @@ page 63000 "SI Geo Geocoding Test"
                     ApplicationArea = All;
                     Caption = 'Адреса';
                     MultiLine = true;
-                    ToolTip = 'Адреса, яку потрібно перевірити через Geoapify.';
+                    ToolTip = 'Адреса для геокодування через Geoapify.';
                 }
             }
 
             group(Result)
             {
-                Caption = 'Результат';
+                Caption = 'Результат EDS';
 
                 field(HttpStatus; HttpStatus)
                 {
@@ -33,22 +33,68 @@ page 63000 "SI Geo Geocoding Test"
                     Caption = 'HTTP статус';
                     Editable = false;
                 }
+
                 field(ResultText; ResultText)
                 {
                     ApplicationArea = All;
                     Caption = 'Результат EDS';
                     Editable = false;
                 }
+
                 field(CorrelationId; CorrelationId)
                 {
                     ApplicationArea = All;
                     Caption = 'Correlation ID';
                     Editable = false;
                 }
+
                 field(DiagnosticUrl; DiagnosticUrl)
                 {
                     ApplicationArea = All;
                     Caption = 'Діагностичний URL';
+                    Editable = false;
+                }
+            }
+
+            group(GeocodingResult)
+            {
+                Caption = 'Результат геокодування';
+
+                field(ResultCount; ResultCount)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Кількість результатів';
+                    Editable = false;
+                }
+
+                field(FormattedAddress; FormattedAddress)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Нормалізована адреса';
+                    Editable = false;
+                    MultiLine = true;
+                }
+
+                field(Latitude; Latitude)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Широта';
+                    Editable = false;
+                    DecimalPlaces = 0 : 10;
+                }
+
+                field(Longitude; Longitude)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Довгота';
+                    Editable = false;
+                    DecimalPlaces = 0 : 10;
+                }
+
+                field(CoordinatesAvailable; CoordinatesAvailable)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Координати отримано';
                     Editable = false;
                 }
             }
@@ -75,9 +121,24 @@ page 63000 "SI Geo Geocoding Test"
                     Clear(ResultText);
                     Clear(CorrelationId);
                     Clear(DiagnosticUrl);
+                    Clear(ResultCount);
+                    Clear(FormattedAddress);
+                    Clear(Latitude);
+                    Clear(Longitude);
+                    Clear(CoordinatesAvailable);
+
                     GeoTestMgt.TestForwardGeocoding(
-                        AddressInput, HttpStatus, ResultText,
-                        CorrelationId, DiagnosticUrl);
+                        AddressInput,
+                        HttpStatus,
+                        ResultText,
+                        CorrelationId,
+                        DiagnosticUrl,
+                        ResultCount,
+                        FormattedAddress,
+                        Latitude,
+                        Longitude,
+                        CoordinatesAvailable);
+
                     CurrPage.Update(false);
                 end;
             }
@@ -98,4 +159,10 @@ page 63000 "SI Geo Geocoding Test"
         ResultText: Text[100];
         CorrelationId: Guid;
         DiagnosticUrl: Text[100];
+
+        ResultCount: Integer;
+        FormattedAddress: Text[2048];
+        Latitude: Decimal;
+        Longitude: Decimal;
+        CoordinatesAvailable: Boolean;
 }
