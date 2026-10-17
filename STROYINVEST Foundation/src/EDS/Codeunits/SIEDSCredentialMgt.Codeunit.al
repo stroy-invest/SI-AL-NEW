@@ -1,131 +1,100 @@
 codeunit 50462 "SI EDS Credential Mgt."
 {
-    procedure SetSecretText(
-        ProviderCode: Code[50];
-        CredentialCode: Code[50];
-        Value: Text)
+    // Canonical storage: SI.EDS.<Provider>.<Credential> via Secret Mgt.
+    // Text is accepted only at the existing credential-entry boundary.
+    [NonDebuggable]
+    procedure SetSecretText(ProviderCode: Code[50]; CredentialCode: Code[50]; Value: Text)
     var
-        StorageKey: Text;
+        SecretMgt: Codeunit "SI EDS Secret Mgt.";
     begin
-        ValidateCodes(
-            ProviderCode,
-            CredentialCode);
-
-        if Value = '' then
-            Error(
-                'Значення облікових даних не може бути порожнім.');
-
-        StorageKey :=
-            GetTextStorageKey(
-                ProviderCode,
-                CredentialCode);
-
-        if not IsolatedStorage.SetEncrypted(
-            StorageKey,
-            Value,
-            DataScope::Module)
-        then
-            Error(
-                'Не вдалося зберегти захищені облікові дані %1 / %2.',
-                ProviderCode,
-                CredentialCode);
+        ValidateCodes(ProviderCode, CredentialCode);
+        SecretMgt.SetSecretFromText(ProviderCode, CredentialCode, Value);
     end;
 
-    procedure GetSecretText(
-        ProviderCode: Code[50];
-        CredentialCode: Code[50]): Text
+    procedure GetCredentialSecret(ProviderCode: Code[50]; CredentialCode: Code[50]): SecretText
+    var
+        SecretMgt: Codeunit "SI EDS Secret Mgt.";
+    begin
+        ValidateCredential(ProviderCode, CredentialCode);
+        exit(SecretMgt.GetSecret(ProviderCode, CredentialCode));
+    end;
+
+    // COMPATIBILITY ONLY: legacy Text-returning API for previously deployed dependents.
+    // Do not call from new integrations; remove only after all consumers migrate.
+    [NonDebuggable]
+    procedure GetSecretText(ProviderCode: Code[50]; CredentialCode: Code[50]): Text
     var
         StorageKey: Text;
         Value: Text;
     begin
-        ValidateCredential(
-            ProviderCode,
-            CredentialCode);
-
-        StorageKey :=
-            GetTextStorageKey(
-                ProviderCode,
-                CredentialCode);
-
-        if not IsolatedStorage.Contains(
-            StorageKey,
-            DataScope::Module)
-        then
-            Error(
-                'Для провайдера %1 не налаштовано Text-compatible credential %2.',
-                ProviderCode,
-                CredentialCode);
-
-        if not IsolatedStorage.Get(
-            StorageKey,
-            DataScope::Module,
-            Value)
-        then
-            Error(
-                'Не вдалося прочитати захищені облікові дані %1 / %2.',
-                ProviderCode,
-                CredentialCode);
-
+        ValidateCredential(ProviderCode, CredentialCode);
+        StorageKey := GetTextStorageKey(ProviderCode, CredentialCode);
+        if not IsolatedStorage.Get(StorageKey, DataScope::Module, Value) then
+            Error('EDS legacy credential недоступний. Потрібна міграція P1/P2.');
         exit(Value);
     end;
 
-    procedure HasSecretText(
-        ProviderCode: Code[50];
-        CredentialCode: Code[50]): Boolean
-    var
-        StorageKey: Text;
+    procedure HasSecretText(ProviderCode: Code[50]; CredentialCode: Code[50]): Boolean
     begin
-        if (ProviderCode = '') or
-           (CredentialCode = '')
-        then
+        exit(HasSecret(ProviderCode, CredentialCode));
+    end;
+
+    procedure HasSecret(ProviderCode: Code[50]; CredentialCode: Code[50]): Boolean
+    var
+        SecretMgt: Codeunit "SI EDS Secret Mgt.";
+    begin
+        if (ProviderCode = '') or (CredentialCode = '') then
             exit(false);
-
-        StorageKey :=
-            GetTextStorageKey(
-                ProviderCode,
-                CredentialCode);
-
-        exit(
-            IsolatedStorage.Contains(
-                StorageKey,
-                DataScope::Module));
+        exit(SecretMgt.HasSecret(ProviderCode, CredentialCode));
     end;
 
-    procedure DeleteSecretText(
-        ProviderCode: Code[50];
-        CredentialCode: Code[50])
+    // Deletes both namespaces only on explicit user action.
+    procedure DeleteSecretText(ProviderCode: Code[50]; CredentialCode: Code[50])
     var
-        StorageKey: Text;
+        SecretMgt: Codeunit "SI EDS Secret Mgt.";
+        LegacyKey: Text;
     begin
-        if (ProviderCode = '') or
-           (CredentialCode = '')
-        then
+        if (ProviderCode = '') or (CredentialCode = '') then
             exit;
-
-        StorageKey :=
-            GetTextStorageKey(
-                ProviderCode,
-                CredentialCode);
-
-        if IsolatedStorage.Contains(
-            StorageKey,
-            DataScope::Module)
-        then
-            IsolatedStorage.Delete(
-                StorageKey,
-                DataScope::Module);
+        SecretMgt.DeleteSecret(ProviderCode, CredentialCode);
+        LegacyKey := GetTextStorageKey(ProviderCode, CredentialCode);
+        if IsolatedStorage.Contains(LegacyKey, DataScope::Module) then
+            IsolatedStorage.Delete(LegacyKey, DataScope::Module);
     end;
 
-    procedure HasSecret(
-        ProviderCode: Code[50];
-        CredentialCode: Code[50]): Boolean
+    // Explicit migration: do not erase the old key until canonical write is verified.
+    // Run only after reviewing the provider/credential scope and taking a backup.
+    [NonDebuggable]
+    procedure MigrateLegacyCredential(ProviderCode: Code[50]; CredentialCode: Code[50]): Boolean
+    var
+        SecretMgt: Codeunit "SI EDS Secret Mgt.";
+        LegacyKey: Text;
+        LegacyValue: Text;
     begin
-        // Для нового runtime вважаємо credential налаштованим,
-        // якщо існує Text-compatible encrypted value.
-        exit(
-            HasSecretText(
-                ProviderCode,
-                CredentialCode));
+        // Migration includes disabled credentials; enabled state controls usage,
+        // not whether a stored secret can be migrated.
+        ValidateCodes(ProviderCode, CredentialCode);
+        if SecretMgt.HasSecret(ProviderCode, CredentialCode) then
+            exit(false);
+        LegacyKey := GetTextStorageKey(ProviderCode, CredentialCode);
+        if not IsolatedStorage.Contains(LegacyKey, DataScope::Module) then
+            Error('EDS legacy credential відсутній для %1 / %2.', ProviderCode, CredentialCode);
+        if not IsolatedStorage.Get(LegacyKey, DataScope::Module, LegacyValue) then
+            Error('EDS legacy credential не вдалося прочитати.');
+        SecretMgt.SetSecretFromText(ProviderCode, CredentialCode, LegacyValue);
+        Clear(LegacyValue);
+        if not SecretMgt.HasSecret(ProviderCode, CredentialCode) then
+            Error('EDS canonical credential не підтверджено після міграції.');
+        // Do not delete the legacy key here; cleanup is a separate approved step.
+        exit(true);
+    end;
+
+    procedure HasLegacySecret(ProviderCode: Code[50]; CredentialCode: Code[50]): Boolean
+    begin
+        if (ProviderCode = '') or (CredentialCode = '') then
+            exit(false);
+        exit(IsolatedStorage.Contains(
+            GetTextStorageKey(ProviderCode, CredentialCode), DataScope::Module));
     end;
 
     local procedure ValidateCredential(

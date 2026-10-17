@@ -48,6 +48,12 @@ codeunit 50464 "SI EDS Audit Logger"
             SafeResponseBody := '';
         end;
 
+        // Suppress untrusted error details for every credential-bearing operation,
+        // not only query credentials. Subscribers receive sanitized metadata.
+        EDSParameter.SetRange(Location);
+        if not EDSParameter.IsEmpty() then
+            SafeErrorMessage := 'EDS credential operation: error details suppressed.';
+
         OnWriteIsolated(
             CorrelationID,
             ServiceCode,
@@ -135,6 +141,11 @@ codeunit 50464 "SI EDS Audit Logger"
             SafeErrorMessage := 'EDS Query Credential: details suppressed.';
             SafeLogResponseBody := false;
         end;
+
+        // Defense-in-depth for direct event/persistence callers.
+        EDSParameter.SetRange(Location);
+        if not EDSParameter.IsEmpty() then
+            SafeErrorMessage := 'EDS credential operation: error details suppressed.';
 
         ExecLog.Init();
         ExecLog."Correlation ID" := CorrelationID;

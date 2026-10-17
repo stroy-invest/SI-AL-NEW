@@ -45,6 +45,7 @@ codeunit 50466 "SI EDS Async Mgt."
         RuntimeParam.Reset();
         if RuntimeParam.FindSet() then
             repeat
+                AssertSafeAsyncParameter(ServiceCode, OperationCode, RuntimeParam.Code);
                 LineNo += 10000;
                 AsyncParam.Init();
                 AsyncParam."Request Entry No." := AsyncRequest."Entry No.";
@@ -55,5 +56,23 @@ codeunit 50466 "SI EDS Async Mgt."
             until RuntimeParam.Next() = 0;
 
         exit(AsyncRequest."Entry No.");
+    end;
+
+    // Fail closed: credential-sourced parameters must be resolved at execution,
+    // never copied into the persistent async parameter table.
+    local procedure AssertSafeAsyncParameter(ServiceCode: Code[50]; OperationCode: Code[50]; RuntimeCode: Code[50])
+    var
+        EDSParameter: Record "SI EDS Parameter";
+    begin
+        EDSParameter.SetRange("Service Code", ServiceCode);
+        EDSParameter.SetRange("Operation Code", OperationCode);
+        EDSParameter.SetRange(Source, EDSParameter.Source::Credential);
+        EDSParameter.SetRange(Enabled, true);
+        if EDSParameter.FindSet() then
+            repeat
+                if (RuntimeCode = EDSParameter.Code) or
+                   ((EDSParameter."Credential Code" <> '') and (RuntimeCode = EDSParameter."Credential Code")) then
+                    Error('EDS async parameter conflicts with a configured credential. Request not queued.');
+            until EDSParameter.Next() = 0;
     end;
 }

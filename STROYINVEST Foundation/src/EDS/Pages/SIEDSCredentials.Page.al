@@ -102,6 +102,49 @@ page 50460 "SI EDS Credentials"
                 end;
             }
 
+            action(MigrateAllLegacyCredentials)
+            {
+                ApplicationArea = All;
+                Caption = 'Мігрувати всі облікові дані';
+                ToolTip = 'Одноразово переносить наявні старі секрети всіх провайдерів до канонічного захищеного сховища. Старі секрети не видаляються.';
+                Image = Import;
+
+                trigger OnAction()
+                var
+                    Credential: Record "SI EDS Credential";
+                    MigrationMgt: Codeunit "SI EDS Credential Mgt.";
+                    MigratedCount: Integer;
+                    AlreadyCount: Integer;
+                    MissingCount: Integer;
+                    TotalCount: Integer;
+                begin
+                    if not Confirm(
+                        'Мігрувати всі облікові дані EDS до канонічного сховища? Старі секрети не видалятимуться.',
+                        false)
+                    then
+                        exit;
+
+                    // No COMMIT: any unexpected error rolls back the whole action.
+                    if Credential.FindSet() then
+                        repeat
+                            TotalCount += 1;
+                            if MigrationMgt.HasSecret(Credential."Provider Code", Credential.Code) then
+                                AlreadyCount += 1
+                            else
+                                if MigrationMgt.HasLegacySecret(Credential."Provider Code", Credential.Code) then begin
+                                    if MigrationMgt.MigrateLegacyCredential(Credential."Provider Code", Credential.Code) then
+                                        MigratedCount += 1;
+                                end else
+                                    MissingCount += 1;
+                        until Credential.Next() = 0;
+
+                    Message(
+                        'Міграція EDS завершена. Всього записів: %1. Перенесено: %2. Уже в канонічному сховищі: %3. Без збереженого секрету: %4.',
+                        TotalCount, MigratedCount, AlreadyCount, MissingCount);
+                    CurrPage.Update(false);
+                end;
+            }
+
             action(DeleteSecret)
             {
                 ApplicationArea = All;

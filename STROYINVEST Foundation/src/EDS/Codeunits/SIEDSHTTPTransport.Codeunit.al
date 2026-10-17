@@ -22,6 +22,7 @@ codeunit 50430 "SI EDS HTTP Transport"
         RequestBody: Text;
         ResponseText: Text;
         RequestUrl: Text;
+        SecureRequestUrl: SecretText;
         StartedAt: DateTime;
         FinishedAt: DateTime;
         RateLimitMgt: Codeunit "SI EDS Rate Limit Mgt.";
@@ -49,7 +50,8 @@ codeunit 50430 "SI EDS HTTP Transport"
 
         // 79-C2 is compile-only. 79-C3 must audit all error/log paths
         // before allowing an HTTP request containing query credentials.
-        RequestUrl := AppendCredentialQueryParameters(RequestBuffer, RequestUrl);
+        if HasEnabledQueryCredential(RequestBuffer) then
+            SecureRequestUrl := BuildSecureQueryUrl(RequestBuffer, RequestUrl);
 
         RateLimitMgt.WaitForSlot(RequestBuffer."Provider Code");
 
@@ -61,7 +63,7 @@ codeunit 50430 "SI EDS HTTP Transport"
                 begin
                     if HasEnabledQueryCredential(RequestBuffer) then begin
                         if not TryGetWithQueryCredential(
-                            HttpClient, RequestUrl, HttpResponse)
+                            HttpClient, SecureRequestUrl, HttpResponse)
                         then begin
                             FinishedAt := CurrentDateTime;
                             SetTransportFailure(
@@ -106,7 +108,7 @@ codeunit 50430 "SI EDS HTTP Transport"
                     if HasEnabledQueryCredential(RequestBuffer) then begin
                         if not TryPostWithQueryCredential(
                             HttpClient, HttpRequest, HttpContent,
-                            RequestUrl, HttpResponse)
+                            SecureRequestUrl, HttpResponse)
                         then begin
                             FinishedAt := CurrentDateTime;
                             SetTransportFailure(
@@ -186,6 +188,7 @@ codeunit 50430 "SI EDS HTTP Transport"
         HttpResponse: HttpResponseMessage;
         ResponseText: Text;
         RequestUrl: Text;
+        SecureRequestUrl: SecretText;
         StartedAt: DateTime;
         FinishedAt: DateTime;
         RateLimitMgt: Codeunit "SI EDS Rate Limit Mgt.";
@@ -213,7 +216,8 @@ codeunit 50430 "SI EDS HTTP Transport"
 
         // 79-C2 is compile-only. 79-C3 must audit all error/log paths
         // before allowing an HTTP request containing query credentials.
-        RequestUrl := AppendCredentialQueryParameters(RequestBuffer, RequestUrl);
+        if HasEnabledQueryCredential(RequestBuffer) then
+            SecureRequestUrl := BuildSecureQueryUrl(RequestBuffer, RequestUrl);
 
         RateLimitMgt.WaitForSlot(RequestBuffer."Provider Code");
 
@@ -247,7 +251,7 @@ codeunit 50430 "SI EDS HTTP Transport"
         if HasEnabledQueryCredential(RequestBuffer) then begin
             if not TryPostWithQueryCredential(
                 HttpClient, HttpRequest, HttpContent,
-                RequestUrl, HttpResponse)
+                SecureRequestUrl, HttpResponse)
             then begin
                 FinishedAt := CurrentDateTime;
                 SetTransportFailure(
@@ -281,17 +285,19 @@ codeunit 50430 "SI EDS HTTP Transport"
             HasEnabledQueryCredential(RequestBuffer));
     end;
 
-    // Fix 5: a narrow exception boundary for query-credential HTTP calls.
-    // Never propagate GetLastErrorText() or a raw request URI to EDS buffers.
-    // This does not control internal Business Central platform telemetry.
+    // Failures must not propagate the secret URI into EDS diagnostics.
     [TryFunction]
     [NonDebuggable]
     local procedure TryGetWithQueryCredential(
         var Client: HttpClient;
-        RequestUrl: Text;
+        SecureUrl: SecretText;
         var Response: HttpResponseMessage)
+    var
+        Request: HttpRequestMessage;
     begin
-        if not Client.Get(RequestUrl, Response) then
+        Request.SetSecretRequestUri(SecureUrl);
+        Request.Method('GET');
+        if not Client.Send(Request, Response) then
             Error('EDS HTTP request failed.');
     end;
 
@@ -301,10 +307,10 @@ codeunit 50430 "SI EDS HTTP Transport"
         var Client: HttpClient;
         var Request: HttpRequestMessage;
         var Content: HttpContent;
-        RequestUrl: Text;
+        SecureUrl: SecretText;
         var Response: HttpResponseMessage)
     begin
-        Request.SetRequestUri(RequestUrl);
+        Request.SetSecretRequestUri(SecureUrl);
         Request.Method('POST');
         Request.Content(Content);
         if not Client.Send(Request, Response) then
@@ -477,6 +483,7 @@ codeunit 50430 "SI EDS HTTP Transport"
         RequestHeaders: HttpHeaders;
         HeaderName: Text;
         HeaderValue: Text;
+        SecretValue: SecretText;
     begin
         EDSParameter.SetRange("Service Code", RequestBuffer."Service Code");
         EDSParameter.SetRange("Operation Code", RequestBuffer."Operation Code");
@@ -488,49 +495,37 @@ codeunit 50430 "SI EDS HTTP Transport"
 
         if not EDSParameter.FindSet() then
             exit;
-
         RequestHeaders := HttpClient.DefaultRequestHeaders();
-
         repeat
             HeaderName := EDSParameter.GetExternalName();
-
+            if RequestHeaders.Contains(HeaderName) then
+                RequestHeaders.Remove(HeaderName);
             case EDSParameter.Source of
                 EDSParameter.Source::Fixed:
-                    HeaderValue :=
-                        EDSParameter."Value Prefix" + EDSParameter.Value;
-
+                    begin
+                        HeaderValue := EDSParameter."Value Prefix" + EDSParameter.Value;
+                        if EDSParameter.Required and (HeaderValue = '') then
+                            Error('HTTP header %1 має порожнє обов''язкове значення.', HeaderName);
+                        if HeaderValue <> '' then
+                            if not RequestHeaders.TryAddWithoutValidation(HeaderName, HeaderValue) then
+                                Error('Не вдалося встановити HTTP header %1.', HeaderName);
+                    end;
                 EDSParameter.Source::Credential:
-                    HeaderValue :=
-                        EDSParameter."Value Prefix" +
-                        CredentialMgt.GetSecretText(
-                            RequestBuffer."Provider Code",
-                            EDSParameter."Credential Code");
-
+                    begin
+                        SecretValue := CredentialMgt.GetCredentialSecret(
+                            RequestBuffer."Provider Code", EDSParameter."Credential Code");
+                        if EDSParameter.Required and SecretValue.IsEmpty() then
+                            Error('HTTP header %1 має порожнє обов''язкове значення.', HeaderName);
+                        if not SecretValue.IsEmpty() then begin
+                            SecretValue := SecretStrSubstNo('%1%2', EDSParameter."Value Prefix", SecretValue);
+                            RequestHeaders.Add(HeaderName, SecretValue);
+                        end;
+                    end;
                 EDSParameter.Source::Runtime:
-                    Error(
-                        'Runtime HTTP headers ще не підтримуються EDS. Параметр: %1.',
-                        EDSParameter.Code);
+                    Error('Runtime HTTP headers ще не підтримуються EDS. Параметр: %1.', EDSParameter.Code);
             end;
-
-            if EDSParameter.Required and (HeaderValue = '') then
-                Error(
-                    'HTTP header %1 має порожнє обов''язкове значення.',
-                    HeaderName);
-
-            if HeaderValue <> '' then begin
-                if RequestHeaders.Contains(HeaderName) then
-                    RequestHeaders.Remove(HeaderName);
-
-                if not RequestHeaders.TryAddWithoutValidation(
-                    HeaderName,
-                    HeaderValue)
-                then
-                    Error(
-                        'Не вдалося встановити HTTP header %1.',
-                        HeaderName);
-            end;
-
             Clear(HeaderValue);
+            Clear(SecretValue);
         until EDSParameter.Next() = 0;
     end;
 
@@ -548,19 +543,10 @@ codeunit 50430 "SI EDS HTTP Transport"
         HttpContent.GetHeaders(
             ContentHeaders);
 
-        if ContentHeaders.Contains(
-            'Content-Type')
-        then
-            ContentHeaders.Remove(
-                'Content-Type');
-
-        if not ContentHeaders.TryAddWithoutValidation(
-            'Content-Type',
-            EffectiveContentType)
-        then
-            Error(
-                'Не вдалося встановити HTTP Content-Type. Значення: %1',
-                EffectiveContentType);
+        // WriteFrom(SecretText) can leave a default text/plain value.
+        // Clear + Add was verified against an HTTP echo endpoint.
+        ContentHeaders.Clear();
+        ContentHeaders.Add('Content-Type', EffectiveContentType);
     end;
 
     local procedure GetEffectiveContentType(
@@ -704,19 +690,23 @@ codeunit 50430 "SI EDS HTTP Transport"
         exit(BaseRequestUrl + '?[REDACTED]');
     end;
 
+    // Never materialize a credential-bearing URL as Text.
     [NonDebuggable]
-    local procedure AppendCredentialQueryParameters(
+    local procedure BuildSecureQueryUrl(
         RequestBuffer: Record "SI EDS Request Buffer" temporary;
-        BaseRequestUrl: Text): Text
+        BaseRequestUrl: Text): SecretText
     var
         EDSParameter: Record "SI EDS Parameter";
         CredentialMgt: Codeunit "SI EDS Credential Mgt.";
         TypeHelper: Codeunit "Type Helper";
-        ActualUrl: Text;
-        CredentialValue: Text;
+        SecureUrl: SecretText;
+        CredentialValue: SecretText;
+        EncodedValue: SecretText;
         EncodedName: Text;
-        EncodedValue: Text;
+        Separator: Text;
     begin
+        if not BaseRequestUrl.StartsWith('https://') then
+            Error('EDS Query Credential вимагає HTTPS endpoint.');
         EDSParameter.SetRange("Service Code", RequestBuffer."Service Code");
         EDSParameter.SetRange("Operation Code", RequestBuffer."Operation Code");
         EDSParameter.SetRange("Provider Code", RequestBuffer."Provider Code");
@@ -724,55 +714,30 @@ codeunit 50430 "SI EDS HTTP Transport"
         EDSParameter.SetRange(Source, EDSParameter.Source::Credential);
         EDSParameter.SetRange(Enabled, true);
         if not EDSParameter.FindSet() then
-            exit(BaseRequestUrl);
-
-        // C4 controlled enablement gate: fail closed until explicit approval.
-        // HTTPS is mandatory for every Query Credential operation.
-        if not BaseRequestUrl.StartsWith('https://') then
-            Error('EDS Query Credential вимагає HTTPS endpoint.');
-
-        // C7: compile-time opt-in, disabled in ordinary builds.
-        // NEVER define EDS_C7_SANDBOX_ENABLE for production builds.
-#if EDS_C7_SANDBOX_ENABLE
-        if not IsSandboxEnvironment() then
-            Error('EDS Query Credentials: дозволено лише в Sandbox.');
-#else
-        Error('EDS Query Credentials: C7 validation disabled in this build.');
-#endif
-
-        // The plaintext URL exists transiently in this NonDebuggable procedure.
-        // Enabling C7 requires an explicit security decision and canary tests.
-        ActualUrl := BaseRequestUrl;
+            Error('EDS Query Credential configuration is missing.');
+        SecureUrl := SecretStrSubstNo('%1', BaseRequestUrl);
+        if StrPos(BaseRequestUrl, '?') = 0 then
+            Separator := '?'
+        else
+            Separator := '&';
         repeat
             if EDSParameter.Format <> EDSParameter.Format::"Name Value" then
                 Error('Credential Query %1 повинен мати формат Name=Value.', EDSParameter.Code);
-            CredentialValue := CredentialMgt.GetSecretText(
+            CredentialValue := CredentialMgt.GetCredentialSecret(
                 RequestBuffer."Provider Code", EDSParameter."Credential Code");
-            if EDSParameter.Required and (CredentialValue = '') then
+            if EDSParameter.Required and CredentialValue.IsEmpty() then
                 Error('Credential Query %1 не має значення.', EDSParameter.Code);
-            if StrPos(ActualUrl, '?') = 0 then
-                ActualUrl += '?'
-            else
-                ActualUrl += '&';
             EncodedName := EDSParameter.GetExternalName();
-            EncodedValue := EDSParameter."Value Prefix" + CredentialValue;
             TypeHelper.UrlEncode(EncodedName);
+            EncodedValue := SecretStrSubstNo('%1%2', EDSParameter."Value Prefix", CredentialValue);
             TypeHelper.UrlEncode(EncodedValue);
-            ActualUrl += EncodedName + '=' + EncodedValue;
+            SecureUrl := SecretStrSubstNo('%1%2%3=%4', SecureUrl, Separator, EncodedName, EncodedValue);
+            Separator := '&';
             Clear(CredentialValue);
             Clear(EncodedValue);
         until EDSParameter.Next() = 0;
-        exit(ActualUrl);
+        exit(SecureUrl);
     end;
-
-#if EDS_C7_SANDBOX_ENABLE
-    local procedure IsSandboxEnvironment(): Boolean
-    var
-        EnvironmentInformation: Codeunit "Environment Information";
-    begin
-        exit(EnvironmentInformation.IsSandbox());
-    end;
-#endif
 
     local procedure BuildUrl(
         RequestBuffer: Record "SI EDS Request Buffer" temporary): Text
