@@ -12,7 +12,8 @@
 
             "startupObjectType": "Page",
             "startupObjectId": 9022,
-            "schemaUpdateMode": "ForceSync",
+            "schemaUpdateMode": "Synchronize",
+			"dependencyPublishingOption": "Ignore",
 
             "breakOnError": "All",
             "breakOnRecordWrite": "None",
