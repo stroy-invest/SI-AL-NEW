@@ -10,8 +10,8 @@ codeunit 57050 "SI Prok Auth Mgt."
         CredentialMgt: Codeunit "SI EDS Credential Mgt.";
         LoginBuilder: Codeunit "SI Prok Login Builder";
         LoginResolver: Codeunit "SI Prok Login Resolver";
-        Password: Text;
-        RequestBody: Text;
+        Password: SecretText;
+        RequestBody: SecretText;
     begin
         Connection.TestField(Code);
         Connection.TestField("EDS Service Code");
@@ -22,7 +22,7 @@ codeunit 57050 "SI Prok Auth Mgt."
         Connection.TestField(Username);
 
         Password :=
-            CredentialMgt.GetSecretText(
+            CredentialMgt.GetCredentialSecret(
                 Connection."EDS Provider Code",
                 Connection."Password Credential Code");
 
@@ -35,13 +35,14 @@ codeunit 57050 "SI Prok Auth Mgt."
         // Пароль як окреме значення більше не потрібний.
         Clear(Password);
 
-        EDSOrchestrator.ExecuteProviderBody(
+        EDSOrchestrator.ExecuteProviderSecretBody(
             Connection."EDS Service Code",
             Connection."EDS Login Operation",
             Connection."EDS Provider Code",
             RuntimeParam,
             RequestBody,
-            'application/json-patch+json',
+            //'application/json-patch+json',
+            'application/json',
             'text/plain',
             ResponseBuffer);
 
