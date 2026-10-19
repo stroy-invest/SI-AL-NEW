@@ -1,4 +1,4 @@
-codeunit 54018 "SI BP Registry Orchestrator"
+﻿codeunit 54018 "SI BP Registry Orchestrator"
 {
     procedure Resolve(
         BusinessPartnerNo: Code[60];
@@ -12,6 +12,7 @@ codeunit 54018 "SI BP Registry Orchestrator"
         ResponseBuffer: Record "SI EDS Response Buffer" temporary;
         First202At: DateTime;
         RetryNo: Integer;
+        RegistrySource: Record "SI BP Registry Source";
     begin
         RegistryResult.Reset();
         RegistryResult.DeleteAll();
@@ -19,31 +20,40 @@ codeunit 54018 "SI BP Registry Orchestrator"
 
         ValidateContext(CountryRegionCode, EntityType, IdentifierType, IdentifierValue);
 
-        // Keep the BP flow identical to the proven Foundation Page 50447 USR flow:
-        // GET-USR -> on 202 retry 3 x 5 s -> GET-USR-CURRENT -> enqueue GET-USR.
-        ExecuteUsr(IdentifierValue, ResponseBuffer);
+        RegistrySource.SetRange("Entity Type", EntityType);
+        RegistrySource.SetRange(Enabled, true);
+        RegistrySource.SetCurrentKey("Entity Type", Priority);
+        if not RegistrySource.FindFirst() then
+            Error(NoRegistrySourceErr, Format(EntityType));
 
-        if ResponseBuffer."HTTP Status Code" = 202 then begin
-            First202At := CurrentDateTime;
-            for RetryNo := 1 to 3 do begin
-                Sleep(5000);
-                ExecuteUsr(IdentifierValue, ResponseBuffer);
-                if ResponseBuffer."HTTP Status Code" <> 202 then
-                    break;
-            end;
+        if StrPos(UpperCase(RegistrySource."Source Code"), YouScoreProviderPrefixLbl) = 1 then begin
+            // Preserve the proven YouScore 202 / current-data / async chain.
+            if (RegistrySource."EDS Service Code" <> UARegistryServiceLbl) or
+               (RegistrySource."EDS Operation Code" <> GetUSR_OperationLbl) then
+                Error(UnsupportedYouScoreRouteErr, RegistrySource."EDS Service Code", RegistrySource."EDS Operation Code");
 
+            ExecuteUsrForProvider(IdentifierValue, RegistrySource."Source Code", ResponseBuffer);
             if ResponseBuffer."HTTP Status Code" = 202 then begin
-                ExecuteUsrCurrent(IdentifierValue, ResponseBuffer);
-                EnsureSuccessfulResponse(ResponseBuffer, GetUSRCurrentOperationLbl);
+                First202At := CurrentDateTime;
+                for RetryNo := 1 to 3 do begin
+                    Sleep(5000);
+                    ExecuteUsrForProvider(IdentifierValue, RegistrySource."Source Code", ResponseBuffer);
+                    if ResponseBuffer."HTTP Status Code" <> 202 then
+                        break;
+                end;
 
-                // Business Key is the BP No., not the identifier. The async completion
-                // subscriber can therefore update exactly the BP that initiated the request.
-                EnqueueUsrRefresh(BusinessPartnerNo, IdentifierValue, First202At);
-                BackgroundRefreshQueued := true;
+                if ResponseBuffer."HTTP Status Code" = 202 then begin
+                    ExecuteUsrCurrentForProvider(IdentifierValue, RegistrySource."Source Code", ResponseBuffer);
+                    EnsureSuccessfulResponse(ResponseBuffer, GetUSRCurrentOperationLbl);
+                    EnqueueUsrRefresh(BusinessPartnerNo, IdentifierValue, First202At);
+                    BackgroundRefreshQueued := true;
+                end;
             end;
+            EnsureSuccessfulResponse(ResponseBuffer, GetUSR_OperationLbl);
+        end else begin
+            ExecuteConfiguredSource(RegistrySource, IdentifierValue, ResponseBuffer);
+            EnsureConfiguredSuccessfulResponse(ResponseBuffer, RegistrySource);
         end;
-
-        EnsureSuccessfulResponse(ResponseBuffer, GetUSR_OperationLbl);
 
         ResolveProviderResponse(
             ResponseBuffer,
@@ -95,42 +105,109 @@ codeunit 54018 "SI BP Registry Orchestrator"
         StampOutcome(RegistryResult, ResponseBuffer."Provider Code");
     end;
 
-    local procedure ExecuteUsr(
-        IdentifierValue: Text[50];
+    local procedure ExecuteUsrForProvider(
+        IdentifierValue: Text[50]; ProviderCode: Code[50];
         var ResponseBuffer: Record "SI EDS Response Buffer" temporary)
     var
         RuntimeParam: Record "SI EDS Runtime Param" temporary;
     begin
         RuntimeParam.Add(ContractorCodeRuntimeKeyLbl, IdentifierValue);
-        ExecuteEDS(GetUSR_OperationLbl, RuntimeParam, ResponseBuffer);
+        ExecuteEDSForProvider(UARegistryServiceLbl, GetUSR_OperationLbl, ProviderCode, RuntimeParam, ResponseBuffer);
     end;
 
-    local procedure ExecuteUsrCurrent(
-        IdentifierValue: Text[50];
+    local procedure ExecuteUsrCurrentForProvider(
+        IdentifierValue: Text[50]; ProviderCode: Code[50];
         var ResponseBuffer: Record "SI EDS Response Buffer" temporary)
     var
         RuntimeParam: Record "SI EDS Runtime Param" temporary;
     begin
         RuntimeParam.Add(ContractorCodeRuntimeKeyLbl, IdentifierValue);
-        ExecuteEDS(GetUSRCurrentOperationLbl, RuntimeParam, ResponseBuffer);
+        ExecuteEDSForProvider(UARegistryServiceLbl, GetUSRCurrentOperationLbl, ProviderCode, RuntimeParam, ResponseBuffer);
     end;
 
-    local procedure ExecuteEDS(
-        OperationCode: Code[50];
+    local procedure ExecuteConfiguredSource(
+        RegistrySource: Record "SI BP Registry Source";
+        IdentifierValue: Text[50];
+        var ResponseBuffer: Record "SI EDS Response Buffer" temporary)
+    var
+        RuntimeParam: Record "SI EDS Runtime Param" temporary;
+    begin
+        RuntimeParam.Add(ResolveIdentifierRuntimeKey(RegistrySource), IdentifierValue);
+        ExecuteEDSForProvider(RegistrySource."EDS Service Code", RegistrySource."EDS Operation Code",
+            RegistrySource."Source Code", RuntimeParam, ResponseBuffer);
+    end;
+
+    local procedure ResolveIdentifierRuntimeKey(RegistrySource: Record "SI BP Registry Source"): Code[50]
+    var
+        EDSParameter: Record "SI EDS Parameter";
+        IdentifierRuntimeKey: Code[50];
+    begin
+        EDSParameter.SetRange("Service Code", RegistrySource."EDS Service Code");
+        EDSParameter.SetRange("Operation Code", RegistrySource."EDS Operation Code");
+        EDSParameter.SetRange("Provider Code", RegistrySource."Source Code");
+        EDSParameter.SetRange(Enabled, true);
+        EDSParameter.SetRange(Source, EDSParameter.Source::Runtime);
+        EDSParameter.SetRange(Required, true);
+        if EDSParameter.FindSet() then
+            repeat
+                EDSParameter.TestField("Runtime Key");
+                if IdentifierRuntimeKey <> '' then
+                    Error(AmbiguousIdentifierRuntimeKeyErr,
+                        RegistrySource."EDS Service Code", RegistrySource."EDS Operation Code",
+                        RegistrySource."Source Code");
+                IdentifierRuntimeKey := EDSParameter."Runtime Key";
+            until EDSParameter.Next() = 0;
+
+        if IdentifierRuntimeKey = '' then
+            Error(MissingIdentifierRuntimeKeyErr,
+                RegistrySource."EDS Service Code", RegistrySource."EDS Operation Code",
+                RegistrySource."Source Code");
+        exit(IdentifierRuntimeKey);
+    end;
+
+    local procedure ExecuteEDSForProvider(
+        ServiceCode: Code[50]; OperationCode: Code[50]; ProviderCode: Code[50];
+        var RuntimeParam: Record "SI EDS Runtime Param" temporary;
+        var ResponseBuffer: Record "SI EDS Response Buffer" temporary)
+    var
+        ProviderContext: Codeunit "SI EDS Provider Context";
+        ScopeToken: Guid;
+        FailureText: Text;
+    begin
+        ResponseBuffer.Reset();
+        ResponseBuffer.DeleteAll();
+        ProviderContext.BeginScope(ServiceCode, ProviderCode, ScopeToken);
+        if not TryExecuteEDS(ServiceCode, OperationCode, RuntimeParam, ResponseBuffer) then begin
+            FailureText := GetLastErrorText();
+            ProviderContext.EndScope(ScopeToken);
+            Error('%1', FailureText);
+        end;
+        ProviderContext.EndScope(ScopeToken);
+        if not ResponseBuffer.FindFirst() then
+            Error(EDSResponseMissingErr);
+        if ResponseBuffer."Provider Code" <> ProviderCode then
+            Error(ProviderMismatchErr, ProviderCode, ResponseBuffer."Provider Code");
+    end;
+
+    [TryFunction]
+    local procedure TryExecuteEDS(
+        ServiceCode: Code[50]; OperationCode: Code[50];
         var RuntimeParam: Record "SI EDS Runtime Param" temporary;
         var ResponseBuffer: Record "SI EDS Response Buffer" temporary)
     var
         EDSOrchestrator: Codeunit "SI EDS Orchestrator";
     begin
-        ResponseBuffer.Reset();
-        ResponseBuffer.DeleteAll();
-        EDSOrchestrator.Execute(
-            UARegistryServiceLbl,
-            OperationCode,
-            RuntimeParam,
-            ResponseBuffer);
-        if not ResponseBuffer.FindFirst() then
-            Error(EDSResponseMissingErr);
+        EDSOrchestrator.Execute(ServiceCode, OperationCode, RuntimeParam, ResponseBuffer);
+    end;
+
+    local procedure EnsureConfiguredSuccessfulResponse(
+        ResponseBuffer: Record "SI EDS Response Buffer" temporary;
+        RegistrySource: Record "SI BP Registry Source")
+    begin
+        if (ResponseBuffer."HTTP Status Code" <> 200) or
+           (ResponseBuffer."Result Type" <> ResponseBuffer."Result Type"::Success) then
+            Error(RegistryRequestFailedErr, RegistrySource."EDS Service Code",
+                RegistrySource."EDS Operation Code", ResponseBuffer."Provider Code", BuildFailureReason(ResponseBuffer));
     end;
 
     local procedure EnqueueUsrRefresh(
@@ -292,6 +369,8 @@ codeunit 54018 "SI BP Registry Orchestrator"
         UARegistryServiceLbl: Label 'UA-REGISTRY', Locked = true;
         GetUSR_OperationLbl: Label 'GET-USR', Locked = true;
         GetUSRCurrentOperationLbl: Label 'GET-USR-CURRENT', Locked = true;
+        MissingIdentifierRuntimeKeyErr: Label 'No enabled required runtime identifier parameter for EDS %1 / %2 / %3.';
+        AmbiguousIdentifierRuntimeKeyErr: Label 'Multiple enabled required runtime parameters for EDS %1 / %2 / %3. Cannot identify contractor code safely.';
         ContractorCodeRuntimeKeyLbl: Label 'CONTRACTOR-CODE', Locked = true;
         YouScoreProviderPrefixLbl: Label 'YOUSCORE', Locked = true;
         AdmToolsProviderPrefixLbl: Label 'ADM-TOOLS', Locked = true;
@@ -303,5 +382,8 @@ codeunit 54018 "SI BP Registry Orchestrator"
         EmptyRegistryResponseErr: Label 'Registry provider %1 returned an empty response.';
         UnsupportedRegistryProviderErr: Label 'Registry provider %1 returned a response, but SI Business Partner has no resolver for its response contract.';
         RegistryResultMissingErr: Label 'The registry resolver did not return a result.';
+        NoRegistrySourceErr: Label 'No enabled registry source is configured for entity type %1.';
+        UnsupportedYouScoreRouteErr: Label 'YouScore async flow requires UA-REGISTRY / GET-USR; configured %1 / %2.';
+        ProviderMismatchErr: Label 'Expected EDS provider %1, but response was returned by %2.';
         RegistryRequestFailedErr: Label 'Registry lookup failed. EDS service %1, operation %2, provider %3. %4';
 }
