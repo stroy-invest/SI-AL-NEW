@@ -2,16 +2,34 @@
   "id": "c879d1d1-47e1-4f35-8a19-8e77448c4012",
   "name": "EDS Secret HTTP Diagnostic",
   "publisher": "STROYINVEST",
-  "version": "1.0.0.6",
+  "version": "1.0.0.17",
   "brief": "Isolated synthetic SecretText HTTP diagnostic",
-  "description": "Temporary test extension. No SI dependencies and no real credentials.",
+  "description": "Registry Audit Step 5: resumable lab-only batch RAW GET with Job Queue worker, throttling and retry",
   "platform": "1.0.0.0",
   "application": "28.0.0.0",
   "runtime": "17.0",
   "idRanges": [
     {
+      "from": 70000,
+      "to": 70200
+    },
+    {
       "from": 70990,
       "to": 70999
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
+      "name": "STROYINVEST Foundation",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.84"
+    },
+    {
+      "id": "f53b19c4-75c9-4351-b2bb-ac84112997da",
+      "name": "SI Business Partner",
+      "publisher": "STROYINVEST",
+      "version": "1.1.2.28"
     }
   ]
 }
