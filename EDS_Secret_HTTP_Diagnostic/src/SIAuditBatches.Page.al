@@ -95,6 +95,20 @@ page 70020 "SI Audit Batches"
                     CurrPage.Update(false);
                 end;
             }
+            action(ResetAuditResults)
+            {
+                Caption = 'Скинути результати аудиту';
+                ApplicationArea = All;
+                Image = Delete;
+                ToolTip = 'Повний cleanup тестових результатів вибраного пакета зі збереженням імпортованих даних 1С. Job Queue має бути на утриманні.';
+                trigger OnAction()
+                var
+                    Resetter: Codeunit "SI Audit Batch Reset";
+                begin
+                    Resetter.ResetBatch(Rec."No.");
+                    CurrPage.Update(false);
+                end;
+            }
             action(OpenEntries)
             {
                 Caption = 'Записи пакета';
