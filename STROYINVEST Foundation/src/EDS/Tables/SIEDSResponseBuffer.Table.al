@@ -1,4 +1,4 @@
-﻿table 50415 "SI EDS Response Buffer"
+table 50415 "SI EDS Response Buffer"
 {
     Caption = 'EDS Response Buffer';
     TableType = Temporary;
@@ -69,6 +69,10 @@
         field(21; "Response Headers"; Blob)
         {
         }
+
+        field(22; "Raw HTTP Body"; Blob)
+        {
+        }
     }
 
     keys
@@ -78,6 +82,24 @@
             Clustered = true;
         }
     }
+
+    procedure SetRawHttpBody(var Source: InStream)
+    var
+        Dest: OutStream;
+    begin
+        Clear("Raw HTTP Body");
+        "Raw HTTP Body".CreateOutStream(Dest);
+        CopyStream(Dest, Source);
+    end;
+
+    procedure GetRawHttpBodyStream(var Source: InStream): Boolean
+    begin
+        CalcFields("Raw HTTP Body");
+        if not "Raw HTTP Body".HasValue() then
+            exit(false);
+        "Raw HTTP Body".CreateInStream(Source);
+        exit(true);
+    end;
 
     procedure SetBody(Value: Text)
     var
