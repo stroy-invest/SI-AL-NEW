@@ -30,6 +30,25 @@ page 61003 "SI Supply Req List"
     {
         area(Processing)
         {
+            action(AdminForceDelete)
+            {
+                ApplicationArea = All;
+                Caption = 'Примусово видалити заявку';
+                ToolTip = 'Адміністративне видалення без рішення щодо забезпечення. Лише SUPER.';
+                Image = Delete;
+                Visible = IsSuperUser;
+                trigger OnAction()
+                var
+                    AdminMgt: Codeunit "SI Supply Req Admin Delete";
+                begin
+                    AdminMgt.CheckSuperPermission();
+                    if not Confirm('Безповоротно видалити заявку %1 та її рядки? Дію буде записано до журналу.', false, Rec."No.") then
+                        exit;
+                    Rec.AdminForceDelete();
+                    CurrPage.Update(false);
+                end;
+            }
+
             action(PullSchriftRequests)
             {
                 ApplicationArea = All;
@@ -53,4 +72,21 @@ page 61003 "SI Supply Req List"
             }
         }
     }
+    trigger OnOpenPage()
+    var
+        Access: Record "Access Control";
+    begin
+        IsSuperUser := false;
+        Access.SetRange("User Security ID", UserSecurityId());
+        Access.SetRange("Role ID", 'SUPER');
+        if Access.FindSet() then
+            repeat
+                if (Access."Company Name" = '') or (Access."Company Name" = CompanyName()) then
+                    IsSuperUser := true;
+            until Access.Next() = 0;
+    end;
+
+    var
+        IsSuperUser: Boolean;
+
 }

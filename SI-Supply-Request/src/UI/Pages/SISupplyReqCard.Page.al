@@ -101,6 +101,25 @@ page 61002 "SI Supply Req Card"
     {
         area(Processing)
         {
+            action(AdminForceDelete)
+            {
+                ApplicationArea = All;
+                Caption = 'Примусово видалити заявку';
+                ToolTip = 'Адміністративне видалення без рішення щодо забезпечення. Лише SUPER.';
+                Image = Delete;
+                Visible = IsSuperUser;
+                trigger OnAction()
+                var
+                    AdminMgt: Codeunit "SI Supply Req Admin Delete";
+                begin
+                    AdminMgt.CheckSuperPermission();
+                    if not Confirm('Безповоротно видалити заявку %1 та її рядки? Дію буде записано до журналу.', false, Rec."No.") then
+                        exit;
+                    Rec.AdminForceDelete();
+                    CurrPage.Update(false);
+                end;
+            }
+
             action(SelectRequestSites)
             {
                 ApplicationArea = All;
@@ -133,20 +152,34 @@ page 61002 "SI Supply Req Card"
                 trigger OnAction()
                 begin
                     if not Confirm('Позначити заявку %1 як Schrift-заявку?', false, Rec."No.") then exit;
-                    Rec."Schrift Request" := true; Rec.Modify(false); CurrPage.Update(false);
+                    Rec."Schrift Request" := true;
+                    Rec.Modify(false);
+                    CurrPage.Update(false);
                 end;
             }
             action(SynchronizeSchrift)
             {
-                ApplicationArea = All; Caption = 'Синхронізувати зі Schrift'; Image = Refresh; Promoted = true; PromotedCategory = Process;
+                ApplicationArea = All;
+                Caption = 'Синхронізувати зі Schrift';
+                Image = Refresh;
+                Promoted = true;
+                PromotedCategory = Process;
                 Enabled = Rec."External System Code" = 'SCHRIFT';
                 trigger OnAction()
-                var SchriftIntake: Codeunit "SI Schrift Intake Mgt."; WasUpdated: Boolean; HasConflict: Boolean;
+                var
+                    SchriftIntake: Codeunit "SI Schrift Intake Mgt.";
+                    WasUpdated: Boolean;
+                    HasConflict: Boolean;
                 begin
-                    CurrPage.SaveRecord(); SchriftIntake.SynchronizeRequest(Rec, WasUpdated, HasConflict); CurrPage.Update(false);
-                    if HasConflict then Message('У Schrift виявлено зміни, але заявка вже перебуває в обробці. Автоматичне оновлення заблоковано.')
-                    else if WasUpdated then Message('Заявку синхронізовано зі Schrift. Дані оновлено.')
-                    else Message('Заявку синхронізовано зі Schrift. Змін не виявлено.');
+                    CurrPage.SaveRecord();
+                    SchriftIntake.SynchronizeRequest(Rec, WasUpdated, HasConflict);
+                    CurrPage.Update(false);
+                    if HasConflict then
+                        Message('У Schrift виявлено зміни, але заявка вже перебуває в обробці. Автоматичне оновлення заблоковано.')
+                    else if WasUpdated then
+                        Message('Заявку синхронізовано зі Schrift. Дані оновлено.')
+                    else
+                        Message('Заявку синхронізовано зі Schrift. Змін не виявлено.');
                 end;
             }
             action(ApproveRequest)
@@ -172,10 +205,18 @@ page 61002 "SI Supply Req Card"
             }
             action(OpenSupplyDecision)
             {
-                ApplicationArea = All; Caption = 'План забезпечення'; Image = Planning; Promoted = true; PromotedCategory = Process;
+                ApplicationArea = All;
+                Caption = 'План забезпечення';
+                Image = Planning;
+                Promoted = true;
+                PromotedCategory = Process;
                 trigger OnAction()
-                var DecisionMgt: Codeunit "SI Supply Decision Mgt.";
-                begin CurrPage.SaveRecord(); DecisionMgt.OpenOrCreateFromRequest(Rec); end;
+                var
+                    DecisionMgt: Codeunit "SI Supply Decision Mgt.";
+                begin
+                    CurrPage.SaveRecord();
+                    DecisionMgt.OpenOrCreateFromRequest(Rec);
+                end;
             }
         }
     }
@@ -267,7 +308,22 @@ page 61002 "SI Supply Req Card"
 
     var
         CreatorDisplay: Text[500];
+        IsSuperUser: Boolean;
         ProjectDisplayName: Text[100];
         CreatorUnavailableLbl: Label 'Автор не визначений (%1)', Comment = '%1 = technical BC User Name';
         CreatorWarningMsg: Label 'Для заявки %1 не вдалося визначити бізнес-контекст автора на дату її створення. Заявку буде відкрито.\\%2', Comment = '%1 = Request No., %2 = diagnostic reason';
+
+    trigger OnOpenPage()
+    var
+        Access: Record "Access Control";
+    begin
+        IsSuperUser := false;
+        Access.SetRange("User Security ID", UserSecurityId());
+        Access.SetRange("Role ID", 'SUPER');
+        if Access.FindSet() then
+            repeat
+                if (Access."Company Name" = '') or (Access."Company Name" = CompanyName()) then
+                    IsSuperUser := true;
+            until Access.Next() = 0;
+    end;
 }

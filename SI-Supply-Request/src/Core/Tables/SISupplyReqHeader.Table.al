@@ -184,23 +184,36 @@ table 61001 "SI Supply Req Header"
         RequestSite: Record "SI Supply Request Site";
         DecisionHeader: Record "SI Supply Decision Header";
     begin
-        TestField(Status, Status::Draft);
+        if not AdminDeleteAuthorized then
+            TestField(Status, Status::Draft);
 
         DecisionHeader.SetRange("Request No.", "No.");
         if not DecisionHeader.IsEmpty() then
             Error(RequestHasDecisionDeleteErr, "No.");
         Line.SetRange("Request No.", "No.");
-        Line.DeleteAll(true);
+        Line.DeleteAll(not AdminDeleteAuthorized);
 
         Parameter.SetRange("Request No.", "No.");
-        Parameter.DeleteAll(true);
+        Parameter.DeleteAll(not AdminDeleteAuthorized);
 
         if ConcreteSpec.Get("No.") then
-            ConcreteSpec.Delete(true);
+            ConcreteSpec.Delete(not AdminDeleteAuthorized);
 
         RequestSite.SetRange("Request No.", "No.");
         RequestSite.DeleteAll();
 
+    end;
+
+    procedure AdminForceDelete()
+    var
+        AdminMgt: Codeunit "SI Supply Req Admin Delete";
+    begin
+        AdminMgt.CheckSuperPermission();
+        AdminMgt.CheckDependencies(Rec);
+        AdminMgt.WriteAudit(Rec);
+        AdminDeleteAuthorized := true;
+        Delete(true);
+        AdminDeleteAuthorized := false;
     end;
 
     local procedure ValidateRequiredOnSiteAt(RequiredOnSiteAt: DateTime)
@@ -237,5 +250,8 @@ table 61001 "SI Supply Req Header"
 
     var
         RequestHasDecisionDeleteErr: Label 'Заявку %1 не можна видалити, оскільки для неї вже існує рішення щодо забезпечення. Скасуйте або закрийте заявку замість фізичного видалення.';
+
+    var
+        AdminDeleteAuthorized: Boolean;
 
 }
