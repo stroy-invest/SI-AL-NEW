@@ -97,7 +97,7 @@ function RenderTree(treeJson) {
     const style = document.createElement('style');
     style.textContent = `
         .si-tree-panel {
-            height: 290px;
+            height: 100%;
             border: 1px solid #d2d0ce;
             border-radius: 2px;
             background: #ffffff;
@@ -162,6 +162,24 @@ function RenderTree(treeJson) {
             background: #f3f2f1;
         }
 
+        .si-tree-search-area {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 5px 10px;
+            border-bottom: 1px solid #edebe9;
+            box-sizing: border-box;
+        }
+        .si-tree-search-input {
+            flex: 1 1 220px;
+            min-width: 120px;
+            padding: 5px 8px;
+            font: inherit;
+            border: 1px solid #8a8886;
+            border-radius: 2px;
+        }
+        .si-tree-search-count { color: #605e5c; font-size: 12px; }
         .si-tree-scroll {
             flex: 1 1 auto;
             min-height: 0;
@@ -296,6 +314,25 @@ function RenderTree(treeJson) {
     toolbarTitle.className = 'si-tree-toolbar-title';
     toolbarTitle.textContent = 'Групи товарів';
 
+
+    const searchArea = document.createElement('div');
+    searchArea.className = 'si-tree-search-area';
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.className = 'si-tree-search-input';
+    searchInput.placeholder = 'Пошук категорій (кілька фрагментів)';
+    searchInput.setAttribute('aria-label', 'Пошук категорій');
+    const clearSearchBtn = document.createElement('button');
+    clearSearchBtn.type = 'button';
+    clearSearchBtn.className = 'si-tree-button';
+    clearSearchBtn.textContent = 'Очистити';
+    const searchCount = document.createElement('span');
+    searchCount.className = 'si-tree-search-count';
+    searchCount.setAttribute('aria-live', 'polite');
+    searchArea.appendChild(searchInput);
+    searchArea.appendChild(clearSearchBtn);
+    searchArea.appendChild(searchCount);
+
     const toolbarButtons = document.createElement('div');
     toolbarButtons.className = 'si-tree-toolbar-buttons';
 
@@ -358,6 +395,7 @@ function RenderTree(treeJson) {
     grid.appendChild(body);
     scrollContainer.appendChild(grid);
     panel.appendChild(toolbar);
+    panel.appendChild(searchArea);
     panel.appendChild(scrollContainer);
     root.appendChild(panel);
 
@@ -545,7 +583,48 @@ function RenderTree(treeJson) {
         }, 0);
     }
 
-    data.forEach(node => body.appendChild(createNode(node, 0)));
+
+    const rootWrappers = data.map(node => ({ node, wrapper: createNode(node, 0) }));
+    rootWrappers.forEach(entry => body.appendChild(entry.wrapper));
+
+    // Match all whitespace-separated fragments in any order, ignoring case.
+    // Keep the ancestor path of every matching category visible.
+    function applyCategorySearch() {
+        const terms = searchInput.value.trim().toLocaleLowerCase('uk-UA')
+            .split(/\s+/).filter(Boolean);
+        let matches = 0;
+
+        function visit(node, wrapper) {
+            const label = String(node.name || node.code || '').toLocaleLowerCase('uk-UA');
+            const directMatch = terms.every(term => label.includes(term));
+            if (directMatch && terms.length) matches++;
+
+            const childNodes = Array.isArray(node.children) ? node.children : [];
+            const childContainer = wrapper.children[1];
+            let childMatch = false;
+            childNodes.forEach((child, index) => {
+                if (visit(child, childContainer.children[index])) childMatch = true;
+            });
+            const visible = !terms.length || directMatch || childMatch;
+            wrapper.style.display = visible ? '' : 'none';
+
+            const treeEntry = siTreeNodeMap[node.code || ''];
+            if (terms.length && childMatch && treeEntry) {
+                setTreeNodeExpanded(treeEntry.treeNode, true);
+            }
+            return visible;
+        }
+
+        rootWrappers.forEach(entry => visit(entry.node, entry.wrapper));
+        searchCount.textContent = terms.length ? 'Знайдено: ' + matches : '';
+    }
+
+    searchInput.addEventListener('input', applyCategorySearch);
+    clearSearchBtn.addEventListener('click', function () {
+        searchInput.value = '';
+        applyCategorySearch();
+        searchInput.focus();
+    });
 
     addBtn.onclick = function (event) {
         event.stopPropagation();

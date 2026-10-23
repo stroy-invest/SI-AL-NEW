@@ -70,6 +70,7 @@ function RenderProducts(productTreeJson) {
             background: #fff;
             box-sizing: border-box;
             overflow: auto;
+            overscroll-behavior: contain;
         }
         .si-product-grid { min-width: 620px; }
         .si-product-header,

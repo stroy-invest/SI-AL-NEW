@@ -1,10 +1,10 @@
 controladdin "SI Item Group Tree"
 {
-    RequestedHeight = 300;
+    RequestedHeight = 700;
     RequestedWidth = 1000;
     MinimumHeight = 280;
     MinimumWidth = 700;
-    VerticalStretch = false;
+    VerticalStretch = true;
     HorizontalStretch = true;
 
     Scripts =
