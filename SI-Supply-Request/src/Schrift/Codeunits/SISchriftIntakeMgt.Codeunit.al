@@ -179,7 +179,7 @@ codeunit 61021 "SI Schrift Intake Mgt."
         Header."External Document No." := CopyStr(DocumentNo, 1, MaxStrLen(Header."External Document No."));
         Header."External Registered At" := RegisteredAt;
         Header.Description := CopyStr(DocumentName, 1, MaxStrLen(Header.Description));
-        Header.Status := Header.Status::Approved;
+        Header.Status := Header.Status::Draft;
         Header."Last External Sync At" := CurrentDateTime();
         Header."External Sync Status" := Header."External Sync Status"::Synchronized;
         Header."External Sync Message" := 'Створено зі Schrift.';

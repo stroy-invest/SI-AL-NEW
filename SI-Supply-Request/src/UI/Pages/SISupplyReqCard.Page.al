@@ -101,6 +101,26 @@ page 61002 "SI Supply Req Card"
     {
         area(Processing)
         {
+            action(AdminForceDraft)
+            {
+                ApplicationArea = All;
+                Caption = 'Примусово перевести в драфт';
+                ToolTip = 'Адміністративне переведення заявки в чернетку без пов’язаних рішень щодо забезпечення або записів планування. Лише SUPER.';
+                Image = ReOpen;
+                Visible = IsSuperUser;
+                Enabled = Rec.Status <> Rec.Status::Draft;
+                trigger OnAction()
+                var
+                    AdminMgt: Codeunit "SI Supply Req Admin Delete";
+                begin
+                    AdminMgt.CheckSuperPermission();
+                    if not Confirm('Примусово перевести заявку %1 у статус Чернетка?', false, Rec."No.") then
+                        exit;
+                    AdminMgt.ForceDraft(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
+
             action(AdminForceDelete)
             {
                 ApplicationArea = All;

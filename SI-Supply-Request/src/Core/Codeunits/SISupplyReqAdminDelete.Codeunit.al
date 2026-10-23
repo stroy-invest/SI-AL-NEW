@@ -15,6 +15,16 @@ codeunit 61090 "SI Supply Req Admin Delete"
         Error('Примусове видалення заявки доступне лише користувачу з набором дозволів SUPER.');
     end;
 
+    procedure ForceDraft(var Request: Record "SI Supply Req Header")
+    begin
+        CheckSuperPermission();
+        if Request.Status = Request.Status::Draft then
+            exit;
+        CheckDependencies(Request);
+        Request.Status := Request.Status::Draft;
+        Request.Modify(false);
+    end;
+
     procedure CheckDependencies(Request: Record "SI Supply Req Header")
     var
         Decision: Record "SI Supply Decision Header";
