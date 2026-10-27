@@ -52,7 +52,7 @@ page 63002 "SI Geo Routing Test"
                     Clear(DistanceMeters);
                     Clear(DurationSeconds);
                     RoutingTest.TestRoute(FromLatitude, FromLongitude, ToLatitude, ToLongitude,
-                        HttpStatus, ResultText, CorrelationId, DistanceMeters, DurationSeconds);
+                        HttpStatus, ResultText, CorrelationId, DistanceMeters, DurationSeconds, UnusedGeoJson);
                     CurrPage.Update(false);
                 end;
             }
@@ -70,6 +70,7 @@ page 63002 "SI Geo Routing Test"
         ToLongitude := 35.0889962;
     end;
     var
+        UnusedGeoJson: Text;
         FromLatitude: Decimal;
         FromLongitude: Decimal;
         ToLatitude: Decimal;

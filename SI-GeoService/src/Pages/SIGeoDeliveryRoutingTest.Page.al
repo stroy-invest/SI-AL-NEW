@@ -128,6 +128,20 @@ page 63005 "SI Geo Delivery Routing Test"
                 field(ToLatitude; ToLatitude) { ApplicationArea = All; Caption = 'Широта доставки'; Editable = false; DecimalPlaces = 0 : 12; }
                 field(ToLongitude; ToLongitude) { ApplicationArea = All; Caption = 'Довгота доставки'; Editable = false; DecimalPlaces = 0 : 12; }
             }
+            group(RouteVisualization)
+            {
+                Caption = 'Карта маршруту';
+                usercontrol(RouteMap; "SI Geo Route Map")
+                {
+                    ApplicationArea = All;
+                    trigger ControlReady()
+                    begin
+                        MapReady := true;
+                        if RouteDisplayRequested and (RouteGeoJson <> '') then
+                            CurrPage.RouteMap.RenderRoute(RouteGeoJson, FromLatitude, FromLongitude, ToLatitude, ToLongitude);
+                    end;
+                }
+            }
             group(Result)
             {
                 Caption = 'Результат';
@@ -143,6 +157,24 @@ page 63005 "SI Geo Delivery Routing Test"
     {
         area(Processing)
         {
+            action(ShowRoute)
+            {
+                ApplicationArea = All;
+                Caption = 'Показати маршрут';
+                Image = Map;
+                Promoted = true;
+                PromotedCategory = Process;
+                trigger OnAction()
+                begin
+                    if RouteGeoJson = '' then
+                        Error('Спочатку розрахуйте маршрут.');
+                    RouteDisplayRequested := true;
+                    if MapReady then
+                        CurrPage.RouteMap.RenderRoute(RouteGeoJson, FromLatitude, FromLongitude, ToLatitude, ToLongitude);
+                    // If the add-in is still starting, ControlReady renders the pending route.
+                    // No error and no repeated clicks are required.
+                end;
+            }
             action(RunRoute)
             {
                 ApplicationArea = All;
@@ -160,7 +192,7 @@ page 63005 "SI Geo Delivery Routing Test"
                     OriginResolver.ResolveOrigin(LocationCode, OriginPointCode, FromLatitude, FromLongitude);
                     DestinationResolver.ResolveDestination(CustomerNo, ShipToCode, DestinationPointCode, ToLatitude, ToLongitude);
                     Routing.TestRoute(FromLatitude, FromLongitude, ToLatitude, ToLongitude,
-                        HttpStatus, ResultText, CorrelationId, DistanceMeters, DurationSeconds);
+                        HttpStatus, ResultText, CorrelationId, DistanceMeters, DurationSeconds, RouteGeoJson);
                     CurrPage.Update(false);
                 end;
             }
@@ -184,6 +216,10 @@ page 63005 "SI Geo Delivery Routing Test"
         Clear(CorrelationId);
         Clear(DistanceMeters);
         Clear(DurationSeconds);
+        Clear(RouteGeoJson);
+        RouteDisplayRequested := false;
+        if MapReady then
+            CurrPage.RouteMap.ClearRoute();
     end;
     var
         LocationCode: Code[10];
@@ -200,4 +236,7 @@ page 63005 "SI Geo Delivery Routing Test"
         CorrelationId: Guid;
         DistanceMeters: Decimal;
         DurationSeconds: Decimal;
+        RouteGeoJson: Text;
+        MapReady: Boolean;
+        RouteDisplayRequested: Boolean;
 }

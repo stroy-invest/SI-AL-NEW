@@ -128,7 +128,7 @@ page 63003 "SI Geo Location Routing Test"
                     ClearResults();
                     PointResolver.ResolveOrigin(LocationCode, PointCode, FromLatitude, FromLongitude);
                     RoutingTest.TestRoute(FromLatitude, FromLongitude, ToLatitude, ToLongitude,
-                        HttpStatus, ResultText, CorrelationId, DistanceMeters, DurationSeconds);
+                        HttpStatus, ResultText, CorrelationId, DistanceMeters, DurationSeconds, UnusedGeoJson);
                     CurrPage.Update(false);
                 end;
             }
@@ -152,6 +152,7 @@ page 63003 "SI Geo Location Routing Test"
     end;
 
     var
+        UnusedGeoJson: Text;
         LocationCode: Code[10];
         PointCode: Code[20];
         FromLatitude: Decimal;

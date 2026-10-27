@@ -4,7 +4,7 @@ codeunit 63003 "SI Geo Routing Test Mgt."
 
     procedure TestRoute(FromLatitude: Decimal; FromLongitude: Decimal; ToLatitude: Decimal; ToLongitude: Decimal;
         var HttpStatus: Integer; var ResultText: Text; var CorrelationId: Guid;
-        var DistanceMeters: Decimal; var DurationSeconds: Decimal)
+        var DistanceMeters: Decimal; var DurationSeconds: Decimal; var RouteGeoJson: Text)
     var
         EnvironmentInformation: Codeunit "Environment Information";
         Orchestrator: Codeunit "SI EDS Orchestrator";
@@ -24,6 +24,7 @@ codeunit 63003 "SI Geo Routing Test Mgt."
         Clear(CorrelationId);
         Clear(DistanceMeters);
         Clear(DurationSeconds);
+        Clear(RouteGeoJson);
         // Geoapify: latitude,longitude|latitude,longitude; invariant decimal separator.
         Waypoints := Format(FromLatitude, 0, 9) + ',' + Format(FromLongitude, 0, 9) + '|' +
             Format(ToLatitude, 0, 9) + ',' + Format(ToLongitude, 0, 9);
@@ -37,6 +38,7 @@ codeunit 63003 "SI Geo Routing Test Mgt."
         if (HttpStatus < 200) or (HttpStatus >= 300) then
             exit;
         Parser.ParseRoute(ResponseBuffer.GetBodyText(), DistanceMeters, DurationSeconds);
+        RouteGeoJson := Parser.ExtractRouteGeoJson(ResponseBuffer.GetBodyText());
     end;
 
     local procedure ValidateCoordinate(Latitude: Decimal; Longitude: Decimal)
