@@ -2,7 +2,7 @@
   "id": "23461143-2512-4e6f-9d8c-39ad62f17407",
   "name": "SI Geo Service",
   "publisher": "STROYINVEST",
-  "version": "1.0.0.3",
+  "version": "1.0.0.6",
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
   "idRanges": [
@@ -16,7 +16,7 @@
       "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
       "name": "STROYINVEST Foundation",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.79"
+      "version": "1.0.0.85"
     }
   ],
   "resourceExposurePolicy": {
