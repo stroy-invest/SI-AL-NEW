@@ -62,5 +62,7 @@ permissionset 57950 "SI PROK ADMIN"
         codeunit "SI Prok Export Job" = X,
         codeunit "SI Prok Export Execute" = X,
         codeunit "SI Prok Recipe Formula Mgt." = X,
+        tabledata "SI Prok Sim Truck Batch" = RIMD,
+        table "SI Prok Sim Truck Batch" = X,
         page "SI Prok Formula Sync Status" = X;
 }
