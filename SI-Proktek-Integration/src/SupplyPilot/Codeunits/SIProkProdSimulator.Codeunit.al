@@ -263,6 +263,8 @@ codeunit 57077 "SI Prok Prod Simulator"
         FormulaMapping: Record "SI Prok Entity Mapping";
         CustomerMapping: Record "SI Prok Entity Mapping";
         SiteMapping: Record "SI Prok Entity Mapping";
+        Site: Record "SI Construction Site";
+        SiteIdentity: Codeunit "SI Prok Site Identity";
         Customer: Record Customer;
         Project: Record Job;
         Item: Record Item;
@@ -302,7 +304,8 @@ codeunit 57077 "SI Prok Prod Simulator"
             Error('Formula mapping для ревізії %1 рецептури %2 не знайдено.', ProdRequest."Recipe Revision No.", ProdRequest."Recipe No.");
         if not CustomerMapping.Get(Connection.Code, CustomerMapping."Entity Type"::Customer, Customer.SystemId) then
             Error('Customer mapping для %1 не знайдено.', Customer."No.");
-        if not SiteMapping.Get(Connection.Code, SiteMapping."Entity Type"::Site, Project.SystemId) then
+        SiteIdentity.ResolveForOrder(ProdRequest, Site);
+        if not SiteMapping.Get(Connection.Code, SiteMapping."Entity Type"::Site, Site.SystemId) then
             Error('Site mapping для проєкту %1 не знайдено.', Project."No.");
 
         if not OrderPayload.ReadFrom(OrderProjector.BuildOrderPayload(ProdRequest)) then

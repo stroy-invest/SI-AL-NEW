@@ -15,7 +15,7 @@ codeunit 57075 "SI Prok Pilot Ensure"
         ConnectionMgt.GetActive(Connection);
 
         EnsureCustomer(Connection, Project, Customer);
-        EnsureSite(Connection, Project, Customer);
+        EnsureSite(Connection, Project, Customer, ProdRequest);
         EnsureFormula(Connection, ProdRequest);
     end;
 
@@ -57,32 +57,37 @@ codeunit 57075 "SI Prok Pilot Ensure"
         UpsertMapping(Connection, Mapping."Entity Type"::Customer, Customer.SystemId, Customer."No.", InternalCode, ProktekUUID, ProktekCode);
     end;
 
-    local procedure EnsureSite(var Connection: Record "SI Prok Connection"; var Project: Record Job; Customer: Record Customer)
+    local procedure EnsureSite(var Connection: Record "SI Prok Connection"; var Project: Record Job; Customer: Record Customer; ProdRequest: Record "SI Concrete Prod Request")
     var
         CustomerMapping: Record "SI Prok Entity Mapping";
         SiteMapping: Record "SI Prok Entity Mapping";
         SiteRead: Codeunit "SI Prok Site Read";
         SiteSync: Codeunit "SI Prok Site Sync";
+        SiteIdentity: Codeunit "SI Prok Site Identity";
+        Site: Record "SI Construction Site";
+        ExternalCode: Text;
         InternalCode: BigInteger;
         ProktekUUID: Guid;
         ProktekCode: Text;
     begin
         CustomerMapping.Get(Connection.Code, CustomerMapping."Entity Type"::Customer, Customer.SystemId);
+        SiteIdentity.ResolveForOrder(ProdRequest, Site);
+        ExternalCode := SiteIdentity.ExternalCode(Site);
 
-        if SiteRead.ResolveSiteIdentity(Connection, CustomerMapping."Proktek UUID", Project."No.", InternalCode, ProktekUUID, ProktekCode) then begin
-            UpsertMapping(Connection, SiteMapping."Entity Type"::Site, Project.SystemId, Project."No.", InternalCode, ProktekUUID, ProktekCode);
+        if SiteRead.ResolveSiteIdentity(Connection, CustomerMapping."Proktek UUID", ExternalCode, InternalCode, ProktekUUID, ProktekCode) then begin
+            UpsertMapping(Connection, SiteMapping."Entity Type"::Site, Site.SystemId, Site."Site Code", InternalCode, ProktekUUID, ProktekCode);
             exit;
         end;
 
-        SiteSync.SyncSite(Connection, Project, CustomerMapping, SiteMapping);
+        SiteSync.SyncSite(Connection, Project, Site, CustomerMapping, SiteMapping);
 
         Clear(InternalCode);
         Clear(ProktekUUID);
         Clear(ProktekCode);
-        if not SiteRead.ResolveSiteIdentity(Connection, CustomerMapping."Proktek UUID", Project."No.", InternalCode, ProktekUUID, ProktekCode) then
+        if not SiteRead.ResolveSiteIdentity(Connection, CustomerMapping."Proktek UUID", ExternalCode, InternalCode, ProktekUUID, ProktekCode) then
             Error('Будмайданчик проєкту %1 було передано в Proktek, але повторний GET-SITES не підтвердив його існування. Order не створено.', Project."No.");
 
-        UpsertMapping(Connection, SiteMapping."Entity Type"::Site, Project.SystemId, Project."No.", InternalCode, ProktekUUID, ProktekCode);
+        UpsertMapping(Connection, SiteMapping."Entity Type"::Site, Site.SystemId, Site."Site Code", InternalCode, ProktekUUID, ProktekCode);
     end;
 
     local procedure EnsureFormula(Connection: Record "SI Prok Connection"; ProdRequest: Record "SI Concrete Prod Request")

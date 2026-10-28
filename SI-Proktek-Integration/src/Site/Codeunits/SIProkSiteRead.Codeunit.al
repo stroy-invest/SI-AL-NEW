@@ -3,7 +3,7 @@ codeunit 57074 "SI Prok Site Read"
     procedure ResolveSiteIdentity(
         var Connection: Record "SI Prok Connection";
         CustomerUUID: Guid;
-        SiteCode: Code[20];
+        SiteCode: Text;
         var InternalCode: BigInteger;
         var ProktekUUID: Guid;
         var ProktekCode: Text): Boolean
@@ -14,7 +14,7 @@ codeunit 57074 "SI Prok Site Read"
         exit(TryParseSiteIdentity(CustomerUUID, SiteCode, ResponseText, InternalCode, ProktekUUID, ProktekCode));
     end;
 
-    procedure GetSiteRaw(var Connection: Record "SI Prok Connection"; CustomerUUID: Guid; SiteCode: Code[20]): Text
+    procedure GetSiteRaw(var Connection: Record "SI Prok Connection"; CustomerUUID: Guid; SiteCode: Text): Text
     var
         RuntimeParam: Record "SI EDS Runtime Param" temporary;
         ResponseBuffer: Record "SI EDS Response Buffer" temporary;
@@ -43,7 +43,7 @@ codeunit 57074 "SI Prok Site Read"
         Error('EDS не повернув response buffer для GET-SITES.');
     end;
 
-    local procedure BuildSiteListRequest(SessionGuid: Guid; CustomerUUID: Guid; SiteCode: Code[20]): Text
+    local procedure BuildSiteListRequest(SessionGuid: Guid; CustomerUUID: Guid; SiteCode: Text): Text
     var
         Root: JsonObject;
         Result: Text;
@@ -59,7 +59,7 @@ codeunit 57074 "SI Prok Site Read"
 
     local procedure TryParseSiteIdentity(
         ExpectedCustomerUUID: Guid;
-        SiteCode: Code[20];
+        SiteCode: Text;
         ResponseText: Text;
         var InternalCode: BigInteger;
         var ProktekUUID: Guid;

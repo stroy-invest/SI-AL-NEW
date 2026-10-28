@@ -6,6 +6,8 @@ codeunit 57073 "SI Prok Site Sync"
         Customer: Record Customer;
         CustomerMapping: Record "SI Prok Entity Mapping";
         ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
+        SiteIdentity: Codeunit "SI Prok Site Identity";
+        Site: Record "SI Construction Site";
     begin
         Project.TestField("No.");
         Project.TestField("SI Internal Customer No.");
@@ -29,12 +31,14 @@ codeunit 57073 "SI Prok Site Sync"
             then
                 exit;
 
-        SyncSite(Connection, Project, CustomerMapping, Mapping);
+        SiteIdentity.ResolveDefault(Project."No.", Site);
+        SyncSite(Connection, Project, Site, CustomerMapping, Mapping);
     end;
 
     procedure SyncSite(
         var Connection: Record "SI Prok Connection";
         var Project: Record Job;
+        Site: Record "SI Construction Site";
         CustomerMapping: Record "SI Prok Entity Mapping";
         var Mapping: Record "SI Prok Entity Mapping")
     var
@@ -52,8 +56,8 @@ codeunit 57073 "SI Prok Site Sync"
         Project.TestField("No.");
 
         SessionGuid := AuthMgt.GetSessionGuid(Connection);
-        GetOrInitMapping(Connection, Project, Mapping);
-        RequestBody := BuildSaveSiteRequest(SessionGuid, Project, CustomerMapping, Mapping);
+        GetOrInitMapping(Connection, Site, Mapping);
+        RequestBody := BuildSaveSiteRequest(SessionGuid, Site, CustomerMapping, Mapping);
 
         EDSOrchestrator.ExecuteProviderBody(
             Connection."EDS Service Code",
@@ -66,7 +70,7 @@ codeunit 57073 "SI Prok Site Sync"
             ResponseBuffer);
 
         ResponseText := GetResponseText(ResponseBuffer);
-        ApplySaveSiteResponse(ResponseText, Connection, Project, Mapping);
+        ApplySaveSiteResponse(ResponseText, Connection, Site, Mapping);
     end;
 
     local procedure EnsureCustomerMapping(
@@ -96,33 +100,33 @@ codeunit 57073 "SI Prok Site Sync"
 
     local procedure GetOrInitMapping(
         Connection: Record "SI Prok Connection";
-        Project: Record Job;
+        Site: Record "SI Construction Site";
         var Mapping: Record "SI Prok Entity Mapping")
     begin
         Clear(Mapping);
         if Mapping.Get(
             Connection.Code,
             Mapping."Entity Type"::Site,
-            Project.SystemId)
+            Site.SystemId)
         then
             exit;
 
         Mapping.Init();
         Mapping."Connection Code" := Connection.Code;
         Mapping."Entity Type" := Mapping."Entity Type"::Site;
-        Mapping."BC SystemId" := Project.SystemId;
-        Mapping."BC No." := Project."No.";
+        Mapping."BC SystemId" := Site.SystemId;
+        Mapping."BC No." := Site."Site Code";
     end;
 
     local procedure BuildSaveSiteRequest(
         SessionGuid: Guid;
-        Project: Record Job;
+        Site: Record "SI Construction Site";
         CustomerMapping: Record "SI Prok Entity Mapping";
         Mapping: Record "SI Prok Entity Mapping"): Text
     var
         Root: JsonObject;
         SiteJson: JsonObject;
-        NamingMgt: Codeunit "SI Prok Naming Mgt.";
+        SiteIdentity: Codeunit "SI Prok Site Identity";
         Result: Text;
     begin
         Root.Add('guid', Format(SessionGuid, 0, 4));
@@ -130,12 +134,11 @@ codeunit 57073 "SI Prok Site Sync"
         if Mapping."Proktek Internal Code" <> 0 then
             SiteJson.Add('kod', Mapping."Proktek Internal Code");
 
-        if not IsNullGuid(Mapping."Proktek UUID") then
-            SiteJson.Add('uuid', Format(Mapping."Proktek UUID", 0, 4));
+        SiteJson.Add('uuid', Format(Mapping."Proktek UUID", 0, 4));
 
         SiteJson.Add('aktif', true);
-        SiteJson.Add('ad', NamingMgt.BuildProjectSiteName(Project));
-        SiteJson.Add('santiye_kod', Project."No.");
+        SiteJson.Add('ad', SiteIdentity.ExternalName(Site));
+        SiteJson.Add('santiye_kod', SiteIdentity.ExternalCode(Site));
         SiteJson.Add('musteri_kod', CustomerMapping."Proktek Internal Code");
         SiteJson.Add('musteri_uuid', Format(CustomerMapping."Proktek UUID", 0, 4));
 
@@ -147,7 +150,7 @@ codeunit 57073 "SI Prok Site Sync"
     local procedure ApplySaveSiteResponse(
         ResponseText: Text;
         Connection: Record "SI Prok Connection";
-        Project: Record Job;
+        Site: Record "SI Construction Site";
         var Mapping: Record "SI Prok Entity Mapping")
     var
         Root: JsonObject;
@@ -177,7 +180,7 @@ codeunit 57073 "SI Prok Site Sync"
         if not ResponseStatus then
             Error(
                 'Proktek відхилив SAVE-SITE для BC Project %1. %2',
-                Project."No.",
+                Site."Project No.",
                 ResponseMessage);
 
         if not Root.Get('site', Token) then
@@ -207,8 +210,8 @@ codeunit 57073 "SI Prok Site Sync"
 
         Mapping."Connection Code" := Connection.Code;
         Mapping."Entity Type" := Mapping."Entity Type"::Site;
-        Mapping."BC SystemId" := Project.SystemId;
-        Mapping."BC No." := Project."No.";
+        Mapping."BC SystemId" := Site.SystemId;
+        Mapping."BC No." := Site."Site Code";
         Mapping."Proktek UUID" := ProktekUUID;
 
         if InternalCode <> 0 then

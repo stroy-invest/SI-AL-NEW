@@ -86,12 +86,14 @@ codeunit 57068 "SI Prok Order Projector"
         Customer: Record Customer;
         SiteMapping: Record "SI Prok Entity Mapping";
         CustomerMapping: Record "SI Prok Entity Mapping";
-        NamingMgt: Codeunit "SI Prok Naming Mgt.";
+        SiteIdentity: Codeunit "SI Prok Site Identity";
+        Site: Record "SI Construction Site";
     begin
         ProdRequest.TestField("Project No.");
+        SiteIdentity.ResolveForOrder(ProdRequest, Site);
         Project.Get(ProdRequest."Project No.");
 
-        if not SiteMapping.Get(Connection.Code, SiteMapping."Entity Type"::Site, Project.SystemId) then
+        if not SiteMapping.Get(Connection.Code, SiteMapping."Entity Type"::Site, Site.SystemId) then
             Error('Проєкт %1 (%2) не синхронізований як будмайданчик Proktek.', Project."No.", Project.Description);
         if SiteMapping."Proktek Internal Code" = 0 then
             Error('Для будмайданчика проєкту %1 у mapping відсутній Proktek kod.', Project."No.");
@@ -105,8 +107,8 @@ codeunit 57068 "SI Prok Order Projector"
         SiteJson.Add('kod', SiteMapping."Proktek Internal Code");
         SiteJson.Add('uuid', Format(SiteMapping."Proktek UUID", 0, 4));
         SiteJson.Add('aktif', true);
-        SiteJson.Add('ad', NamingMgt.BuildProjectSiteName(Project));
-        SiteJson.Add('santiye_kod', Project."No.");
+        SiteJson.Add('ad', SiteIdentity.ExternalName(Site));
+        SiteJson.Add('santiye_kod', SiteIdentity.ExternalCode(Site));
         SiteJson.Add('musteri_kod', CustomerMapping."Proktek Internal Code");
         SiteJson.Add('musteri_uuid', Format(CustomerMapping."Proktek UUID", 0, 4));
     end;
