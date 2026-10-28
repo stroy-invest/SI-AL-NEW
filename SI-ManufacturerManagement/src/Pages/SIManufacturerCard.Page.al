@@ -32,6 +32,12 @@ page 55001 "SI Manufacturer Card"
                     ToolTip = 'Код країни або регіону виробника.';
                 }
 
+                field("Is Vehicle Producer"; Rec."Is Vehicle Producer")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Дозволяє використовувати виробника під час вибору виробника бренду транспортного засобу.';
+                }
+
                 field(Blocked; Rec.Blocked)
                 {
                     ApplicationArea = All;

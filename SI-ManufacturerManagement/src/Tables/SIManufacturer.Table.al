@@ -31,6 +31,13 @@ table 55000 "SI Manufacturer"
             TableRelation = "Country/Region".Code;
         }
 
+        field(5; "Is Vehicle Producer"; Boolean)
+        {
+            Caption = 'Виробник транспортних засобів';
+            DataClassification = CustomerContent;
+            InitValue = false;
+        }
+
         field(4; Blocked; Boolean)
         {
             Caption = 'Заблоковано';
