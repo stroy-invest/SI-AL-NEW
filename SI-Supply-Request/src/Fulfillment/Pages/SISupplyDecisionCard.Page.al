@@ -58,6 +58,26 @@ page 61012 "SI Supply Decision Card"
     {
         area(Processing)
         {
+            action(RemoveOrphanLines)
+            {
+                ApplicationArea = All;
+                Caption = 'Очистити видалені позиції потреб';
+                Image = DeleteRow;
+                ToolTip = 'Видаляє з чернетки рішення рядки, для яких більше не існує позицій заявки. Виконані або заблоковані розподіли захищені.';
+
+                trigger OnAction()
+                var
+                    DecisionMgt: Codeunit "SI Supply Decision Mgt.";
+                    Removed: Integer;
+                begin
+                    CurrPage.SaveRecord();
+                    if not Confirm('Видалити з рішення рядки, яких уже немає в заявці?', false) then
+                        exit;
+                    Removed := DecisionMgt.RemoveOrphanDraftDecisionLines(Rec);
+                    Message('Видалено застарілих рядків: %1.', Removed);
+                    CurrPage.Update(false);
+                end;
+            }
             action(ValidatePlan)
             {
                 ApplicationArea = All;

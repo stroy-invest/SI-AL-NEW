@@ -10,9 +10,71 @@ codeunit 61010 "SI Supply Decision Mgt."
 
         DecisionHeader.SetRange("Request No.", RequestHeader."No.");
         if not DecisionHeader.FindFirst() then
-            CreateFromRequest(RequestHeader, DecisionHeader);
+            CreateFromRequest(RequestHeader, DecisionHeader)
+        else
+            SynchronizeDraftDecisionLines(RequestHeader, DecisionHeader);
 
         Page.Run(Page::"SI Supply Decision Card", DecisionHeader);
+    end;
+
+    procedure SynchronizeDraftDecisionLines(var RequestHeader: Record "SI Supply Req Header"; var DecisionHeader: Record "SI Supply Decision Header")
+    var
+        RequestLine: Record "SI Supply Req Line";
+        DecisionLine: Record "SI Supply Decision Line";
+        DemandQty: Decimal;
+    begin
+        // Never alter a decision already transferred to execution.
+        DecisionHeader.TestEditable();
+        ValidateRequestDemandLines(RequestHeader);
+
+        // Remove obsolete draft projections, including their allocations via OnDelete.
+        RemoveOrphanDraftDecisionLines(DecisionHeader);
+
+        RequestLine.SetRange("Request No.", RequestHeader."No.");
+        if RequestLine.FindSet() then
+            repeat
+                DecisionLine.Reset();
+                DecisionLine.SetRange("Decision No.", DecisionHeader."No.");
+                DecisionLine.SetRange("Request Line No.", RequestLine."Line No.");
+                if not DecisionLine.FindFirst() then begin
+                    DemandQty := RequestLine."Approved Quantity";
+                    if DemandQty <= 0 then
+                        DemandQty := RequestLine."Requested Quantity";
+
+                    DecisionLine.Init();
+                    DecisionLine."Decision No." := DecisionHeader."No.";
+                    DecisionLine."Line No." := RequestLine."Line No.";
+                    DecisionLine."Request Line No." := RequestLine."Line No.";
+                    DecisionLine."Line Type" := RequestLine."Line Type";
+                    DecisionLine."Item No." := RequestLine."Item No.";
+                    DecisionLine."Variant Code" := RequestLine."Variant Code";
+                    DecisionLine.Description := RequestLine.Description;
+                    DecisionLine."Demand Quantity" := DemandQty;
+                    DecisionLine."Unit of Measure Code" := RequestLine."Unit of Measure Code";
+                    DecisionLine."Required on Site At" := RequestLine."Required on Site At";
+                    DecisionLine."Construction Site Code" := RequestLine."Construction Site Code";
+                    DecisionLine."Target Location Code" := RequestHeader."Project Location Code";
+                    DecisionLine.Insert(true);
+                end;
+            until RequestLine.Next() = 0;
+    end;
+
+    procedure RemoveOrphanDraftDecisionLines(var DecisionHeader: Record "SI Supply Decision Header"): Integer
+    var
+        RequestLine: Record "SI Supply Req Line";
+        DecisionLine: Record "SI Supply Decision Line";
+        Removed: Integer;
+    begin
+        DecisionHeader.TestEditable();
+        DecisionLine.SetRange("Decision No.", DecisionHeader."No.");
+        if DecisionLine.FindSet() then
+            repeat
+                if not RequestLine.Get(DecisionHeader."Request No.", DecisionLine."Request Line No.") then begin
+                    DecisionLine.Delete(true);
+                    Removed += 1;
+                end;
+            until DecisionLine.Next() = 0;
+        exit(Removed);
     end;
 
     procedure CreateFromRequest(var RequestHeader: Record "SI Supply Req Header"; var DecisionHeader: Record "SI Supply Decision Header")

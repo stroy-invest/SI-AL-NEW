@@ -149,8 +149,26 @@ table 61002 "SI Supply Req Line"
     trigger OnDelete()
     var
         Parameter: Record "SI Supply Req Parameter";
+        DecisionHeader: Record "SI Supply Decision Header";
+        DecisionLine: Record "SI Supply Decision Line";
     begin
         TestHeaderEditable();
+
+        // A request line and its draft decision projection must have the same lifecycle.
+        // Deletion of a non-draft decision is intentionally blocked.
+        DecisionHeader.SetRange("Request No.", "Request No.");
+        if DecisionHeader.FindFirst() then begin
+            DecisionHeader.TestEditable();
+            DecisionLine.SetRange("Decision No.", DecisionHeader."No.");
+            DecisionLine.SetRange("Request Line No.", "Line No.");
+            if DecisionLine.FindSet() then
+                repeat
+                    // Runs the decision line OnDelete cascade, including allocation
+                    // execution/status guards. Any error rolls back the request deletion.
+                    DecisionLine.Delete(true);
+                until DecisionLine.Next() = 0;
+        end;
+
         Parameter.SetRange("Request No.", "Request No.");
         Parameter.SetRange("Request Line No.", "Line No.");
         Parameter.DeleteAll(true);
