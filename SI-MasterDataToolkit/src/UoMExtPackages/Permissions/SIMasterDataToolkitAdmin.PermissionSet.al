@@ -4,6 +4,10 @@ permissionset 58000 "SI MDT ADMIN"
     Caption = 'SI Master Data Toolkit: Administrator';
 
     Permissions =
+        tabledata "SI UoM Semantic Profile" = RIMD,
+        table "SI UoM Semantic Profile" = X,
+        page "SI UoM Semantic Profiles" = X,
+        codeunit "SI UoM Semantic Mgt." = X,
         tabledata "SI Package Type" = RIMD,
         table "SI Package Type" = X,
         page "SI Package Types" = X,

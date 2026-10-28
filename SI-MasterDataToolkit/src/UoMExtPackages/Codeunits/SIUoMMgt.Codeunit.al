@@ -1,8 +1,10 @@
 codeunit 58000 "SI UoM Mgt."
 {
     procedure ValidateUoM(var UnitOfMeasure: Record "Unit of Measure")
+    var SemanticMgt: Codeunit "SI UoM Semantic Mgt.";
     begin
         UnitOfMeasure.TestField("SI UoM Kind");
+        SemanticMgt.ValidateUoMSemantics(UnitOfMeasure);
 
         case UnitOfMeasure."SI UoM Kind" of
             UnitOfMeasure."SI UoM Kind"::Base:

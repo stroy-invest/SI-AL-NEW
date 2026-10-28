@@ -21,8 +21,10 @@ tableextension 58000 "SI Unit of Measure Ext." extends "Unit of Measure"
             trigger OnValidate()
             var
                 SIUoMMgt: Codeunit "SI UoM Mgt.";
+                SemanticMgt: Codeunit "SI UoM Semantic Mgt.";
             begin
                 SIUoMMgt.HandleKindChange(Rec);
+                SemanticMgt.ValidateUoMSemantics(Rec);
             end;
         }
         field(58003; "SI Reference UoM Code"; Code[10])
@@ -32,9 +34,11 @@ tableextension 58000 "SI Unit of Measure Ext." extends "Unit of Measure"
             TableRelation = "Unit of Measure".Code where("SI Blocked" = const(false));
 
             trigger OnValidate()
+            var SemanticMgt: Codeunit "SI UoM Semantic Mgt.";
             begin
                 if "SI Reference UoM Code" = Code then
                     Error('Одиниця вимірювання не може посилатися сама на себе.');
+                SemanticMgt.ValidateScaledCompatibility(Rec);
             end;
         }
         field(58004; "SI Conversion Factor"; Decimal)
@@ -107,6 +111,18 @@ tableextension 58000 "SI Unit of Measure Ext." extends "Unit of Measure"
             begin
                 if "SI Denominator Quantity" <= 0 then
                     Error('Кількість знаменника має бути більшою за нуль.');
+            end;
+        }
+        field(58011; "SI Semantic Profile Code"; Code[30])
+        {
+            Caption = 'Семантичний профіль';
+            DataClassification = CustomerContent;
+            TableRelation = "SI UoM Semantic Profile".Code where(Blocked = const(false));
+            trigger OnValidate()
+            var Mgt: Codeunit "SI UoM Semantic Mgt.";
+            begin
+                Mgt.ValidateUoMSemantics(Rec);
+                Mgt.ValidateExistingDependents(Rec);
             end;
         }
     }

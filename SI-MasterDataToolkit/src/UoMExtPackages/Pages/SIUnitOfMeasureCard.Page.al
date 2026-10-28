@@ -51,6 +51,11 @@ page 58004 "SI Unit of Measure Card"
                         CurrPage.Update(false);
                     end;
                 }
+                field("SI Semantic Profile Code"; Rec."SI Semantic Profile Code")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Визначає фізичну семантику одиниці вимірювання.';
+                }
                 field("SI Blocked"; Rec."SI Blocked")
                 {
                     ApplicationArea = All;

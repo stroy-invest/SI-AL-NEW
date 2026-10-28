@@ -11,6 +11,11 @@ pageextension 58000 "SI Units of Measure Ext." extends "Units of Measure"
 				Caption = 'Опис одиниці виміру';
             }
 			
+            field("SI Semantic Profile Code"; Rec."SI Semantic Profile Code")
+            {
+                ApplicationArea = All;
+                ToolTip = 'Семантичний профіль одиниці вимірювання.';
+            }
             field("SI Symbol"; Rec."SI Symbol")
             {
                 ApplicationArea = All;

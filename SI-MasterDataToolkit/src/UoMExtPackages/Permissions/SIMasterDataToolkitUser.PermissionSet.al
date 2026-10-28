@@ -4,6 +4,10 @@ permissionset 58001 "SI MDT USER"
     Caption = 'SI Master Data Toolkit: User';
 
     Permissions =
+        tabledata "SI UoM Semantic Profile" = R,
+        table "SI UoM Semantic Profile" = X,
+        page "SI UoM Semantic Profiles" = X,
+        codeunit "SI UoM Semantic Mgt." = X,
         // Ordinary users have READ ONLY access to all UoM/package master data.
         tabledata "SI Package Type" = R,
         table "SI Package Type" = X,
