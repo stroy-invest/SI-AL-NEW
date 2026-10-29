@@ -45,35 +45,41 @@ page 50471 "SI EDS Admin Role Center"
                 action(SetupWizard) { ApplicationArea = All; Caption = 'Майстер налаштування'; RunObject = page "SI EDS Setup Wizard"; }
                 action(HealthCheck) { ApplicationArea = All; Caption = 'Перевірка конфігурації'; RunObject = page "SI EDS Health Check"; }
             }
-            group(SystemAdministration)
+            group(UserAccess)
             {
-                Caption = 'Системне адміністрування';
-                action(ApplicationRegistry)
-                {
-                    ApplicationArea = All;
-                    Caption = 'Додатки та залежності';
-                    RunObject = page "SI Application Registry";
-                }
-                action(SystemJobQueue)
-                {
-                    ApplicationArea = All;
-                    Caption = 'Черга завдань';
-                    ToolTip = 'Відкрити стандартну чергу фонових завдань Business Central.';
-                    RunObject = page "Job Queue Entries";
-                }
-                action(SystemJobQueueLog)
-                {
-                    ApplicationArea = All;
-                    Caption = 'Журнал виконання завдань';
-                    ToolTip = 'Відкрити стандартний журнал виконання фонових завдань.';
-                    RunObject = page "Job Queue Log Entries";
-                }
-                action(ServiceEmailQueue)
-                {
-                    ApplicationArea = All;
-                    Caption = 'Черга службової пошти';
-                    RunObject = page "Service Email Queue";
-                }
+                Caption = 'Користувачі та доступ';
+                action(AdminUsers) { ApplicationArea = All; Caption = 'Користувачі'; RunObject = page Users; }
+                action(AdminUserSettings) { ApplicationArea = All; Caption = 'Параметри користувачів'; RunObject = page "User Settings"; }
+                action(AdminUserSetup) { ApplicationArea = All; Caption = 'Налаштування користувачів (облік)'; RunObject = page "User Setup"; }
+                action(AdminPermissionSets) { ApplicationArea = All; Caption = 'Набори дозволів'; RunObject = page "Permission Sets"; }
+                action(AdminProfiles) { ApplicationArea = All; Caption = 'Профілі (ролі)'; RunObject = page "Profile List"; }
+                action(AdminSecurityGroups) { ApplicationArea = All; Caption = 'Групи безпеки'; RunObject = page "Security Groups"; }
+            }
+            group(BackgroundJobs)
+            {
+                Caption = 'Фонові завдання';
+                action(SystemJobQueue) { ApplicationArea = All; Caption = 'Черга завдань'; RunObject = page "Job Queue Entries"; }
+                action(SystemJobQueueLog) { ApplicationArea = All; Caption = 'Журнал виконання завдань'; RunObject = page "Job Queue Log Entries"; }
+                action(ServiceEmailQueue) { ApplicationArea = All; Caption = 'Черга службової пошти'; RunObject = page "Service Email Queue"; }
+            }
+            group(ExtensionsAdministration)
+            {
+                Caption = 'Розширення';
+                action(AdminExtensionManagement) { ApplicationArea = All; Caption = 'Керування розширеннями'; RunObject = page "Extension Management"; }
+                action(ApplicationRegistry) { ApplicationArea = All; Caption = 'Додатки та залежності SI'; RunObject = page "SI Application Registry"; }
+            }
+            group(SecurityAudit)
+            {
+                Caption = 'Безпека та аудит';
+                action(AdminChangeLogEntries) { ApplicationArea = All; Caption = 'Журнал змін'; RunObject = page "Change Log Entries"; }
+                action(AdminChangeLogSetup) { ApplicationArea = All; Caption = 'Налаштування журналу змін'; RunObject = page "Change Log Setup"; }
+            }
+            group(SystemSettings)
+            {
+                Caption = 'Система';
+                action(AdminCompanies) { ApplicationArea = All; Caption = 'Компанії'; RunObject = page "Companies"; }
+                action(AdminCompanyInformation) { ApplicationArea = All; Caption = 'Відомості про компанію'; RunObject = page "Company Information"; }
+                action(AdminFeatureManagement) { ApplicationArea = All; Caption = 'Керування функціями'; RunObject = page "Feature Management"; }
             }
             group(Monitoring)
             {
