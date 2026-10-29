@@ -26,6 +26,7 @@ permissionset 60000 "SI CP ADMIN"
         table "SI Site Assignment" = X,
         codeunit "SI Internal Customer Mgt." = X,
         codeunit "SI Construction Project Mgt." = X,
+        codeunit "SI Project Repair Runner" = X,
         codeunit "SI Project Assignment Mgt." = X,
         codeunit "SI Construction Site Mgt." = X,
         codeunit "SI Job Task Mgt." = X,
