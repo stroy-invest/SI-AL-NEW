@@ -107,6 +107,59 @@ page 57080 "SI Prok Production Exports"
                 end;
             }
 
+            action(GetRawProductions)
+            {
+                ApplicationArea = All;
+                Caption = 'Отримати Raw Productions';
+                Image = Download;
+                ToolTip = 'Отримати оригінальний JSON однієї сторінки GetProductions без зіставлення матеріалів і створення виробничих фактів.';
+
+                trigger OnAction()
+                var
+                    ParamsPage: Page "SI Prok Prod Export Params";
+                    ActiveConnection: Record "SI Prok Connection";
+                    SelectedConnection: Record "SI Prok Connection";
+                    ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
+                    Productions: Codeunit "SI Prok Productions";
+                    TempBlob: Codeunit "Temp Blob";
+                    OutStr: OutStream;
+                    InStr: InStream;
+                    ResponseText: Text;
+                    FileName: Text;
+                    DateFrom: Date;
+                    DateTo: Date;
+                begin
+                    ConnectionMgt.GetActive(ActiveConnection);
+                    ParamsPage.SetDefaults(Today, Today, ActiveConnection.Code);
+                    if ParamsPage.RunModal() <> Action::OK then
+                        exit;
+
+                    DateFrom := ParamsPage.GetDateFrom();
+                    DateTo := ParamsPage.GetDateTo();
+                    if not SelectedConnection.Get(ParamsPage.GetConnectionCode()) then
+                        Error('Профіль Proktek %1 не знайдено.', ParamsPage.GetConnectionCode());
+
+                    Productions.GetPage(
+                        SelectedConnection,
+                        DateFrom,
+                        DateTo,
+                        100,
+                        1,
+                        false,
+                        false,
+                        ResponseText);
+
+                    TempBlob.CreateOutStream(OutStr, TextEncoding::UTF8);
+                    OutStr.WriteText(ResponseText);
+                    TempBlob.CreateInStream(InStr, TextEncoding::UTF8);
+                    FileName := StrSubstNo(
+                        'proktek_raw_productions_%1_%2_page1.json',
+                        Format(DateFrom, 0, '<Year4><Month,2><Day,2>'),
+                        Format(DateTo, 0, '<Year4><Month,2><Day,2>'));
+                    DownloadFromStream(InStr, 'Raw Proktek Productions', '', 'JSON files (*.json)|*.json', FileName);
+                end;
+            }
+
             action(Download)
             {
                 ApplicationArea = All;
