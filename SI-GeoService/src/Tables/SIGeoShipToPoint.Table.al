@@ -40,7 +40,8 @@ table 63001 "SI Geo Ship-to Point"
             begin
                 if (Latitude < -90) or (Latitude > 90) then
                     Error('Широта повинна бути в діапазоні -90..90.');
-                Verified := false;
+                if Latitude <> xRec.Latitude then
+                    Verified := false;
             end;
         }
         field(8; Longitude; Decimal)
@@ -51,7 +52,8 @@ table 63001 "SI Geo Ship-to Point"
             begin
                 if (Longitude < -180) or (Longitude > 180) then
                     Error('Довгота повинна бути в діапазоні -180..180.');
-                Verified := false;
+                if Longitude <> xRec.Longitude then
+                    Verified := false;
             end;
         }
         field(9; Active; Boolean) { Caption = 'Активна'; }

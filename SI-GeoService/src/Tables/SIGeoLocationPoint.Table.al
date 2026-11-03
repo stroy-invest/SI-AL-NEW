@@ -46,6 +46,8 @@ table 63000 "SI Geo Location Point"
             begin
                 if (Latitude < -90) or (Latitude > 90) then
                     Error('Широта повинна бути в діапазоні від -90 до 90.');
+                if Latitude <> xRec.Latitude then
+                    Verified := false;
             end;
         }
 
@@ -58,6 +60,8 @@ table 63000 "SI Geo Location Point"
             begin
                 if (Longitude < -180) or (Longitude > 180) then
                     Error('Довгота повинна бути в діапазоні від -180 до 180.');
+                if Longitude <> xRec.Longitude then
+                    Verified := false;
             end;
         }
 
