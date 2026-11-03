@@ -159,6 +159,86 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         RefreshOrderTotals(Fact."Order UUID");
     end;
 
+    procedure PersistCaptureOnly(CanonicalText: Text; var Fact: Record "SI Prok Production Fact"): Boolean
+    var
+        Root: JsonObject;
+        MaterialsToken: JsonToken;
+        MaterialToken: JsonToken;
+        Materials: JsonArray;
+        ProductionUuidText: Text;
+        OrderUuidText: Text;
+        FormulaUuidText: Text;
+        I: Integer;
+    begin
+        if not Root.ReadFrom(CanonicalText) then
+            Error('Невалідний Canonical JSON. Оригінал збережено в Raw Archive.');
+        ProductionUuidText := GetRequiredText(Root, 'productionUuid');
+        if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
+            if Fact."Capture Mode" <> Fact."Capture Mode"::Test then
+                Error('Production UUID %1 уже існує в режимі Normal. Запис не змінено.', ProductionUuidText);
+            exit(false);
+        end;
+        Clear(Fact);
+        Fact.Init();
+        if not Evaluate(Fact."Production UUID", ProductionUuidText) then
+            Error('Невалідний Production UUID: %1', ProductionUuidText);
+        Fact."Production ID" := GetInteger(Root, 'productionId');
+        // Date parsing is isolated in the caller's TryFunction; raw payload survives.
+        Fact."Production Date/Time" := GetProductionDateTime(Root);
+        Fact."Plant ID" := GetInteger(Root, 'plantId');
+        Fact."Produced Quantity M3" := GetDecimal(Root, 'quantityM3');
+        Fact."Order No." := CopyStr(GetNestedText(Root, 'order', 'number'), 1, MaxStrLen(Fact."Order No."));
+        OrderUuidText := GetNestedText(Root, 'order', 'uuid');
+        if OrderUuidText <> '' then
+            Evaluate(Fact."Order UUID", OrderUuidText);
+        FormulaUuidText := GetNestedText(Root, 'formula', 'uuid');
+        if FormulaUuidText <> '' then
+            Evaluate(Fact."Formula UUID", FormulaUuidText);
+        Fact."Formula Code" := CopyStr(GetNestedText(Root, 'formula', 'code'), 1, MaxStrLen(Fact."Formula Code"));
+        Fact."Simulation" := IsSimulated(Root);
+        ReadTruckFromCanonical(Root, Fact);
+        Fact."Capture Mode" := Fact."Capture Mode"::Test;
+        Fact.Status := Fact.Status::Received;
+        Fact."Ready for Posting" := false;
+        Fact."Validation Message" := 'Тестове приймання: бізнесова валідація не виконувалася.';
+        Fact.SetCanonicalJson(CanonicalText);
+        Fact.Insert(true);
+        if Root.Get('materials', MaterialsToken) and MaterialsToken.IsArray() then begin
+            Materials := MaterialsToken.AsArray();
+            for I := 0 to Materials.Count() - 1 do begin
+                Materials.Get(I, MaterialToken);
+                if MaterialToken.IsObject() then
+                    InsertMaterialCapture(Fact, I + 1, MaterialToken.AsObject());
+            end;
+        end;
+        exit(true);
+    end;
+
+    local procedure InsertMaterialCapture(Fact: Record "SI Prok Production Fact"; SequenceNo: Integer; MaterialJson: JsonObject)
+    var
+        Line: Record "SI Prok Prod Fact Material";
+        UuidText: Text;
+    begin
+        Line.Init();
+        Line."Production Fact Entry No." := Fact."Entry No.";
+        Line."Line No." := SequenceNo * 10000;
+        UuidText := GetText(MaterialJson, 'uuid');
+        if UuidText <> '' then
+            Evaluate(Line."Material UUID", UuidText);
+        Line."External Material Code" := CopyStr(GetText(MaterialJson, 'entCode'), 1, MaxStrLen(Line."External Material Code"));
+        Line."Material Name" := CopyStr(GetText(MaterialJson, 'name'), 1, MaxStrLen(Line."Material Name"));
+        Line."Item No." := CopyStr(GetText(MaterialJson, 'itemNo'), 1, MaxStrLen(Line."Item No."));
+        Line."Variant Code" := CopyStr(GetText(MaterialJson, 'variantCode'), 1, MaxStrLen(Line."Variant Code"));
+        Line."Requested Kg" := GetDecimal(MaterialJson, 'requestedKg');
+        Line."Adjusted Kg" := GetDecimal(MaterialJson, 'adjustedKg');
+        Line."Actual Kg" := GetDecimal(MaterialJson, 'actualKg');
+        Line."Variance Kg" := Line."Actual Kg" - Line."Requested Kg";
+        if Line."Requested Kg" <> 0 then
+            Line."Variance %" := 100 * Line."Variance Kg" / Line."Requested Kg";
+        // No Item, Variant, Recipe, Allocation, status or approval lookups in Test mode.
+        Line.Insert(true);
+    end;
+
     procedure RepairSimulationTruckFields(OrderUuid: Guid)
     var
         Fact: Record "SI Prok Production Fact";
@@ -174,7 +254,8 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
                 if (CanonicalText <> '') and Root.ReadFrom(CanonicalText) then begin
                     ReadTruckFromCanonical(Root, Fact);
                     if Fact."Truck Code" <> '' then
-                        Fact.Modify(false);
+                        //Fact.Modify(false);
+                        Fact.Modify(true);
                 end;
                 Clear(Root);
             until Fact.Next() = 0;

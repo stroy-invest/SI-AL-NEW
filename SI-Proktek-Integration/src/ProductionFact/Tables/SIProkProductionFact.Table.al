@@ -29,7 +29,14 @@ table 57091 "SI Prok Production Fact"
         field(210; "Order Produced Total M3"; Decimal) { Caption = 'Вироблено по Order, м³'; DecimalPlaces = 0 : 5; }
         field(220; "Order Remaining M3"; Decimal) { Caption = 'Залишок по Order, м³'; DecimalPlaces = 0 : 5; }
         field(230; Status; Enum "SI Prok Prod Fact Status") { Caption = 'Статус'; }
-        field(240; "Ready for Posting"; Boolean) { Caption = 'Готово до проведення'; }
+        field(240; "Ready for Posting"; Boolean)
+        {
+            Caption = 'Готово до проведення';
+            trigger OnValidate()
+            begin
+                AssertTestFactNotPostingReady();
+            end;
+        }
         field(250; "Validation Message"; Text[250]) { Caption = 'Результат перевірки'; }
         field(260; "Received At"; DateTime) { Caption = 'Отримано'; Editable = false; }
         field(270; "Received By"; Text[100]) { Caption = 'Отримав'; Editable = false; }
@@ -37,6 +44,7 @@ table 57091 "SI Prok Production Fact"
         field(282; "Truck UUID"; Text[50]) { Caption = 'UUID автоміксера'; Editable = false; }
         field(283; "Truck Code"; Text[100]) { Caption = 'Код автоміксера'; Editable = false; }
         field(284; "Truck Plate"; Text[50]) { Caption = 'Номер автоміксера'; Editable = false; }
+        field(290; "Capture Mode"; Enum "SI Prok Capture Mode") { Caption = 'Режим приймання'; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 
@@ -50,10 +58,33 @@ table 57091 "SI Prok Production Fact"
 
     trigger OnInsert()
     begin
+        AssertTestFactNotPostingReady();
         if "Received At" = 0DT then
             "Received At" := CurrentDateTime();
         if "Received By" = '' then
             "Received By" := CopyStr(UserId(), 1, MaxStrLen("Received By"));
+    end;
+
+    trigger OnModify()
+    begin
+        AssertTestFactNotPostingReady();
+        if (xRec."Capture Mode" = xRec."Capture Mode"::Test) and
+           ("Capture Mode" <> "Capture Mode"::Test) then
+            Error('Тестовий факт виробництва не можна перевести в Normal шляхом редагування.');
+    end;
+
+    procedure AssertAllowedForPosting()
+    begin
+        if "Capture Mode" = "Capture Mode"::Test then
+            Error('Проведення заборонено: Production UUID %1 отримано в режимі Test.', "Production UUID");
+        if not "Ready for Posting" then
+            Error('Факт виробництва %1 не готовий до проведення.', "Production UUID");
+    end;
+
+    local procedure AssertTestFactNotPostingReady()
+    begin
+        if ("Capture Mode" = "Capture Mode"::Test) and "Ready for Posting" then
+            Error('Тестовий факт виробництва не може бути готовим до проведення.');
     end;
 
     procedure SetCanonicalJson(Value: Text)

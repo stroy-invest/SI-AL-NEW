@@ -48,6 +48,8 @@ permissionset 57950 "SI PROK ADMIN"
         tabledata "SI Prok Prod Fact Material" = RIMD,
         table "SI Prok Prod Fact Material" = X,
         page "SI Prok Production Facts" = X,
+        page "SI Prok Test Fact Clear Params" = X,
+        codeunit "SI Prok Test Fact Clear Mgt." = X,
         page "SI Prok Production Fact Card" = X,
         page "SI Prok Prod Fact Materials" = X,
         codeunit "SI Prok Prod Fact Mgt." = X,
@@ -64,5 +66,9 @@ permissionset 57950 "SI PROK ADMIN"
         codeunit "SI Prok Recipe Formula Mgt." = X,
         tabledata "SI Prok Sim Truck Batch" = RIMD,
         table "SI Prok Sim Truck Batch" = X,
+        tabledata "SI Prok Raw API Response" = RIMD,
+        table "SI Prok Raw API Response" = X,
+        page "SI Prok Raw API Responses" = X,
+        codeunit "SI Prok Capture Mgt." = X,
         page "SI Prok Formula Sync Status" = X;
 }

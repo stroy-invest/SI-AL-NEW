@@ -16,6 +16,7 @@ page 57093 "SI Prok Production Fact Card"
                 field("Production ID"; Rec."Production ID") { ApplicationArea = All; }
                 field("Production UUID"; Rec."Production UUID") { ApplicationArea = All; }
                 field("Production Date/Time"; Rec."Production Date/Time") { ApplicationArea = All; }
+                field("Capture Mode"; Rec."Capture Mode") { ApplicationArea = All; }
                 field(Status; Rec.Status) { ApplicationArea = All; }
                 field("Ready for Posting"; Rec."Ready for Posting") { ApplicationArea = All; }
                 field("Validation Message"; Rec."Validation Message") { ApplicationArea = All; }

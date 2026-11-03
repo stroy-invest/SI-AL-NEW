@@ -1,0 +1,112 @@
+AL OBJECT ID INVENTORY (v2)
+Generated UTC: 2026-11-01T18:39:37.6438415Z
+Repository: C:\BC\SI-AL-NEW
+Status: ok | Apps: 17 | Objects: 967 | Errors: 0 | Warnings: 0
+
+APP: EDS Secret HTTP Diagnostic | c879d1d1-47e1-4f35-8a19-8e77448c4012 | v1.0.0.18
+Manifest: EDS_Secret_HTTP_Diagnostic/app.json
+Allowed ranges: 70000-70200, 70990-70999
+Objects: 22 | Out of range: 0 | Next candidate: 70006
+Free gaps: 70006-70019, 70027-70049, 70057-70200, 70992-70999
+
+APP: SI Business Partner | f53b19c4-75c9-4351-b2bb-ac84112997da | v1.1.2.28
+Manifest: SI-BusinessPartner/app.json
+Allowed ranges: 54000-54999
+Objects: 95 | Out of range: 0 | Next candidate: 54001
+Free gaps: 54001-54002, 54008-54009, 54025-54028, 54035-54039, 54041-54042, 54046-54049, 54052-54059, 54063-54069, 54073-54079, 54085-54089, 54092-54999
+
+APP: SI Concrete Recipe Engine | a483f66a-7af7-4f98-bbac-7abd480ef70e | v1.0.0.23
+Manifest: SI-Concrete-Recipe-Engine/app.json
+Allowed ranges: 62000-62999
+Objects: 41 | Out of range: 0 | Next candidate: 62010
+Free gaps: 62010-62019, 62026-62099, 62111-62199, 62207-62209, 62213-62299, 62301-62399, 62401-62499, 62502-62999
+
+APP: SI Construction Project | e7e9d6bb-52d8-4f68-93ad-d8c390cbbf73 | v1.0.0.21
+Manifest: SI-Construction-Project/app.json
+Allowed ranges: 60000-60999
+Objects: 37 | Out of range: 0 | Next candidate: 60006
+Free gaps: 60006-60009, 60016, 60024-60999
+
+APP: SI Geo Service | 23461143-2512-4e6f-9d8c-39ad62f17407 | v1.0.0.8
+Manifest: SI-GeoService/app.json
+Allowed ranges: 63000-63199
+Objects: 18 | Out of range: 0 | Next candidate: 63006
+Free gaps: 63006-63199
+
+APP: SI IW HR Adapter | c8dd1b1a-7f9e-4e72-a3cc-0d5af23e3f19 | v1.0.0.3
+Manifest: SI-IW-HR-Adapter/app.json
+Allowed ranges: 51000-51999
+Objects: 5 | Out of range: 0 | Next candidate: 51004
+Free gaps: 51004-51999
+
+APP: SI IW Localization Adapter | 6c1daff9-7dd1-4566-ac9c-74868de040b3 | v1.0.0.1
+Manifest: SI-IW-Localization-Adapter/app.json
+Allowed ranges: 65000-65199
+Objects: 3 | Out of range: 0 | Next candidate: 65002
+Free gaps: 65002-65199
+
+APP: SI Manufacturer Management | 45971d06-dc61-4835-b650-7d5c297d2bf0 | v1.0.0.14
+Manifest: SI-ManufacturerManagement/app.json
+Allowed ranges: 55000-55999
+Objects: 27 | Out of range: 0 | Next candidate: 55015
+Free gaps: 55015-55999
+
+APP: SI Master Data Toolkit | 39320ea1-c92d-4838-b833-4080842bc10e | v1.0.0.25
+Manifest: SI-MasterDataToolkit/app.json
+Allowed ranges: 58000-58499
+Objects: 31 | Out of range: 0 | Next candidate: 58009
+Free gaps: 58009-58019, 58021-58499
+
+APP: SI Product Classification Management | 9f7472a1-62e9-4595-ac66-0ff6d2f759fb | v1.0.0.4
+Manifest: SI-ProdClassifMgt/app.json
+Allowed ranges: 56000-56599
+Objects: 10 | Out of range: 0 | Next candidate: 56002
+Free gaps: 56002-56099, 56106-56599
+
+APP: SI Product Configurator | 3eb7e01e-4653-4f7d-873e-a4a1f62f7692 | v1.5.0.50
+Manifest: SI-ProductConfigurator/app.json
+Allowed ranges: 53000-53999
+Objects: 96 | Out of range: 0 | Next candidate: 53040
+Free gaps: 53040-53999
+
+APP: SI Proktek Integration | 29716061-69ed-45ef-a790-a2377e00f960 | v1.0.0.55
+Manifest: SI-Proktek-Integration/app.json
+Allowed ranges: 57000-57999
+Objects: 104 | Out of range: 0 | Next candidate: 57002
+Free gaps: 57002-57009, 57015-57019, 57031-57049, 57079, 57086-57089, 57095, 57098, 57101-57949, 57952-57999
+
+APP: SI Request Management | 955f2add-f717-4b1e-a32e-12bfb43e5948 | v1.0.0.4
+Manifest: SI-RequestManagement/app.json
+Allowed ranges: 52000-52999
+Objects: 55 | Out of range: 0 | Next candidate: 52002
+Free gaps: 52002, 52007, 52014, 52017, 52020-52021, 52027-52029, 52050, 52059-52999
+
+APP: SI Supply Request Engine | bca54530-bd7f-45ec-b290-81531873ad33 | v1.0.0.52
+Manifest: SI-Supply-Request/app.json
+Allowed ranges: 61000-61999
+Objects: 134 | Out of range: 0 | Next candidate: 61024
+Free gaps: 61024-61029, 61038-61039, 61064-61089, 61091-61999
+
+APP: SI Vehicle Management | c7ba7490-cd03-4d6c-b987-64d412401a89 | v1.0.0.4
+Manifest: SI-Vehicle-Management/app.json
+Allowed ranges: 63200-63399
+Objects: 18 | Out of range: 0 | Next candidate: 63207
+Free gaps: 63207-63249, 63258-63299, 63301-63339, 63341-63379, 63381-63399
+
+APP: SI Weighbridge Management | 58a85b5e-f773-4028-925f-22280382c67e | v1.1.1.13
+Manifest: SI-Weighbridge-Management/app.json
+Allowed ranges: 59000-59999
+Objects: 56 | Out of range: 0 | Next candidate: 59004
+Free gaps: 59004-59009, 59011-59049, 59054, 59057-59099, 59107-59109, 59111-59119, 59121-59129, 59133-59149, 59155-59999
+
+APP: STROYINVEST Foundation | 03296e2f-ef03-4e2c-a893-8a7bf5dbac69 | v1.0.0.86
+Manifest: STROYINVEST Foundation/app.json
+Allowed ranges: 50100-50999
+Objects: 215 | Out of range: 0 | Next candidate: 50102
+Free gaps: 50102-50120, 50122-50139, 50141-50159, 50163, 50167-50169, 50172-50179, 50204-50209, 50216-50230, 50239-50249, 50260-50279, 50282-50299, 50304-50339, 50341-50399, 50407-50409, 50433-50439, 50489-50499, 50506-50569, 50575-50599, 50604-50609, 50617-50779, 50784-50989, 50995-50999
+
+ISSUES:
+None
+
+Object details are in AL-Object-IDs.json (objects array).
+Free gaps are advisory and not reserved. Validate against source, dependencies, and AL compiler.

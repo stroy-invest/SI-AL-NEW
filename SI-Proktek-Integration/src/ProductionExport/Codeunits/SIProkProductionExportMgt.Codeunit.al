@@ -215,7 +215,8 @@ codeunit 57081 "SI Prok Production Export Mgt."
                         ProductionUuid,
                         EntCodeByBunker,
                         MaterialUuidByBunker,
-                        MaterialNameByBunker));
+                        MaterialNameByBunker,
+                        false));
             end;
         end;
 
@@ -286,7 +287,8 @@ codeunit 57081 "SI Prok Production Export Mgt."
             ExpectedProductionUuid,
             EntCodeByBunker,
             MaterialUuidByBunker,
-            MaterialNameByBunker);
+            MaterialNameByBunker,
+            false);
         CanonicalProduction.WriteTo(CanonicalProductionText);
     end;
 
@@ -331,8 +333,36 @@ codeunit 57081 "SI Prok Production Export Mgt."
             ProductionUuid,
             EntCodeByBunker,
             MaterialUuidByBunker,
-            MaterialNameByBunker);
+            MaterialNameByBunker,
+            false);
         CanonicalProduction.WriteTo(CanonicalProductionText);
+    end;
+
+    procedure BuildCaptureCanonicalFromDetails(
+        DetailResponseText: Text;
+        ProductionUuid: Text;
+        EntCodes: Dictionary of [Text, Text];
+        MaterialUuids: Dictionary of [Text, Text];
+        MaterialNames: Dictionary of [Text, Text];
+        var CanonicalText: Text)
+    var
+        Canonical: JsonObject;
+    begin
+        // TEST capture: mappings are supplied from the same connection as production details.
+        // Missing hopper mappings remain unmapped; no standard BC posting is performed.
+        Canonical := BuildCanonicalProductionFromDetails(
+            DetailResponseText, ProductionUuid, EntCodes, MaterialUuids, MaterialNames, true);
+        Canonical.WriteTo(CanonicalText);
+    end;
+
+    [TryFunction]
+    procedure TryLoadCaptureMaterialConfig(
+        var Connection: Record "SI Prok Connection";
+        var EntCodes: Dictionary of [Text, Text];
+        var MaterialUuids: Dictionary of [Text, Text];
+        var MaterialNames: Dictionary of [Text, Text])
+    begin
+        LoadMaterialConfig(Connection, EntCodes, MaterialUuids, MaterialNames);
     end;
 
     local procedure CollectProductionIndexResponse(
@@ -597,7 +627,8 @@ codeunit 57081 "SI Prok Production Export Mgt."
         ExpectedProductionUuid: Text;
         EntCodeByBunker: Dictionary of [Text, Text];
         MaterialUuidByBunker: Dictionary of [Text, Text];
-        MaterialNameByBunker: Dictionary of [Text, Text]): JsonObject
+        MaterialNameByBunker: Dictionary of [Text, Text];
+        AllowUnmappedCapture: Boolean): JsonObject
     var
         ResponseJson: JsonObject;
         ProductionToken: JsonToken;
@@ -638,14 +669,16 @@ codeunit 57081 "SI Prok Production Export Mgt."
             ProductionJson,
             EntCodeByBunker,
             MaterialUuidByBunker,
-            MaterialNameByBunker));
+            MaterialNameByBunker,
+            AllowUnmappedCapture));
     end;
 
     local procedure BuildCanonicalProduction(
         ProductionJson: JsonObject;
         EntCodeByBunker: Dictionary of [Text, Text];
         MaterialUuidByBunker: Dictionary of [Text, Text];
-        MaterialNameByBunker: Dictionary of [Text, Text]): JsonObject
+        MaterialNameByBunker: Dictionary of [Text, Text];
+        AllowUnmappedCapture: Boolean): JsonObject
     var
         ResultJson: JsonObject;
         FormulaJson: JsonObject;
@@ -797,6 +830,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
             EntCodeByBunker,
             MaterialUuidByBunker,
             MaterialNameByBunker,
+            AllowUnmappedCapture,
             MaterialsJson,
             HoppersJson);
         ResultJson.Add('materials', MaterialsJson);
@@ -835,6 +869,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         EntCodeByBunker: Dictionary of [Text, Text];
         MaterialUuidByBunker: Dictionary of [Text, Text];
         MaterialNameByBunker: Dictionary of [Text, Text];
+        AllowUnmappedCapture: Boolean;
         var MaterialsJson: JsonArray;
         var HoppersJson: JsonArray)
     var
@@ -886,23 +921,27 @@ codeunit 57081 "SI Prok Production Export Mgt."
                 continue;
 
             MapKey := BuildBunkerKey(PlantId, Bunker);
-            if not EntCodeByBunker.Get(MapKey, EntCode) then
-                Error(
-                    'Не знайдено Material Config для hopper %1 (santral_id=%2) у production %3. План=%4 кг, скоригований план=%5 кг, факт=%6 кг.',
-                    Bunker,
-                    PlantId,
-                    ProductionUuid,
-                    RequestedKg,
-                    AdjustedKg,
-                    ActualKg);
-
-            if EntCode = '' then
-                Error('Для hopper %1 (santral_id=%2) не визначено malzeme_ent_kod.', Bunker, PlantId);
-
+            Clear(EntCode);
             Clear(MaterialUuid);
             Clear(MaterialName);
-            MaterialUuidByBunker.Get(MapKey, MaterialUuid);
-            MaterialNameByBunker.Get(MapKey, MaterialName);
+            if not EntCodeByBunker.Get(MapKey, EntCode) then begin
+                if not AllowUnmappedCapture then
+                    Error(
+                        'Не знайдено Material Config для hopper %1 (santral_id=%2) у production %3. План=%4 кг, скоригований план=%5 кг, факт=%6 кг.',
+                        Bunker, PlantId, ProductionUuid, RequestedKg, AdjustedKg, ActualKg);
+                // TEST only: stable external slot identity, never a BC Item No.
+                EntCode := StrSubstNo('PROKTEK-HOPPER:%1:%2', PlantId, Bunker);
+                MaterialName := StrSubstNo('Proktek hopper %1 (santral_id=%2); material unmapped', Bunker, PlantId);
+            end else begin
+                MaterialUuidByBunker.Get(MapKey, MaterialUuid);
+                MaterialNameByBunker.Get(MapKey, MaterialName);
+                if EntCode = '' then begin
+                    if not AllowUnmappedCapture then
+                        Error('Для hopper %1 (santral_id=%2) не визначено malzeme_ent_kod.', Bunker, PlantId);
+                    EntCode := StrSubstNo('PROKTEK-HOPPER:%1:%2', PlantId, Bunker);
+                    MaterialName := StrSubstNo('%1; ERP code unmapped', MaterialName);
+                end;
+            end;
 
             AddHopperFact(
                 HoppersJson,
@@ -963,7 +1002,8 @@ codeunit 57081 "SI Prok Production Export Mgt."
         ItemNo: Text;
         VariantCode: Text;
     begin
-        ParseEntCode(EntCode, ItemNo, VariantCode);
+        if CopyStr(EntCode, 1, 15) <> 'PROKTEK-HOPPER:' then
+            ParseEntCode(EntCode, ItemNo, VariantCode);
 
         HopperJson.Add('hopper', Bunker);
         HopperJson.Add('materialUuid', MaterialUuid);
@@ -990,7 +1030,8 @@ codeunit 57081 "SI Prok Production Export Mgt."
         ItemNo: Text;
         VariantCode: Text;
     begin
-        ParseEntCode(EntCode, ItemNo, VariantCode);
+        if CopyStr(EntCode, 1, 15) <> 'PROKTEK-HOPPER:' then
+            ParseEntCode(EntCode, ItemNo, VariantCode);
 
         MaterialJson.Add('uuid', MaterialUuid);
         MaterialJson.Add('entCode', EntCode);
