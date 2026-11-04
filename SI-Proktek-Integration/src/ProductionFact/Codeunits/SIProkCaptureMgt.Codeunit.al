@@ -75,7 +75,7 @@ codeunit 57094 "SI Prok Capture Mgt."
                 ArchiveResponse(ConnectionCode, 'GetProductionDetails', Uuid, DetailText, Archive);
                 Commit(); // Raw evidence survives later parser errors.
                 ClearLastError();
-                if TryProcessDetail(DetailText, Uuid, EntCodes, MaterialUuids, MaterialNames, Imported, Existing) then begin
+                if TryProcessDetail(ConnectionCode, DetailText, Uuid, EntCodes, MaterialUuids, MaterialNames, Imported, Existing) then begin
                     MarkProcessed(Archive);
                     if ConfigError <> '' then begin
                         Archive."Error Message" := CopyStr(
@@ -142,6 +142,7 @@ codeunit 57094 "SI Prok Capture Mgt."
 
     [TryFunction]
     local procedure TryProcessDetail(
+        ConnectionCode: Code[50];
         Payload: Text;
         Uuid: Text;
         EntCodes: Dictionary of [Text, Text];
@@ -157,6 +158,6 @@ codeunit 57094 "SI Prok Capture Mgt."
     begin
         ExportMgt.BuildCaptureCanonicalFromDetails(
             Payload, Uuid, EntCodes, MaterialUuids, MaterialNames, Canonical);
-        if FactMgt.PersistCaptureOnly(Canonical, Fact) then Imported += 1 else Existing += 1;
+        if FactMgt.PersistCaptureOnlyWithConnection(Canonical, ConnectionCode, Fact) then Imported += 1 else Existing += 1;
     end;
 }

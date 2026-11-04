@@ -51,16 +51,44 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Clear(CanonicalText);
             ExportMgt.BuildCanonicalForProduction(Connection, ProductionUuidText, CanonicalText);
             if CanonicalBelongsToOrder(CanonicalText, ProdRequest."Proktek Order UUID") then begin
-                if FindFactByProductionUuid(ProductionUuidText, Fact) then
-                    ExistingCount += 1
+                if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
+                    AssertSameConnection(Fact, Connection.Code);
+                    ExistingCount += 1;
+                end
                 else begin
-                    PersistCanonical(ProdRequest, CanonicalText, Fact);
+                    PersistCanonicalWithConnection(ProdRequest, CanonicalText, Connection.Code, Fact);
                     ImportedCount += 1;
                 end;
             end;
         end;
 
         RefreshOrderTotals(ProdRequest."Proktek Order UUID");
+    end;
+
+    // Explicit provenance for callers that know the source connection.
+    procedure PersistCanonicalIfNewWithConnection(
+        ProdRequest: Record "SI Concrete Prod Request";
+        CanonicalText: Text;
+        ConnectionCode: Code[50];
+        var Fact: Record "SI Prok Production Fact"): Boolean
+    var
+        Root: JsonObject;
+        ProductionUuidText: Text;
+    begin
+        if CanonicalText = '' then
+            Error('Canonical Production JSON порожній.');
+        if not Root.ReadFrom(CanonicalText) then
+            Error('Canonical Production JSON невалідний.');
+        ProductionUuidText := GetRequiredText(Root, 'productionUuid');
+        if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
+            AssertSameConnection(Fact, ConnectionCode);
+            RefreshOrderTotals(Fact."Order UUID");
+            Fact.Get(Fact."Entry No.");
+            exit(false);
+        end;
+        PersistCanonicalWithConnection(ProdRequest, CanonicalText, ConnectionCode, Fact);
+        Fact.Get(Fact."Entry No.");
+        exit(true);
     end;
 
     procedure PersistCanonicalIfNew(
@@ -88,7 +116,13 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         exit(true);
     end;
 
+    // Compatibility entry point: no source provenance => never posting-ready.
     procedure PersistCanonical(ProdRequest: Record "SI Concrete Prod Request"; CanonicalText: Text; var Fact: Record "SI Prok Production Fact")
+    begin
+        PersistCanonicalWithConnection(ProdRequest, CanonicalText, '', Fact);
+    end;
+
+    procedure PersistCanonicalWithConnection(ProdRequest: Record "SI Concrete Prod Request"; CanonicalText: Text; ConnectionCode: Code[50]; var Fact: Record "SI Prok Production Fact")
     var
         Root: JsonObject;
         MaterialsToken: JsonToken;
@@ -105,8 +139,10 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Error('Canonical Production JSON невалідний.');
 
         ProductionUuidText := GetRequiredText(Root, 'productionUuid');
-        if FindFactByProductionUuid(ProductionUuidText, Fact) then
+        if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
+            AssertSameConnection(Fact, ConnectionCode);
             exit;
+        end;
 
         OrderUuidText := GetNestedText(Root, 'order', 'uuid');
         if LowerCase(OrderUuidText) <> LowerCase(Format(ProdRequest."Proktek Order UUID", 0, 4)) then
@@ -117,6 +153,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Clear(Fact);
         Fact.Init();
         Evaluate(Fact."Production UUID", ProductionUuidText);
+        Fact."Connection Code" := ConnectionCode;
         Fact."Production ID" := GetInteger(Root, 'productionId');
         Fact."Production Date/Time" := GetProductionDateTime(Root);
         Fact."Plant ID" := GetInteger(Root, 'plantId');
@@ -141,8 +178,8 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         ReadTruckFromCanonical(Root, Fact);
         Fact."Ordered Quantity M3" := ProdRequest.Quantity;
         Fact.Status := Fact.Status::Received;
-        Fact."Ready for Posting" := true;
-        Fact."Validation Message" := 'Production Fact отримано та скорельовано.';
+        Fact."Ready for Posting" := false;
+        Fact."Validation Message" := 'Production Fact отримано; очікує перевірки.';
         Fact.SetCanonicalJson(CanonicalText);
         Fact.Insert(true);
 
@@ -160,6 +197,11 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
     end;
 
     procedure PersistCaptureOnly(CanonicalText: Text; var Fact: Record "SI Prok Production Fact"): Boolean
+    begin
+        exit(PersistCaptureOnlyWithConnection(CanonicalText, '', Fact));
+    end;
+
+    procedure PersistCaptureOnlyWithConnection(CanonicalText: Text; ConnectionCode: Code[50]; var Fact: Record "SI Prok Production Fact"): Boolean
     var
         Root: JsonObject;
         MaterialsToken: JsonToken;
@@ -174,6 +216,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Error('Невалідний Canonical JSON. Оригінал збережено в Raw Archive.');
         ProductionUuidText := GetRequiredText(Root, 'productionUuid');
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
+            AssertSameConnection(Fact, ConnectionCode);
             if Fact."Capture Mode" <> Fact."Capture Mode"::Test then
                 Error('Production UUID %1 уже існує в режимі Normal. Запис не змінено.', ProductionUuidText);
             exit(false);
@@ -182,6 +225,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Fact.Init();
         if not Evaluate(Fact."Production UUID", ProductionUuidText) then
             Error('Невалідний Production UUID: %1', ProductionUuidText);
+        Fact."Connection Code" := ConnectionCode;
         Fact."Production ID" := GetInteger(Root, 'productionId');
         // Date parsing is isolated in the caller's TryFunction; raw payload survives.
         Fact."Production Date/Time" := GetProductionDateTime(Root);
@@ -211,6 +255,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
                     InsertMaterialCapture(Fact, I + 1, MaterialToken.AsObject());
             end;
         end;
+        DiagnoseCaptureProvenance(Fact);
         exit(true);
     end;
 
@@ -327,20 +372,51 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Connection: Record "SI Prok Connection";
         FormulaMapping: Record "SI Prok Entity Mapping";
         RecipeRevision: Record "SI Concrete Recipe Revision";
-        ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
         BlockReason: Text;
+        MatchCount: Integer;
+        MatchedRevisionId: Guid;
     begin
         if not ProdRequest.Get(Fact."Prod. Request Entry No.") then
             BlockReason := 'Не знайдено заявку на виробництво.';
 
-        if BlockReason = '' then begin
-            RecipeRevision.Get(Fact."Recipe No.", Fact."Recipe Revision No.");
-            ConnectionMgt.GetActive(Connection);
-            if not FormulaMapping.Get(Connection.Code, FormulaMapping."Entity Type"::Formula, RecipeRevision.SystemId) then
-                BlockReason := 'Не знайдено Formula mapping для Recipe Revision.'
+        if BlockReason = '' then
+            if Fact."Connection Code" = '' then
+                BlockReason := 'Не визначено Connection Code джерела факту.'
             else
-                if FormulaMapping."Proktek UUID" <> Fact."Formula UUID" then
-                    BlockReason := 'Production посилається не на Formula UUID, закріплений за Recipe Revision.';
+                if not Connection.Get(Fact."Connection Code") then
+                    BlockReason := 'Connection Code джерела факту не існує.';
+
+        if BlockReason = '' then
+            if IsNullGuid(Fact."Formula UUID") then
+                BlockReason := 'Production Fact не містить Formula UUID.';
+
+        if BlockReason = '' then
+            if not RecipeRevision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+                BlockReason := 'Не знайдено ревізію рецептури, зазначену у Production Fact.';
+
+        if BlockReason = '' then begin
+            FormulaMapping.Reset();
+            FormulaMapping.SetRange("Connection Code", Fact."Connection Code");
+            FormulaMapping.SetRange("Entity Type", FormulaMapping."Entity Type"::Formula);
+            FormulaMapping.SetRange("Proktek UUID", Fact."Formula UUID");
+            MatchCount := FormulaMapping.Count();
+            if MatchCount = 0 then
+                BlockReason := 'Formula UUID не зареєстровано для цього підключення Proktek.'
+            else
+                if MatchCount > 1 then
+                    BlockReason := 'Formula UUID має неоднозначні відповідності у Proktek Mapping.'
+                else begin
+                    FormulaMapping.FindFirst();
+                    MatchedRevisionId := FormulaMapping."BC SystemId";
+                    if MatchedRevisionId <> RecipeRevision.SystemId then
+                        BlockReason := 'Formula UUID пов’язаний з іншою ревізією BC.'
+                    else
+                        if FormulaMapping."SI Formula Proj. Status" <> FormulaMapping."SI Formula Proj. Status"::Published then
+                            BlockReason := 'Formula Mapping не має статусу Published.'
+                        else
+                            if FormulaMapping."Last Sync At" = 0DT then
+                                BlockReason := 'Відсутнє підтвердження синхронізації Formula.';
+                end;
         end;
 
         Line.SetRange("Production Fact Entry No.", Fact."Entry No.");
@@ -359,14 +435,65 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Fact."Ready for Posting" := false;
             Fact."Validation Message" := CopyStr(BlockReason, 1, MaxStrLen(Fact."Validation Message"));
         end else begin
-            Fact."Ready for Posting" := true;
-            Fact."Validation Message" := 'Production Fact валідний та готовий до наступного етапу.';
+            Fact."Ready for Posting" := not Fact."Simulation" and (Fact."Capture Mode" <> Fact."Capture Mode"::Test);
+            Fact."Validation Message" := 'Production Fact пройшов перевірку походження та матеріалів.';
         end;
         if Fact."Simulation" then begin
             Fact."Ready for Posting" := false;
-            Fact."Validation Message" := 'SIMULATION: заборонено проведення тестового факту.';
+            if BlockReason = '' then
+                Fact."Validation Message" := 'SIMULATION: перевірку пройдено; проведення заборонено.';
         end;
         Fact.Modify(true);
+    end;
+
+    // Diagnostic-only: does not change status or grant posting eligibility.
+    procedure DiagnoseCaptureProvenance(var Fact: Record "SI Prok Production Fact")
+    var
+        Mapping: Record "SI Prok Entity Mapping";
+        Revision: Record "SI Concrete Recipe Revision";
+        Reason: Text;
+    begin
+        if Fact."Capture Mode" <> Fact."Capture Mode"::Test then
+            Error('Діагностика призначена лише для TEST Capture.');
+        if Fact."Connection Code" = '' then
+            Reason := 'Не визначено Connection Code.'
+        else
+            if IsNullGuid(Fact."Formula UUID") then
+                Reason := 'Не визначено Formula UUID.'
+            else begin
+                Mapping.SetRange("Connection Code", Fact."Connection Code");
+                Mapping.SetRange("Entity Type", Mapping."Entity Type"::Formula);
+                Mapping.SetRange("Proktek UUID", Fact."Formula UUID");
+                if Mapping.Count() = 0 then
+                    Reason := 'Formula UUID не зареєстровано у BC для цього Connection.'
+                else
+                    if Mapping.Count() > 1 then
+                        Reason := 'Formula UUID має кілька відповідностей у BC.'
+                    else begin
+                        Mapping.FindFirst();
+                        if not Revision.GetBySystemId(Mapping."BC SystemId") then
+                            Reason := 'Formula Mapping посилається на відсутню ревізію.'
+                        else
+                            if Mapping."SI Formula Proj. Status" <> Mapping."SI Formula Proj. Status"::Published then
+                                Reason := 'Formula Mapping не має статусу Published.'
+                            else
+                                if Mapping."Last Sync At" = 0DT then
+                                    Reason := 'Formula Mapping не містить часу синхронізації.';
+                    end;
+            end;
+        Fact."Ready for Posting" := false;
+        if Reason = '' then
+            Fact."Validation Message" := 'TEST: Formula UUID зареєстровано; проведення заборонено.'
+        else
+            Fact."Validation Message" := CopyStr('TEST / Provenance: ' + Reason, 1, MaxStrLen(Fact."Validation Message"));
+        Fact.Modify(true);
+    end;
+
+    local procedure AssertSameConnection(Fact: Record "SI Prok Production Fact"; ConnectionCode: Code[50])
+    begin
+        if Fact."Connection Code" <> ConnectionCode then
+            Error('Production UUID %1 уже існує з Connection Code %2; нове джерело %3. Конфлікт походження.',
+                Fact."Production UUID", Fact."Connection Code", ConnectionCode);
     end;
 
     local procedure IsSimulated(Root: JsonObject): Boolean

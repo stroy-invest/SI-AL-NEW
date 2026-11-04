@@ -13,6 +13,8 @@ codeunit 57077 "SI Prok Prod Simulator"
         AnalysisJson: Text;
         ScenarioCode: Text[30];
         Created: Boolean;
+        Connection: Record "SI Prok Connection";
+        ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
     begin
         ValidateAllocation(Allocation, ProdRequest);
 
@@ -44,7 +46,9 @@ codeunit 57077 "SI Prok Prod Simulator"
             CanonicalJson,
             AnalysisJson);
 
-        Created := FactMgt.PersistCanonicalIfNew(ProdRequest, CanonicalJson, Fact);
+        MarkCanonicalSimulation(CanonicalJson);
+        ConnectionMgt.GetActive(Connection);
+        Created := FactMgt.PersistCanonicalIfNewWithConnection(ProdRequest, CanonicalJson, Connection.Code, Fact);
         AppendPersistenceResult(AnalysisJson, Created, Fact);
 
         // Persistence above opens a write transaction (Production Fact Header + Materials).
@@ -91,6 +95,8 @@ codeunit 57077 "SI Prok Prod Simulator"
         CreatedCount: Integer;
         ExistingCount: Integer;
         MixUuid: Text;
+        Connection: Record "SI Prok Connection";
+        ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
     begin
         if not IsSandbox() then
             Error('Імітація виробництва дозволена виключно в Sandbox.');
@@ -106,6 +112,7 @@ codeunit 57077 "SI Prok Prod Simulator"
         if not Confirm('Створити 27 тестових замісів для шести автоміксерів (51,3 м³)? Дані не можна проводити.', false) then
             exit;
 
+        ConnectionMgt.GetActive(Connection);
         for TruckNo := 1 to 6 do begin
             case TruckNo of
                 1: begin TargetQty := 11.6; MixCount := 6; end;
@@ -155,7 +162,7 @@ codeunit 57077 "SI Prok Prod Simulator"
                 ProductionRoot.WriteTo(ProductionsText);
                 ExportMgt.ParsePilotRawResponses(ProductionsText, DetailsText, MaterialsText, MixUuid, CanonicalText);
                 MarkCanonicalSimulation(CanonicalText);
-                if FactMgt.PersistCanonicalIfNew(ProdRequest, CanonicalText, Fact) then
+                if FactMgt.PersistCanonicalIfNewWithConnection(ProdRequest, CanonicalText, Connection.Code, Fact) then
                     CreatedCount += 1
                 else
                     ExistingCount += 1;

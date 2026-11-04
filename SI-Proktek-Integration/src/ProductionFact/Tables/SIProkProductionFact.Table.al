@@ -44,6 +44,12 @@ table 57091 "SI Prok Production Fact"
         field(282; "Truck UUID"; Text[50]) { Caption = 'UUID автоміксера'; Editable = false; }
         field(283; "Truck Code"; Text[100]) { Caption = 'Код автоміксера'; Editable = false; }
         field(284; "Truck Plate"; Text[50]) { Caption = 'Номер автоміксера'; Editable = false; }
+        field(291; "Connection Code"; Code[50])
+        {
+            Caption = 'Підключення Proktek';
+            TableRelation = "SI Prok Connection".Code;
+            Editable = false;
+        }
         field(290; "Capture Mode"; Enum "SI Prok Capture Mode") { Caption = 'Режим приймання'; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
@@ -68,6 +74,8 @@ table 57091 "SI Prok Production Fact"
     trigger OnModify()
     begin
         AssertTestFactNotPostingReady();
+        if (xRec."Connection Code" <> '') and ("Connection Code" <> xRec."Connection Code") then
+            Error('Підключення Proktek для збереженого факту змінювати заборонено.');
         if (xRec."Capture Mode" = xRec."Capture Mode"::Test) and
            ("Capture Mode" <> "Capture Mode"::Test) then
             Error('Тестовий факт виробництва не можна перевести в Normal шляхом редагування.');
@@ -75,6 +83,8 @@ table 57091 "SI Prok Production Fact"
 
     procedure AssertAllowedForPosting()
     begin
+        if "Simulation" then
+            Error('Проведення симульованого Production Fact %1 заборонено.', "Production UUID");
         if "Capture Mode" = "Capture Mode"::Test then
             Error('Проведення заборонено: Production UUID %1 отримано в режимі Test.', "Production UUID");
         if not "Ready for Posting" then
@@ -83,6 +93,8 @@ table 57091 "SI Prok Production Fact"
 
     local procedure AssertTestFactNotPostingReady()
     begin
+        if "Simulation" and "Ready for Posting" then
+            Error('Симульований факт виробництва не може бути готовим до проведення.');
         if ("Capture Mode" = "Capture Mode"::Test) and "Ready for Posting" then
             Error('Тестовий факт виробництва не може бути готовим до проведення.');
     end;
