@@ -70,5 +70,7 @@ permissionset 57950 "SI PROK ADMIN"
         table "SI Prok Raw API Response" = X,
         page "SI Prok Raw API Responses" = X,
         codeunit "SI Prok Capture Mgt." = X,
+        codeunit "SI Prok Fact Intake Worker" = X,
+        codeunit "SI Prok Fact Content Compare" = X,
         page "SI Prok Formula Sync Status" = X;
 }

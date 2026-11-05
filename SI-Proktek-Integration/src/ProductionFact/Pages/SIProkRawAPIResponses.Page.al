@@ -19,6 +19,8 @@ page 57098 "SI Prok Raw API Responses"
                 field("API Operation"; Rec."API Operation") { ApplicationArea = All; }
                 field("Production UUID"; Rec."Production UUID") { ApplicationArea = All; }
                 field("Capture Mode"; Rec."Capture Mode") { ApplicationArea = All; }
+                field("Intake Result"; Rec."Intake Result") { ApplicationArea = All; }
+                field("Production Fact Entry No."; Rec."Production Fact Entry No.") { ApplicationArea = All; }
                 field("Processing Status"; Rec."Processing Status") { ApplicationArea = All; }
                 field("Error Message"; Rec."Error Message") { ApplicationArea = All; }
             }

@@ -49,9 +49,15 @@ page 57093 "SI Prok Production Fact Card"
                 field("Simulation"; Rec."Simulation") { ApplicationArea = All; }
                 field("Truck Code"; Rec."Truck Code") { ApplicationArea = All; }
                 field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; }
-                field("Produced Quantity M3"; Rec."Produced Quantity M3") { ApplicationArea = All; }
-                field("Order Produced Total M3"; Rec."Order Produced Total M3") { ApplicationArea = All; }
-                field("Order Remaining M3"; Rec."Order Remaining M3") { ApplicationArea = All; }
+                field(ReportedQuantity; Rec.GetReportedQuantityText()) { ApplicationArea = All; Caption = 'Заявлено MES, м³'; Editable = false; ToolTip = 'Переданий MES обсяг; не є підтвердженням виробництва. Для історії читається canonical без зміни запису.'; }
+                field(ReportedPresence; Rec.GetReportedPresenceText()) { ApplicationArea = All; Caption = 'Обсяг MES передано'; Editable = false; ToolTip = 'Для історичних записів первинну наявність значення не оцінено.'; }
+                field("Verification Status"; Rec."Verification Status") { ApplicationArea = All; }
+                field("Execution Evidence"; Rec."Execution Evidence") { ApplicationArea = All; }
+                field("Verification Message"; Rec."Verification Message") { ApplicationArea = All; }
+                field(ProducedQuantity; Rec.GetProducedQuantityText()) { ApplicationArea = All; Caption = 'Підтверджено, м³'; Editable = false; ToolTip = 'Не підтверджено означає відсутність підтвердженого обсягу, а не доведений нуль виробництва.'; }
+                field(ConfirmedOrderTotal; Rec.GetOrderTotalText()) { ApplicationArea = All; Caption = 'Підтверджено по Order, м³'; Editable = false; ToolTip = 'Лише реальні Normal-факти з підтвердженим обсягом; симуляції показано окремо.'; }
+                field(ReportedOrderTotal; Rec.GetReportedOrderTotalText()) { ApplicationArea = All; Caption = 'Заявлено MES по Order, м³'; Editable = false; ToolTip = 'Операційний підсумок у межах підключення, Order, режиму і ознаки симуляції. Не підтверджений випуск.'; }
+                field(OrderRemaining; Rec.GetOrderRemainingText()) { ApplicationArea = All; Caption = 'Залишок за підтвердженнями, м³'; Editable = false; ToolTip = 'Непідтверджені обсяги MES не зменшують цей залишок. За невідомої замовленої кількості залишок невідомий.'; }
             }
             part(Materials; "SI Prok Prod Fact Materials")
             {
@@ -65,6 +71,19 @@ page 57093 "SI Prok Production Fact Card"
     {
         area(Processing)
         {
+            action(ViewRawResponses)
+            {
+                ApplicationArea = All;
+                Caption = 'Первинні відповіді MES';
+                Image = Archive;
+                trigger OnAction()
+                var
+                    Raw: Record "SI Prok Raw API Response";
+                begin
+                    Raw.SetRange("Production Fact Entry No.", Rec."Entry No.");
+                    Page.Run(Page::"SI Prok Raw API Responses", Raw);
+                end;
+            }
             action(ViewCanonicalJson)
             {
                 ApplicationArea = All;

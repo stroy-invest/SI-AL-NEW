@@ -51,6 +51,11 @@ table 57091 "SI Prok Production Fact"
             Editable = false;
         }
         field(290; "Capture Mode"; Enum "SI Prok Capture Mode") { Caption = 'Режим приймання'; Editable = false; }
+        field(292; "Reported Quantity M3"; Decimal) { Caption = 'Заявлено MES, м³'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(293; "Verification Status"; Enum "SI Prok Fact Verification") { Caption = 'Достовірність обсягу'; Editable = false; }
+        field(294; "Verification Message"; Text[2048]) { Caption = 'Діагностика достовірності'; Editable = false; }
+        field(295; "Execution Evidence"; Enum "SI Prok Execution Evidence") { Caption = 'Ознаки виконання'; Editable = false; }
+        field(296; "Reported Quantity Present"; Boolean) { Caption = 'Обсяг MES передано'; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 
@@ -76,9 +81,8 @@ table 57091 "SI Prok Production Fact"
         AssertTestFactNotPostingReady();
         if (xRec."Connection Code" <> '') and ("Connection Code" <> xRec."Connection Code") then
             Error('Підключення Proktek для збереженого факту змінювати заборонено.');
-        if (xRec."Capture Mode" = xRec."Capture Mode"::Test) and
-           ("Capture Mode" <> "Capture Mode"::Test) then
-            Error('Тестовий факт виробництва не можна перевести в Normal шляхом редагування.');
+        if "Capture Mode" <> xRec."Capture Mode" then
+            Error('Режим приймання збереженого факту змінювати заборонено.');
     end;
 
     procedure AssertAllowedForPosting()
@@ -87,16 +91,130 @@ table 57091 "SI Prok Production Fact"
             Error('Проведення симульованого Production Fact %1 заборонено.', "Production UUID");
         if "Capture Mode" = "Capture Mode"::Test then
             Error('Проведення заборонено: Production UUID %1 отримано в режимі Test.', "Production UUID");
+        if "Verification Status" <> "Verification Status"::Verified then
+            Error('Обсяг виробничого факту не підтверджено.');
         if not "Ready for Posting" then
             Error('Факт виробництва %1 не готовий до проведення.', "Production UUID");
     end;
 
     local procedure AssertTestFactNotPostingReady()
     begin
+        if "Ready for Posting" and ("Verification Status" <> "Verification Status"::Verified) then
+            Error('Непідтверджений факт не може бути готовим до проведення.');
         if "Simulation" and "Ready for Posting" then
             Error('Симульований факт виробництва не може бути готовим до проведення.');
         if ("Capture Mode" = "Capture Mode"::Test) and "Ready for Posting" then
             Error('Тестовий факт виробництва не може бути готовим до проведення.');
+    end;
+
+    procedure GetProducedQuantityText(): Text
+    begin
+        if Simulation then
+            exit(Format("Produced Quantity M3") + ' (симуляція)');
+        if "Verification Status" = "Verification Status"::NotAssessed then
+            exit('Перевірку не виконано');
+        if "Verification Status" <> "Verification Status"::Verified then
+            exit('Не підтверджено');
+        exit(Format("Produced Quantity M3"));
+    end;
+
+    procedure GetReportedPresenceText(): Text
+    begin
+        if "Verification Status" = "Verification Status"::NotAssessed then
+            exit('Не оцінено (історія)');
+        exit(Format("Reported Quantity Present"));
+    end;
+
+    procedure GetReportedQuantityText(): Text
+    var
+        Quantity: Decimal;
+    begin
+        if TryReadReportedQuantity(Quantity) then
+            exit(Format(Quantity));
+        exit('Невідомо');
+    end;
+
+    procedure TryReadReportedQuantity(var Quantity: Decimal): Boolean
+    var
+        Root: JsonObject;
+        Compare: Codeunit "SI Prok Fact Content Compare";
+    begin
+        Clear(Quantity);
+        if "Verification Status" <> "Verification Status"::NotAssessed then begin
+            Quantity := "Reported Quantity M3";
+            exit("Reported Quantity Present");
+        end;
+        // Read historical canonical without persisting inferred values.
+        if Root.ReadFrom(GetCanonicalJson()) then
+            exit(Compare.ReadDecimal(Root, 'quantityM3', Quantity));
+        exit(false);
+    end;
+
+    procedure GetConfirmedOrderTotal(): Decimal
+    var
+        OtherFact: Record "SI Prok Production Fact";
+        Total: Decimal;
+    begin
+        if IsNullGuid("Order UUID") or ("Connection Code" = '') then
+            exit(0);
+        OtherFact.SetRange("Order UUID", "Order UUID");
+        OtherFact.SetRange("Connection Code", "Connection Code");
+        OtherFact.SetRange("Capture Mode", OtherFact."Capture Mode"::Normal);
+        OtherFact.SetRange(Simulation, false);
+        OtherFact.SetRange("Verification Status", OtherFact."Verification Status"::Verified);
+        if OtherFact.FindSet() then
+            repeat
+                Total += OtherFact."Produced Quantity M3";
+            until OtherFact.Next() = 0;
+        exit(Total);
+    end;
+
+    procedure GetOrderTotalText(): Text
+    begin
+        if Simulation then
+            exit(Format("Order Produced Total M3") + ' (симуляція)');
+        if IsNullGuid("Order UUID") or ("Connection Code" = '') then
+            exit('Невідомо');
+        exit(Format(GetConfirmedOrderTotal()));
+    end;
+
+    procedure GetOrderRemainingText(): Text
+    var
+        Remaining: Decimal;
+    begin
+        if Simulation then
+            exit(Format("Order Remaining M3") + ' (симуляція)');
+        if ("Ordered Quantity M3" <= 0) or IsNullGuid("Order UUID") or ("Connection Code" = '') then
+            exit('Невідомо');
+        Remaining := "Ordered Quantity M3" - GetConfirmedOrderTotal();
+        if Remaining < 0 then
+            Remaining := 0;
+        exit(Format(Remaining));
+    end;
+
+    procedure GetReportedOrderTotalText(): Text
+    var
+        OtherFact: Record "SI Prok Production Fact";
+        Quantity: Decimal;
+        Total: Decimal;
+        Missing: Boolean;
+    begin
+        if IsNullGuid("Order UUID") or ("Connection Code" = '') then
+            exit('Невідомо');
+        OtherFact.SetRange("Order UUID", "Order UUID");
+        OtherFact.SetRange("Connection Code", "Connection Code");
+        OtherFact.SetRange("Capture Mode", "Capture Mode");
+        OtherFact.SetRange(Simulation, Simulation);
+        if OtherFact.FindSet() then
+            repeat
+                if OtherFact.TryReadReportedQuantity(Quantity) then
+                    Total += Quantity
+                else
+                    Missing := true;
+            until OtherFact.Next() = 0;
+        if Missing then
+            exit(Format(Total) + ' (дані неповні)');
+        exit(Format(Total));
     end;
 
     procedure SetCanonicalJson(Value: Text)

@@ -53,6 +53,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             if CanonicalBelongsToOrder(CanonicalText, ProdRequest."Proktek Order UUID") then begin
                 if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
                     AssertSameConnection(Fact, Connection.Code);
+                    AssertSameContent(Fact, CanonicalText);
                     ExistingCount += 1;
                 end
                 else begin
@@ -82,6 +83,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         ProductionUuidText := GetRequiredText(Root, 'productionUuid');
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
             AssertSameConnection(Fact, ConnectionCode);
+            AssertSameContent(Fact, CanonicalText);
             RefreshOrderTotals(Fact."Order UUID");
             Fact.Get(Fact."Entry No.");
             exit(false);
@@ -106,6 +108,8 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
 
         ProductionUuidText := GetRequiredText(Root, 'productionUuid');
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
+            AssertSameConnection(Fact, '');
+            AssertSameContent(Fact, CanonicalText);
             RefreshOrderTotals(Fact."Order UUID");
             Fact.Get(Fact."Entry No.");
             exit(false);
@@ -141,9 +145,11 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         ProductionUuidText := GetRequiredText(Root, 'productionUuid');
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
             AssertSameConnection(Fact, ConnectionCode);
+            AssertSameContent(Fact, CanonicalText);
             exit;
         end;
 
+        AssertMaterialConsistency(Root);
         OrderUuidText := GetNestedText(Root, 'order', 'uuid');
         if LowerCase(OrderUuidText) <> LowerCase(Format(ProdRequest."Proktek Order UUID", 0, 4)) then
             Error('Production %1 належить іншому Proktek Order.', ProductionUuidText);
@@ -175,6 +181,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Evaluate(Fact."Formula UUID", FormulaUuidText);
         Fact."Formula Code" := CopyStr(GetNestedText(Root, 'formula', 'code'), 1, MaxStrLen(Fact."Formula Code"));
         Fact."Simulation" := IsSimulated(Root);
+        AssessNewFact(Fact, Root);
         ReadTruckFromCanonical(Root, Fact);
         Fact."Ordered Quantity M3" := ProdRequest.Quantity;
         Fact.Status := Fact.Status::Received;
@@ -203,73 +210,143 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
 
     procedure PersistCaptureOnlyWithConnection(CanonicalText: Text; ConnectionCode: Code[50]; var Fact: Record "SI Prok Production Fact"): Boolean
     var
+        Result: Enum "SI Prok Intake Result";
+        Reason: Text;
+    begin
+        Result := PersistIntake(CanonicalText, ConnectionCode, Enum::"SI Prok Capture Mode"::Test, Fact, Reason);
+        if Result = Result::Conflict then
+            Error('%1', Reason);
+        exit(Result = Result::Imported);
+    end;
+
+    procedure PersistIntake(CanonicalText: Text; ConnectionCode: Code[50]; Mode: Enum "SI Prok Capture Mode"; var Fact: Record "SI Prok Production Fact"; var Reason: Text): Enum "SI Prok Intake Result"
+    var
         Root: JsonObject;
+        Compare: Codeunit "SI Prok Fact Content Compare";
+        Result: Enum "SI Prok Intake Result";
+        ProductionUuidText: Text;
+    begin
+        Clear(Reason);
+        Clear(Fact);
+        if not Root.ReadFrom(CanonicalText) then
+            Error('Невалідний Canonical JSON.');
+        ProductionUuidText := GetRequiredText(Root, 'productionUuid');
+        Fact.LockTable();
+        if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
+            if Fact."Connection Code" <> ConnectionCode then begin
+                Reason := 'Конфлікт походження: UUID уже збережено з іншим Connection Code.';
+                exit(Result::Conflict);
+            end;
+            if Fact."Capture Mode" <> Mode then begin
+                Reason := 'Конфлікт режиму приймання: UUID уже збережено як ' + Format(Fact."Capture Mode") + '. Режим і факт не змінено.';
+                exit(Result::Conflict);
+            end;
+            if not Compare.SameContent(Fact.GetCanonicalJson(), CanonicalText, Reason) then
+                exit(Result::Conflict);
+            exit(Result::Existing);
+        end;
+        if not Compare.ValidateMaterials(Root, Reason) then
+            Error('Суперечливий canonical: %1', Reason);
+        PersistNewCapture(Root, CanonicalText, ConnectionCode, Mode, Fact);
+        exit(Result::Imported);
+    end;
+
+    local procedure PersistNewCapture(Root: JsonObject; CanonicalText: Text; ConnectionCode: Code[50]; Mode: Enum "SI Prok Capture Mode"; var Fact: Record "SI Prok Production Fact")
+    var
         MaterialsToken: JsonToken;
         MaterialToken: JsonToken;
         Materials: JsonArray;
-        ProductionUuidText: Text;
-        OrderUuidText: Text;
-        FormulaUuidText: Text;
+        UuidText: Text;
         I: Integer;
     begin
-        if not Root.ReadFrom(CanonicalText) then
-            Error('Невалідний Canonical JSON. Оригінал збережено в Raw Archive.');
-        ProductionUuidText := GetRequiredText(Root, 'productionUuid');
-        if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
-            AssertSameConnection(Fact, ConnectionCode);
-            if Fact."Capture Mode" <> Fact."Capture Mode"::Test then
-                Error('Production UUID %1 уже існує в режимі Normal. Запис не змінено.', ProductionUuidText);
-            exit(false);
-        end;
         Clear(Fact);
         Fact.Init();
-        if not Evaluate(Fact."Production UUID", ProductionUuidText) then
-            Error('Невалідний Production UUID: %1', ProductionUuidText);
+        UuidText := GetRequiredText(Root, 'productionUuid');
+        if not Evaluate(Fact."Production UUID", UuidText) or IsNullGuid(Fact."Production UUID") then
+            Error('Невалідний Production UUID.');
         Fact."Connection Code" := ConnectionCode;
+        Fact."Capture Mode" := Mode;
         Fact."Production ID" := GetInteger(Root, 'productionId');
-        // Date parsing is isolated in the caller's TryFunction; raw payload survives.
         Fact."Production Date/Time" := GetProductionDateTime(Root);
         Fact."Plant ID" := GetInteger(Root, 'plantId');
-        Fact."Produced Quantity M3" := GetDecimal(Root, 'quantityM3');
         Fact."Order No." := CopyStr(GetNestedText(Root, 'order', 'number'), 1, MaxStrLen(Fact."Order No."));
-        OrderUuidText := GetNestedText(Root, 'order', 'uuid');
-        if OrderUuidText <> '' then
-            Evaluate(Fact."Order UUID", OrderUuidText);
-        FormulaUuidText := GetNestedText(Root, 'formula', 'uuid');
-        if FormulaUuidText <> '' then
-            Evaluate(Fact."Formula UUID", FormulaUuidText);
-        Fact."Formula Code" := CopyStr(GetNestedText(Root, 'formula', 'code'), 1, MaxStrLen(Fact."Formula Code"));
-        Fact."Simulation" := IsSimulated(Root);
+        UuidText := GetNestedText(Root, 'order', 'uuid');
+        if UuidText <> '' then
+            if not Evaluate(Fact."Order UUID", UuidText) then
+                Error('Невалідний Order UUID.');
+        UuidText := GetNestedText(Root, 'formula', 'uuid');
+        if UuidText <> '' then
+            if not Evaluate(Fact."Formula UUID", UuidText) then
+                Error('Невалідний Formula UUID.');
+        // Fact."Formula Code" := CopyStr(GetNestedText(Root, 'formula', 'code'), 1, MaxStrLen(Fact."Formula Code"));
+        Fact."Formula Code" := CopyStr(
+            GetNestedText(Root, 'formula', 'code'),
+            1, MaxStrLen(Fact."Formula Code"));
+
+        ResolveCaptureRecipe(Fact);
+        Fact.Simulation := IsSimulated(Root);
         ReadTruckFromCanonical(Root, Fact);
-        Fact."Capture Mode" := Fact."Capture Mode"::Test;
+        AssessNewFact(Fact, Root);
         Fact.Status := Fact.Status::Received;
-        Fact."Ready for Posting" := false;
-        Fact."Validation Message" := 'Тестове приймання: бізнесова валідація не виконувалася.';
         Fact.SetCanonicalJson(CanonicalText);
         Fact.Insert(true);
         if Root.Get('materials', MaterialsToken) and MaterialsToken.IsArray() then begin
             Materials := MaterialsToken.AsArray();
             for I := 0 to Materials.Count() - 1 do begin
                 Materials.Get(I, MaterialToken);
-                if MaterialToken.IsObject() then
-                    InsertMaterialCapture(Fact, I + 1, MaterialToken.AsObject());
+                if not MaterialToken.IsObject() then
+                    Error('Рядок materials %1 не є об’єктом.', I + 1);
+                InsertMaterialCapture(Fact, I + 1, MaterialToken.AsObject());
             end;
         end;
         DiagnoseCaptureProvenance(Fact);
-        exit(true);
+        AppendUnmappedDiagnostic(Fact);
+    end;
+
+    local procedure AssertMaterialConsistency(Root: JsonObject)
+    var
+        Compare: Codeunit "SI Prok Fact Content Compare";
+        Reason: Text;
+    begin
+        if not Compare.ValidateMaterials(Root, Reason) then
+            Error('Суперечливий canonical: %1', Reason);
+    end;
+
+    local procedure AssessNewFact(var Fact: Record "SI Prok Production Fact"; Root: JsonObject)
+    var
+        Compare: Codeunit "SI Prok Fact Content Compare";
+    begin
+        Compare.Assess(Fact, Root);
+    end;
+
+    local procedure AppendUnmappedDiagnostic(var Fact: Record "SI Prok Production Fact")
+    var
+        Line: Record "SI Prok Prod Fact Material";
+    begin
+        Line.SetRange("Production Fact Entry No.", Fact."Entry No.");
+        Line.SetRange("BC Material Resolved", false);
+        if not Line.IsEmpty() then begin
+            Fact."Validation Message" := CopyStr(
+                Fact."Validation Message" + ' Є матеріали без зіставлення з Item/Variant; зовнішні дані збережено.',
+                1, MaxStrLen(Fact."Validation Message"));
+            Fact.Modify(true);
+        end;
     end;
 
     local procedure InsertMaterialCapture(Fact: Record "SI Prok Production Fact"; SequenceNo: Integer; MaterialJson: JsonObject)
     var
         Line: Record "SI Prok Prod Fact Material";
         UuidText: Text;
+        Item: Record Item;
+        Variant: Record "Item Variant";
     begin
         Line.Init();
         Line."Production Fact Entry No." := Fact."Entry No.";
         Line."Line No." := SequenceNo * 10000;
         UuidText := GetText(MaterialJson, 'uuid');
         if UuidText <> '' then
-            Evaluate(Line."Material UUID", UuidText);
+            if not Evaluate(Line."Material UUID", UuidText) then
+                Clear(Line."Material UUID"); // External value remains in canonical JSON.
         Line."External Material Code" := CopyStr(GetText(MaterialJson, 'entCode'), 1, MaxStrLen(Line."External Material Code"));
         Line."Material Name" := CopyStr(GetText(MaterialJson, 'name'), 1, MaxStrLen(Line."Material Name"));
         Line."Item No." := CopyStr(GetText(MaterialJson, 'itemNo'), 1, MaxStrLen(Line."Item No."));
@@ -280,8 +357,39 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Line."Variance Kg" := Line."Actual Kg" - Line."Requested Kg";
         if Line."Requested Kg" <> 0 then
             Line."Variance %" := 100 * Line."Variance Kg" / Line."Requested Kg";
-        // No Item, Variant, Recipe, Allocation, status or approval lookups in Test mode.
+        Line."BC Material Resolved" := (Line."Item No." <> '') and Item.Get(Line."Item No.");
+        if Line."BC Material Resolved" and (Line."Variant Code" <> '') then
+            Line."BC Material Resolved" := Variant.Get(Line."Item No.", Line."Variant Code");
+        ReadMaterialCoverage(Fact, MaterialJson, Line);
         Line.Insert(true);
+    end;
+
+    local procedure ReadMaterialCoverage(Fact: Record "SI Prok Production Fact"; MaterialJson: JsonObject; var Line: Record "SI Prok Prod Fact Material")
+    var
+        Root: JsonObject;
+        Token: JsonToken;
+        HopperToken: JsonToken;
+        Hoppers: JsonArray;
+        Hopper: JsonObject;
+        Compare: Codeunit "SI Prok Fact Content Compare";
+        I: Integer;
+    begin
+        if not Root.ReadFrom(Fact.GetCanonicalJson()) then
+            exit;
+        if not Root.Get('hoppers', Token) or not Token.IsArray() then
+            exit;
+        Hoppers := Token.AsArray();
+        for I := 0 to Hoppers.Count() - 1 do begin
+            Hoppers.Get(I, HopperToken);
+            if HopperToken.IsObject() then begin
+                Hopper := HopperToken.AsObject();
+                if GetText(Hopper, 'entCode') = GetText(MaterialJson, 'entCode') then begin
+                    Line."Source Slot Count" += 1;
+                    if Compare.ReadBoolean(Hopper, 'actualKgPresent') then
+                        Line."Actual Observed Slot Count" += 1;
+                end;
+            end;
+        end;
     end;
 
     procedure RepairSimulationTruckFields(OrderUuid: Guid)
@@ -435,7 +543,9 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Fact."Ready for Posting" := false;
             Fact."Validation Message" := CopyStr(BlockReason, 1, MaxStrLen(Fact."Validation Message"));
         end else begin
-            Fact."Ready for Posting" := not Fact."Simulation" and (Fact."Capture Mode" <> Fact."Capture Mode"::Test);
+            Fact."Ready for Posting" := not Fact."Simulation" and
+                (Fact."Capture Mode" = Fact."Capture Mode"::Normal) and
+                (Fact."Verification Status" = Fact."Verification Status"::Verified);
             Fact."Validation Message" := 'Production Fact пройшов перевірку походження та матеріалів.';
         end;
         if Fact."Simulation" then begin
@@ -446,6 +556,38 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Fact.Modify(true);
     end;
 
+
+    local procedure ResolveCaptureRecipe(var Fact: Record "SI Prok Production Fact")
+    var
+        Mapping: Record "SI Prok Entity Mapping";
+        Revision: Record "SI Concrete Recipe Revision";
+    begin
+        // Formula UUID is the authoritative external recipe identity.
+        // Never infer a BC recipe from its name or Production BOM code.
+        if IsNullGuid(Fact."Formula UUID") then
+            exit;
+
+        if Fact."Connection Code" = '' then
+            exit;
+
+        Mapping.SetRange("Connection Code", Fact."Connection Code");
+        Mapping.SetRange("Entity Type", Mapping."Entity Type"::Formula);
+        Mapping.SetRange("Proktek UUID", Fact."Formula UUID");
+
+        // Resolve only unambiguous mappings.
+        if Mapping.Count() <> 1 then
+            exit;
+
+        Mapping.FindFirst();
+
+        // A mapping must reference an existing BC recipe revision.
+        if not Revision.GetBySystemId(Mapping."BC SystemId") then
+            exit;
+
+        Fact."Recipe No." := Revision."Recipe No.";
+        Fact."Recipe Revision No." := Revision."Revision No.";
+    end;
+
     // Diagnostic-only: does not change status or grant posting eligibility.
     procedure DiagnoseCaptureProvenance(var Fact: Record "SI Prok Production Fact")
     var
@@ -453,8 +595,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Revision: Record "SI Concrete Recipe Revision";
         Reason: Text;
     begin
-        if Fact."Capture Mode" <> Fact."Capture Mode"::Test then
-            Error('Діагностика призначена лише для TEST Capture.');
         if Fact."Connection Code" = '' then
             Reason := 'Не визначено Connection Code.'
         else
@@ -483,10 +623,25 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             end;
         Fact."Ready for Posting" := false;
         if Reason = '' then
-            Fact."Validation Message" := 'TEST: Formula UUID зареєстровано; проведення заборонено.'
+            Fact."Validation Message" := 'Formula UUID зареєстровано; Capture не надає готовності до проведення.'
         else
-            Fact."Validation Message" := CopyStr('TEST / Provenance: ' + Reason, 1, MaxStrLen(Fact."Validation Message"));
+            Fact."Validation Message" := CopyStr('Походження: ' + Reason, 1, MaxStrLen(Fact."Validation Message"));
         Fact.Modify(true);
+    end;
+
+    local procedure AssertSameContent(Fact: Record "SI Prok Production Fact"; CanonicalText: Text)
+    var
+        Compare: Codeunit "SI Prok Fact Content Compare";
+        Root: JsonObject;
+        Reason: Text;
+    begin
+        if Fact."Capture Mode" <> Fact."Capture Mode"::Normal then
+            Error('Конфлікт режиму приймання: UUID вже існує як Test.');
+        if Root.ReadFrom(CanonicalText) then
+            if IsSimulated(Root) <> Fact.Simulation then
+                Error('Конфлікт контексту симуляції.');
+        if not Compare.SameContent(Fact.GetCanonicalJson(), CanonicalText, Reason) then
+            Error('%1', Reason);
     end;
 
     local procedure AssertSameConnection(Fact: Record "SI Prok Production Fact"; ConnectionCode: Code[50])
@@ -515,6 +670,9 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if IsNullGuid(OrderUuid) then
             exit;
         Fact.SetRange("Order UUID", OrderUuid);
+        // Production totals are calculated read-only by GetConfirmedOrderTotal.
+        // Keep the existing simulation scenario in its own scope.
+        Fact.SetRange(Simulation, true);
         if Fact.FindSet() then begin
             repeat
                 TotalProduced += Fact."Produced Quantity M3";
@@ -528,6 +686,9 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
 
             Fact.FindSet(true);
             repeat
+                // Historical records are never rewritten by E1.1.
+                if Fact."Verification Status" = Fact."Verification Status"::NotAssessed then
+                    continue;
                 Fact."Order Produced Total M3" := TotalProduced;
                 Fact."Order Remaining M3" := RemainingQty;
                 if Fact.Status <> Fact.Status::Blocked then begin

@@ -365,6 +365,22 @@ codeunit 57081 "SI Prok Production Export Mgt."
         LoadMaterialConfig(Connection, EntCodes, MaterialUuids, MaterialNames);
     end;
 
+    [TryFunction]
+    procedure TryGetCaptureMaterialConfigResponse(var Connection: Record "SI Prok Connection"; var ResponseText: Text)
+    begin
+        GetMaterialConfigResponse(Connection, ResponseText);
+    end;
+
+    [TryFunction]
+    procedure TryParseCaptureMaterialConfigResponse(
+        ResponseText: Text;
+        var EntCodes: Dictionary of [Text, Text];
+        var MaterialUuids: Dictionary of [Text, Text];
+        var MaterialNames: Dictionary of [Text, Text])
+    begin
+        ParseMaterialConfig(ResponseText, EntCodes, MaterialUuids, MaterialNames);
+    end;
+
     local procedure CollectProductionIndexResponse(
         ResponseText: Text;
         var ProductionUuids: List of [Text];
@@ -441,24 +457,28 @@ codeunit 57081 "SI Prok Production Export Mgt."
         var MaterialUuidByBunker: Dictionary of [Text, Text];
         var MaterialNameByBunker: Dictionary of [Text, Text])
     var
-        Session: Record "SI Prok Session";
-        AuthMgt: Codeunit "SI Prok Auth Mgt.";
         ResponseText: Text;
     begin
-        AuthMgt.EnsureSession(Connection, Session);
-
-        if IsNullGuid(Session."Session GUID") then
-            Error('Неможливо отримати Material Configs: GUID сеансу Proktek відсутній.');
-        if Session."Plant IDs" = '' then
-            Error('Неможливо отримати Material Configs: Proktek не повернув santral_id для сеансу.');
-
-        ExecuteGetMaterialsConfigWithReauth(Connection, Session, ResponseText);
-
+        GetMaterialConfigResponse(Connection, ResponseText);
         ParseMaterialConfig(
             ResponseText,
             EntCodeByBunker,
             MaterialUuidByBunker,
             MaterialNameByBunker);
+    end;
+
+    local procedure GetMaterialConfigResponse(var Connection: Record "SI Prok Connection"; var ResponseText: Text)
+    var
+        Session: Record "SI Prok Session";
+        AuthMgt: Codeunit "SI Prok Auth Mgt.";
+    begin
+        Clear(ResponseText);
+        AuthMgt.EnsureSession(Connection, Session);
+        if IsNullGuid(Session."Session GUID") then
+            Error('Неможливо отримати Material Configs: GUID сеансу Proktek відсутній.');
+        if Session."Plant IDs" = '' then
+            Error('Неможливо отримати Material Configs: Proktek не повернув santral_id для сеансу.');
+        ExecuteGetMaterialsConfigWithReauth(Connection, Session, ResponseText);
     end;
 
     local procedure ExecuteGetMaterialsConfigWithReauth(
@@ -504,10 +524,9 @@ codeunit 57081 "SI Prok Production Export Mgt."
 
             Clear(RequestBody);
 
-            if ResponseBuffer."Result Type" = ResponseBuffer."Result Type"::Success then begin
-                ResponseText := ResponseBuffer.GetBodyText();
+            ResponseText := ResponseBuffer.GetBodyText();
+            if ResponseBuffer."Result Type" = ResponseBuffer."Result Type"::Success then
                 exit;
-            end;
 
             if (ResponseBuffer."HTTP Status Code" = 401) and (AttemptNo = 1) then begin
                 AuthMgt.RefreshSession(Connection, Session);
@@ -723,6 +742,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         OrderNo: Text;
         OperatorName: Text;
         QuantityM3: Decimal;
+        QuantityPresent: Boolean;
         IsAutomatic: Boolean;
         DeliveryPrinted: Boolean;
     begin
@@ -731,7 +751,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         TryGetText(ProductionJson, 'uuid', ProductionUuid);
         TryGetText(ProductionJson, 'tarih', DateText);
         TryGetText(ProductionJson, 'saat', TimeText);
-        TryGetDecimal(ProductionJson, 'metrekup', QuantityM3);
+        QuantityPresent := TryGetDecimal(ProductionJson, 'metrekup', QuantityM3);
         TryGetBoolean(ProductionJson, 'otomatik', IsAutomatic);
         TryGetText(ProductionJson, 'kullanici', OperatorName);
         TryGetText(ProductionJson, 'baslangic_saati', StartDateTime);
@@ -779,6 +799,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         ResultJson.Add('productionDateTime', NormalizeProductionDateTime(DateText, TimeText));
         ResultJson.Add('plantId', PlantId);
         ResultJson.Add('quantityM3', QuantityM3);
+        ResultJson.Add('quantityM3Present', QuantityPresent);
         ResultJson.Add('automatic', IsAutomatic);
         ResultJson.Add('operator', OperatorName);
 
@@ -894,6 +915,9 @@ codeunit 57081 "SI Prok Production Export Mgt."
         RequestedKg: Decimal;
         AdjustedKg: Decimal;
         ActualKg: Decimal;
+        ActualPresent: Boolean;
+        ActualInvalid: Boolean;
+        SourceToken: JsonToken;
         ExistingValue: Decimal;
         I: Integer;
     begin
@@ -914,11 +938,23 @@ codeunit 57081 "SI Prok Production Export Mgt."
                 TryGetDecimal(ProductionJson, AdjustedField, AdjustedKg)
             else
                 AdjustedKg := RequestedKg;
+            Clear(ActualPresent);
+            Clear(ActualInvalid);
             if ActualField <> '' then
-                TryGetDecimal(ProductionJson, ActualField, ActualKg);
+                if AllowUnmappedCapture then
+                    ActualPresent := ReadCaptureActual(ProductionJson, ActualField, ActualKg, ActualInvalid)
+                else
+                    ActualPresent := TryGetDecimal(ProductionJson, ActualField, ActualKg);
 
             if (RequestedKg = 0) and (AdjustedKg = 0) and (ActualKg = 0) then
-                continue;
+                if not AllowUnmappedCapture then
+                    continue
+                else
+                    // Keep zero/null observations; absent unused slots are not invented.
+                    if not ProductionJson.Get(RequestedField, SourceToken) and
+                       not ProductionJson.Get(AdjustedField, SourceToken) and
+                       not ProductionJson.Get(ActualField, SourceToken) then
+                        continue;
 
             MapKey := BuildBunkerKey(PlantId, Bunker);
             Clear(EntCode);
@@ -929,7 +965,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
                     Error(
                         'Не знайдено Material Config для hopper %1 (santral_id=%2) у production %3. План=%4 кг, скоригований план=%5 кг, факт=%6 кг.',
                         Bunker, PlantId, ProductionUuid, RequestedKg, AdjustedKg, ActualKg);
-                // TEST only: stable external slot identity, never a BC Item No.
+                // Capture fallback: stable external slot identity, never a BC Item No.
                 EntCode := StrSubstNo('PROKTEK-HOPPER:%1:%2', PlantId, Bunker);
                 MaterialName := StrSubstNo('Proktek hopper %1 (santral_id=%2); material unmapped', Bunker, PlantId);
             end else begin
@@ -951,7 +987,18 @@ codeunit 57081 "SI Prok Production Export Mgt."
                 MaterialName,
                 RequestedKg,
                 AdjustedKg,
-                ActualKg);
+                ActualKg,
+                ActualPresent,
+                ActualInvalid,
+                AllowUnmappedCapture);
+
+            // A configured hopper is not necessarily used by this production.
+            // Keep zero-only observations in hoppers, but never create a
+            // material aggregate for them (mapped or unmapped).
+            // Preserve invalid actual readings for diagnostics.
+            if (RequestedKg = 0) and (AdjustedKg = 0) and (ActualKg = 0) and
+               not ActualInvalid then
+                continue;
 
             if RequestedByEntCode.Get(EntCode, ExistingValue) then
                 RequestedByEntCode.Set(EntCode, ExistingValue + RequestedKg)
@@ -984,7 +1031,8 @@ codeunit 57081 "SI Prok Production Export Mgt."
                 MaterialName,
                 RequestedKg,
                 AdjustedKg,
-                ActualKg);
+                ActualKg,
+                AllowUnmappedCapture);
         end;
     end;
 
@@ -996,14 +1044,23 @@ codeunit 57081 "SI Prok Production Export Mgt."
         MaterialName: Text;
         RequestedKg: Decimal;
         AdjustedKg: Decimal;
-        ActualKg: Decimal)
+        ActualKg: Decimal;
+        ActualPresent: Boolean;
+        ActualInvalid: Boolean;
+        AllowUnmappedCapture: Boolean)
     var
         HopperJson: JsonObject;
         ItemNo: Text;
         VariantCode: Text;
     begin
         if CopyStr(EntCode, 1, 15) <> 'PROKTEK-HOPPER:' then
-            ParseEntCode(EntCode, ItemNo, VariantCode);
+            if AllowUnmappedCapture then begin
+                if not TryParseCaptureEntCode(EntCode, ItemNo, VariantCode) then begin
+                    Clear(ItemNo);
+                    Clear(VariantCode);
+                end;
+            end else
+                ParseEntCode(EntCode, ItemNo, VariantCode);
 
         HopperJson.Add('hopper', Bunker);
         HopperJson.Add('materialUuid', MaterialUuid);
@@ -1014,6 +1071,8 @@ codeunit 57081 "SI Prok Production Export Mgt."
         HopperJson.Add('requestedKg', RequestedKg);
         HopperJson.Add('adjustedKg', AdjustedKg);
         HopperJson.Add('actualKg', ActualKg);
+        HopperJson.Add('actualKgPresent', ActualPresent);
+        HopperJson.Add('actualKgInvalid', ActualInvalid);
         HoppersJson.Add(HopperJson);
     end;
 
@@ -1024,14 +1083,21 @@ codeunit 57081 "SI Prok Production Export Mgt."
         MaterialName: Text;
         RequestedKg: Decimal;
         AdjustedKg: Decimal;
-        ActualKg: Decimal)
+        ActualKg: Decimal;
+        AllowUnmappedCapture: Boolean)
     var
         MaterialJson: JsonObject;
         ItemNo: Text;
         VariantCode: Text;
     begin
         if CopyStr(EntCode, 1, 15) <> 'PROKTEK-HOPPER:' then
-            ParseEntCode(EntCode, ItemNo, VariantCode);
+            if AllowUnmappedCapture then begin
+                if not TryParseCaptureEntCode(EntCode, ItemNo, VariantCode) then begin
+                    Clear(ItemNo);
+                    Clear(VariantCode);
+                end;
+            end else
+                ParseEntCode(EntCode, ItemNo, VariantCode);
 
         MaterialJson.Add('uuid', MaterialUuid);
         MaterialJson.Add('entCode', EntCode);
@@ -1086,6 +1152,33 @@ codeunit 57081 "SI Prok Production Export Mgt."
         RequestedFields.Add(RequestedField);
         AdjustedFields.Add(AdjustedField);
         ActualFields.Add(ActualField);
+    end;
+
+    local procedure ReadCaptureActual(Production: JsonObject; FieldName: Text; var Value: Decimal; var Invalid: Boolean): Boolean
+    var
+        Token: JsonToken;
+    begin
+        Clear(Value);
+        Clear(Invalid);
+        if not Production.Get(FieldName, Token) then
+            exit(false);
+        if not Token.IsValue() then begin
+            Invalid := true;
+            exit(false);
+        end;
+        if Token.AsValue().IsNull() then
+            exit(false);
+        if not Evaluate(Value, Token.AsValue().AsText(), 9) then begin
+            Invalid := true;
+            exit(false);
+        end;
+        exit(true);
+    end;
+
+    [TryFunction]
+    local procedure TryParseCaptureEntCode(EntCode: Text; var ItemNo: Text; var VariantCode: Text)
+    begin
+        ParseEntCode(EntCode, ItemNo, VariantCode);
     end;
 
     local procedure ParseEntCode(EntCode: Text; var ItemNo: Text; var VariantCode: Text)

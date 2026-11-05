@@ -90,8 +90,9 @@ codeunit 57056 "SI Prok Productions"
 
             Clear(RequestBody);
 
+            // Preserve the final response body for the capture archive on errors too.
+            ResponseText := ResponseBuffer.GetBodyText();
             if ResponseBuffer."Result Type" = ResponseBuffer."Result Type"::Success then begin
-                ResponseText := ResponseBuffer.GetBodyText();
                 exit;
             end;
 
@@ -176,8 +177,9 @@ codeunit 57056 "SI Prok Productions"
 
             Clear(RequestBody);
 
+            // Preserve the final response body for the capture archive on errors too.
+            ResponseText := ResponseBuffer.GetBodyText();
             if ResponseBuffer."Result Type" = ResponseBuffer."Result Type"::Success then begin
-                ResponseText := ResponseBuffer.GetBodyText();
                 exit;
             end;
 

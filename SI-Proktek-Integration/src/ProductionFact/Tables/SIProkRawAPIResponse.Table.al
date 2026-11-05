@@ -13,6 +13,8 @@ table 57094 "SI Prok Raw API Response"
         field(60; "Processing Status"; Option) { OptionMembers = Received,Processed,Error; OptionCaption = 'Отримано,Оброблено,Помилка'; Caption = 'Обробка'; Editable = false; }
         field(70; "Error Message"; Text[2048]) { Caption = 'Помилка'; Editable = false; }
         field(80; "Raw JSON"; Blob) { Caption = 'Первинна відповідь'; SubType = Memo; }
+        field(90; "Intake Result"; Enum "SI Prok Intake Result") { Caption = 'Результат приймання'; Editable = false; }
+        field(100; "Production Fact Entry No."; Integer) { Caption = 'Факт виробництва'; TableRelation = "SI Prok Production Fact"."Entry No."; Editable = false; }
     }
     keys { key(PK; "Entry No.") { Clustered = true; } }
     trigger OnInsert()

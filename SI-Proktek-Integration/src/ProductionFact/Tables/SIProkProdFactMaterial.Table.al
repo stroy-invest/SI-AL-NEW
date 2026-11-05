@@ -19,6 +19,8 @@ table 57092 "SI Prok Prod Fact Material"
         field(100; "Variance %"; Decimal) { Caption = 'Відхилення, %'; DecimalPlaces = 0 : 5; }
         field(110; "Recipe Material"; Boolean) { Caption = 'Матеріал рецептури'; }
         field(120; "BC Material Resolved"; Boolean) { Caption = 'Матеріал BC визначено'; }
+        field(130; "Actual Observed Slot Count"; Integer) { Caption = 'Бункерів із фактичними показниками'; Editable = false; }
+        field(140; "Source Slot Count"; Integer) { Caption = 'Джерельних бункерів'; Editable = false; }
     }
 
     keys

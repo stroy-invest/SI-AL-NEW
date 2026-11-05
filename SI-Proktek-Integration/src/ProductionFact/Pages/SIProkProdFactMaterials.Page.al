@@ -14,6 +14,11 @@ page 57092 "SI Prok Prod Fact Materials"
         {
             repeater(Lines)
             {
+                field("External Material Code"; Rec."External Material Code") { ApplicationArea = All; }
+                field("Material UUID"; Rec."Material UUID") { ApplicationArea = All; }
+                field("BC Material Resolved"; Rec."BC Material Resolved") { ApplicationArea = All; }
+                field("Actual Observed Slot Count"; Rec."Actual Observed Slot Count") { ApplicationArea = All; }
+                field("Source Slot Count"; Rec."Source Slot Count") { ApplicationArea = All; }
                 field("Material Name"; Rec."Material Name") { ApplicationArea = All; }
                 field("Item No."; Rec."Item No.") { ApplicationArea = All; }
                 field("Variant Code"; Rec."Variant Code") { ApplicationArea = All; }
