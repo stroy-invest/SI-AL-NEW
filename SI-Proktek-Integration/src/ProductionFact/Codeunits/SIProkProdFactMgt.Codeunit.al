@@ -204,6 +204,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             end;
         end;
 
+        NormalizeFactMaterials(Fact);
         ValidateFact(Fact);
         RefreshOrderTotals(Fact."Order UUID");
     end;
@@ -311,6 +312,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
                 InsertMaterialCapture(Fact, I + 1, MaterialToken.AsObject());
             end;
         end;
+        NormalizeFactMaterials(Fact);
         DiagnoseCaptureProvenance(Fact);
         AppendUnmappedDiagnostic(Fact);
     end;
@@ -752,6 +754,13 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
 
     // Local-only enrichment: original canonical evidence, quantities and posting state
     // are never rewritten. This operation cannot grant Ready for Posting.
+    local procedure NormalizeFactMaterials(Fact: Record "SI Prok Production Fact")
+    var
+        Normalizer: Codeunit "SI Prok UoM Normalizer";
+    begin
+        Normalizer.NormalizeFact(Fact."Entry No.");
+    end;
+
     procedure EnrichAndRevalidate(var Fact: Record "SI Prok Production Fact")
     var
         Root: JsonObject;
@@ -773,6 +782,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Fact."Ready for Posting" := false;
         Fact.Modify(true);
         DiagnoseCaptureProvenance(Fact);
+        NormalizeFactMaterials(Fact);
     end;
 
     // Diagnostic-only: does not change status or grant posting eligibility.

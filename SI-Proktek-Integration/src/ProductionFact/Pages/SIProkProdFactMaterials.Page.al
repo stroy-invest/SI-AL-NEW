@@ -27,6 +27,14 @@ page 57092 "SI Prok Prod Fact Materials"
                 field("Actual Kg"; Rec."Actual Kg") { ApplicationArea = All; }
                 field("Variance Kg"; Rec."Variance Kg") { ApplicationArea = All; }
                 field("Variance %"; Rec."Variance %") { ApplicationArea = All; }
+                field("BC Base UoM"; Rec."BC Base UoM") { ApplicationArea = All; }
+                field("Requested Base Qty"; Rec."Requested Base Qty") { ApplicationArea = All; }
+                field("Adjusted Base Qty"; Rec."Adjusted Base Qty") { ApplicationArea = All; }
+                field("Actual Base Qty"; Rec."Actual Base Qty") { ApplicationArea = All; }
+                field("Variance Base Qty"; Rec."Variance Base Qty") { ApplicationArea = All; }
+                field("UoM Normalized"; Rec."UoM Normalized") { ApplicationArea = All; }
+                field("UoM Diagnostic"; Rec."UoM Diagnostic") { ApplicationArea = All; }
+
             }
         }
     }

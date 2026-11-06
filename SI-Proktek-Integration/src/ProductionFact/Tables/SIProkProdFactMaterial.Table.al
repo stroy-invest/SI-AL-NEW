@@ -21,6 +21,14 @@ table 57092 "SI Prok Prod Fact Material"
         field(120; "BC Material Resolved"; Boolean) { Caption = 'Матеріал BC визначено'; }
         field(130; "Actual Observed Slot Count"; Integer) { Caption = 'Бункерів із фактичними показниками'; Editable = false; }
         field(140; "Source Slot Count"; Integer) { Caption = 'Джерельних бункерів'; Editable = false; }
+        field(150; "BC Base UoM"; Code[10]) { Caption = 'Базова ОВ BC'; Editable = false; }
+        field(160; "Requested Base Qty"; Decimal) { Caption = 'План, базова ОВ'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(170; "Adjusted Base Qty"; Decimal) { Caption = 'Скоригований план, базова ОВ'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(180; "Actual Base Qty"; Decimal) { Caption = 'Факт, базова ОВ'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(190; "Variance Base Qty"; Decimal) { Caption = 'Відхилення, базова ОВ'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(200; "UoM Normalized"; Boolean) { Caption = 'ОВ нормалізовано'; Editable = false; }
+        field(210; "UoM Diagnostic"; Text[250]) { Caption = 'Діагностика ОВ'; Editable = false; }
+
     }
 
     keys
