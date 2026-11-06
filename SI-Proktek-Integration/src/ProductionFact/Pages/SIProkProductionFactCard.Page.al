@@ -28,9 +28,33 @@ page 57093 "SI Prok Production Fact Card"
                 field("Ready for Posting"; Rec."Ready for Posting") { ApplicationArea = All; }
                 field("Validation Message"; Rec."Validation Message") { ApplicationArea = All; }
             }
+            group(RecipeContext)
+            {
+                Caption = 'Рецептура та ревізія';
+                field("Recipe No."; Rec."Recipe No.") { ApplicationArea = All; }
+                field("Recipe Revision No."; Rec."Recipe Revision No.") { ApplicationArea = All; }
+                field("Recipe Resolution Note"; Rec."Recipe Resolution Note") { ApplicationArea = All; }
+                field("Item No."; Rec."Item No.") { ApplicationArea = All; }
+                field("Variant Code"; Rec."Variant Code") { ApplicationArea = All; }
+            }
+            group(ProktekFormula)
+            {
+                Caption = 'Формула Proktek';
+                field("Formula ID"; Rec."Formula ID") { ApplicationArea = All; }
+                field("Formula UUID"; Rec."Formula UUID") { ApplicationArea = All; }
+                field("Formula Code"; Rec."Formula Code") { ApplicationArea = All; }
+                field("Formula Name"; Rec."Formula Name") { ApplicationArea = All; }
+                field("Formula ERP Code"; Rec."Formula ERP Code") { ApplicationArea = All; }
+            }
+            group(BOMIdentity)
+            {
+                Caption = 'Виробнича специфікація BC';
+                field("Production BOM No."; Rec."Production BOM No.") { ApplicationArea = All; }
+                field("Production BOM Version Code"; Rec."Production BOM Version Code") { ApplicationArea = All; }
+            }
             group(Correlation)
             {
-                Caption = 'Кореляція';
+                Caption = 'Виробниче замовлення та кореляція';
                 field("Order ID"; Rec."Order ID") { ApplicationArea = All; }
                 field("Order UUID"; Rec."Order UUID") { ApplicationArea = All; }
                 field("Order No."; Rec."Order No.") { ApplicationArea = All; }
@@ -38,9 +62,6 @@ page 57093 "SI Prok Production Fact Card"
                 field("Supply Decision Line No."; Rec."Supply Decision Line No.") { ApplicationArea = All; }
                 field("Supply Allocation Line No."; Rec."Supply Allocation Line No.") { ApplicationArea = All; }
                 field("Project No."; Rec."Project No.") { ApplicationArea = All; }
-                field("Recipe No."; Rec."Recipe No.") { ApplicationArea = All; }
-                field("Recipe Revision No."; Rec."Recipe Revision No.") { ApplicationArea = All; }
-                field("Formula UUID"; Rec."Formula UUID") { ApplicationArea = All; }
             }
             group(Quantity)
             {
@@ -71,6 +92,21 @@ page 57093 "SI Prok Production Fact Card"
     {
         area(Processing)
         {
+            action(EnrichAndRevalidate)
+            {
+                ApplicationArea = All;
+                Caption = 'Оновити зв’язки та перевірити';
+                Image = Refresh;
+                ToolTip = 'Повторно визначити BOM Version та рецептуру за збереженими даними без проведення в облік.';
+                trigger OnAction()
+                var
+                    FactMgt: Codeunit "SI Prok Prod Fact Mgt.";
+                begin
+                    FactMgt.EnrichAndRevalidate(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
+
             action(ViewRawResponses)
             {
                 ApplicationArea = All;

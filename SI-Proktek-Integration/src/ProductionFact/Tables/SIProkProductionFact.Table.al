@@ -25,6 +25,12 @@ table 57091 "SI Prok Production Fact"
         field(170; "Recipe Revision No."; Integer) { Caption = 'Ревізія'; }
         field(180; "Formula UUID"; Guid) { Caption = 'Formula UUID'; }
         field(190; "Formula Code"; Text[150]) { Caption = 'Formula Code'; }
+        field(300; "Formula ERP Code"; Text[150]) { Caption = 'ERP Code рецептури Proktek'; Editable = false; }
+        field(301; "Production BOM No."; Code[20]) { Caption = 'Виробнича специфікація'; Editable = false; }
+        field(302; "Production BOM Version Code"; Code[20]) { Caption = 'Версія виробничої специфікації'; Editable = false; }
+        field(303; "Formula ID"; BigInteger) { Caption = 'Formula ID Proktek'; Editable = false; }
+        field(304; "Formula Name"; Text[150]) { Caption = 'Назва формули Proktek'; Editable = false; }
+        field(305; "Recipe Resolution Note"; Text[250]) { Caption = 'Визначення рецептури'; Editable = false; }
         field(200; "Ordered Quantity M3"; Decimal) { Caption = 'Замовлено, м³'; DecimalPlaces = 0 : 5; }
         field(210; "Order Produced Total M3"; Decimal) { Caption = 'Вироблено по Order, м³'; DecimalPlaces = 0 : 5; }
         field(220; "Order Remaining M3"; Decimal) { Caption = 'Залишок по Order, м³'; DecimalPlaces = 0 : 5; }

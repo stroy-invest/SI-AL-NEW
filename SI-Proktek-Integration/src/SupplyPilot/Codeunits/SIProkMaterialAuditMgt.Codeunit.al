@@ -57,8 +57,8 @@ codeunit 57097 "SI Prok Material Audit Mgt"
             exit;
         RecipeNo := Fact."Recipe No.";
         RevisionNo := Fact."Recipe Revision No.";
-        Ordered := Fact."Ordered Quantity M3";
         repeat
+            Ordered += Fact."Ordered Quantity M3";
             if (Fact."Recipe No." <> RecipeNo) or (Fact."Recipe Revision No." <> RevisionNo) then
                 Error('У межах %1 змішані різні ревізії рецептури.', ScopeCode);
             Produced += Fact."Produced Quantity M3";

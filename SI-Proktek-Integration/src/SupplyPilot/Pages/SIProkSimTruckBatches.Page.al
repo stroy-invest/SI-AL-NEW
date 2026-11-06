@@ -25,6 +25,32 @@ page 57096 "SI Prok Sim Truck Batches"
     {
         area(Processing)
         {
+            action(RunTwoTruckProdTest)
+            {
+                Caption = 'Імітація PROD — 2 автоміксери';
+                ApplicationArea = All;
+                Image = TestFile;
+                ToolTip = 'Два тестові факти за P00020|REV-3 без заявки та звернення до Proktek. Проведення заборонено.';
+                trigger OnAction()
+                var
+                    Simulator: Codeunit "SI Prok Two Truck Sim";
+                begin
+                    Simulator.RunTwoTruckSimulation();
+                end;
+            }
+            action(ClearTwoTruckProdTest)
+            {
+                Caption = 'Очистити тест 2 автоміксерів';
+                ApplicationArea = All;
+                Image = Delete;
+                trigger OnAction()
+                var
+                    Simulator: Codeunit "SI Prok Two Truck Sim";
+                begin
+                    Simulator.ClearScenario();
+                    CurrPage.Update(false);
+                end;
+            }
             action(MaterialAudit)
             {
                 Caption = 'План / факт матеріалів';

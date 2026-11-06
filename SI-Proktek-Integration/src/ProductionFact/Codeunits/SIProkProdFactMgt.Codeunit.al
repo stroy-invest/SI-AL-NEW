@@ -180,6 +180,11 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if FormulaUuidText <> '' then
             Evaluate(Fact."Formula UUID", FormulaUuidText);
         Fact."Formula Code" := CopyStr(GetNestedText(Root, 'formula', 'code'), 1, MaxStrLen(Fact."Formula Code"));
+        Fact."Formula Name" := CopyStr(GetNestedText(Root, 'formula', 'name'), 1, MaxStrLen(Fact."Formula Name"));
+        PopulateFormulaBomIdentity(Fact, Root);
+        if Fact."Production BOM No." = '' then
+            ResolveLegacyFormulaBom(Fact);
+        EnrichRecipeContext(Fact);
         Fact."Simulation" := IsSimulated(Root);
         AssessNewFact(Fact, Root);
         ReadTruckFromCanonical(Root, Fact);
@@ -282,8 +287,15 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Fact."Formula Code" := CopyStr(
             GetNestedText(Root, 'formula', 'code'),
             1, MaxStrLen(Fact."Formula Code"));
+        Fact."Formula Name" := CopyStr(GetNestedText(Root, 'formula', 'name'), 1, MaxStrLen(Fact."Formula Name"));
+        PopulateFormulaBomIdentity(Fact, Root);
 
-        ResolveCaptureRecipe(Fact);
+        // Recipe Revision mapping is optional metadata, not a resolution prerequisite.
+        if Fact."Production BOM No." = '' then begin
+            ResolveCaptureRecipe(Fact);
+            ResolveLegacyFormulaBom(Fact);
+        end;
+        EnrichRecipeContext(Fact);
         Fact.Simulation := IsSimulated(Root);
         ReadTruckFromCanonical(Root, Fact);
         AssessNewFact(Fact, Root);
@@ -441,7 +453,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Line: Record "SI Prok Prod Fact Material";
         Item: Record Item;
         ItemVariant: Record "Item Variant";
-        RecipeLine: Record "SI Concrete Recipe Line";
+        BOMLine: Record "Production BOM Line";
         MaterialUuidText: Text;
     begin
         Line.Init();
@@ -465,97 +477,115 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if Line."BC Material Resolved" and (Line."Variant Code" <> '') then
             Line."BC Material Resolved" := ItemVariant.Get(Line."Item No.", Line."Variant Code");
 
-        RecipeLine.SetRange("Recipe No.", Fact."Recipe No.");
-        RecipeLine.SetRange("Revision No.", Fact."Recipe Revision No.");
-        RecipeLine.SetRange("Item No.", Line."Item No.");
-        RecipeLine.SetRange("Variant Code", Line."Variant Code");
-        Line."Recipe Material" := RecipeLine.FindFirst();
+        // Standard BOM Version is the canonical material identity.
+        Line."Recipe Material" := false;
+        if (Fact."Production BOM No." <> '') and (Fact."Production BOM Version Code" <> '') and
+           Line."BC Material Resolved" then begin
+            BOMLine.SetRange("Production BOM No.", Fact."Production BOM No.");
+            BOMLine.SetRange("Version Code", Fact."Production BOM Version Code");
+            BOMLine.SetRange(Type, BOMLine.Type::Item);
+            BOMLine.SetRange("No.", Line."Item No.");
+            Line."Recipe Material" := not BOMLine.IsEmpty();
+        end;
         Line.Insert(true);
     end;
 
+    // Legacy order-bound intake validation. Never promote to posting-ready here:
+    // Item/Variant, UoM, quantities, and production posting are not yet validated.
     local procedure ValidateFact(var Fact: Record "SI Prok Production Fact")
     var
         Line: Record "SI Prok Prod Fact Material";
         ProdRequest: Record "SI Concrete Prod Request";
         Connection: Record "SI Prok Connection";
-        FormulaMapping: Record "SI Prok Entity Mapping";
-        RecipeRevision: Record "SI Concrete Recipe Revision";
+        BOMVersion: Record "Production BOM Version";
         BlockReason: Text;
-        MatchCount: Integer;
-        MatchedRevisionId: Guid;
     begin
         if not ProdRequest.Get(Fact."Prod. Request Entry No.") then
             BlockReason := 'Не знайдено заявку на виробництво.';
 
         if BlockReason = '' then
-            if Fact."Connection Code" = '' then
-                BlockReason := 'Не визначено Connection Code джерела факту.'
-            else
-                if not Connection.Get(Fact."Connection Code") then
-                    BlockReason := 'Connection Code джерела факту не існує.';
+            if (Fact."Connection Code" = '') or not Connection.Get(Fact."Connection Code") then
+                BlockReason := 'Не визначено дійсне підключення Proktek.';
 
         if BlockReason = '' then
             if IsNullGuid(Fact."Formula UUID") then
                 BlockReason := 'Production Fact не містить Formula UUID.';
 
         if BlockReason = '' then
-            if not RecipeRevision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
-                BlockReason := 'Не знайдено ревізію рецептури, зазначену у Production Fact.';
-
-        if BlockReason = '' then begin
-            FormulaMapping.Reset();
-            FormulaMapping.SetRange("Connection Code", Fact."Connection Code");
-            FormulaMapping.SetRange("Entity Type", FormulaMapping."Entity Type"::Formula);
-            FormulaMapping.SetRange("Proktek UUID", Fact."Formula UUID");
-            MatchCount := FormulaMapping.Count();
-            if MatchCount = 0 then
-                BlockReason := 'Formula UUID не зареєстровано для цього підключення Proktek.'
+            if (Fact."Production BOM No." = '') or (Fact."Production BOM Version Code" = '') then
+                BlockReason := 'ERP Code не визначає стандартну Production BOM Version.'
             else
-                if MatchCount > 1 then
-                    BlockReason := 'Formula UUID має неоднозначні відповідності у Proktek Mapping.'
-                else begin
-                    FormulaMapping.FindFirst();
-                    MatchedRevisionId := FormulaMapping."BC SystemId";
-                    if MatchedRevisionId <> RecipeRevision.SystemId then
-                        BlockReason := 'Formula UUID пов’язаний з іншою ревізією BC.'
-                    else
-                        if FormulaMapping."SI Formula Proj. Status" <> FormulaMapping."SI Formula Proj. Status"::Published then
-                            BlockReason := 'Formula Mapping не має статусу Published.'
-                        else
-                            if FormulaMapping."Last Sync At" = 0DT then
-                                BlockReason := 'Відсутнє підтвердження синхронізації Formula.';
-                end;
-        end;
+                if not BOMVersion.Get(Fact."Production BOM No.", Fact."Production BOM Version Code") then
+                    BlockReason := 'Production BOM Version не знайдено.';
 
         Line.SetRange("Production Fact Entry No.", Fact."Entry No.");
         if Line.FindSet() then
             repeat
-                if not Line."BC Material Resolved" then
-                    if BlockReason = '' then
-                        BlockReason := StrSubstNo('Матеріал %1 не визначено в BC.', Line."External Material Code");
-                if not Line."Recipe Material" then
-                    if BlockReason = '' then
-                        BlockReason := StrSubstNo('Матеріал %1 відсутній у Recipe Revision.', Line."External Material Code");
+                if (BlockReason = '') and not Line."BC Material Resolved" then
+                    BlockReason := StrSubstNo('Матеріал %1 не визначено в BC.', Line."External Material Code");
+                if (BlockReason = '') and not Line."Recipe Material" then
+                    BlockReason := StrSubstNo('Матеріал %1 відсутній у Production BOM Version.', Line."External Material Code");
             until Line.Next() = 0;
 
+        Fact."Ready for Posting" := false;
         if BlockReason <> '' then begin
             Fact.Status := Fact.Status::Blocked;
-            Fact."Ready for Posting" := false;
             Fact."Validation Message" := CopyStr(BlockReason, 1, MaxStrLen(Fact."Validation Message"));
-        end else begin
-            Fact."Ready for Posting" := not Fact."Simulation" and
-                (Fact."Capture Mode" = Fact."Capture Mode"::Normal) and
-                (Fact."Verification Status" = Fact."Verification Status"::Verified);
-            Fact."Validation Message" := 'Production Fact пройшов перевірку походження та матеріалів.';
-        end;
-        if Fact."Simulation" then begin
-            Fact."Ready for Posting" := false;
-            if BlockReason = '' then
-                Fact."Validation Message" := 'SIMULATION: перевірку пройдено; проведення заборонено.';
-        end;
+        end else
+            if Fact.Simulation then
+                Fact."Validation Message" := 'SIMULATION: BOM і матеріали визначено; проведення заборонено.'
+            else
+                Fact."Validation Message" := 'BOM і матеріали визначено; проведення очікує окремої перевірки.';
         Fact.Modify(true);
     end;
 
+
+    local procedure PopulateFormulaBomIdentity(var Fact: Record "SI Prok Production Fact"; Root: JsonObject)
+    var
+        BOMHeader: Record "Production BOM Header";
+        BOMVersion: Record "Production BOM Version";
+        ERPCode: Text;
+        SeparatorPos: Integer;
+        BOMNoText: Text;
+        VersionText: Text;
+    begin
+        ERPCode := GetNestedText(Root, 'formula', 'erpCode');
+        Fact."Formula ERP Code" := CopyStr(ERPCode, 1, MaxStrLen(Fact."Formula ERP Code"));
+        Fact."Formula ID" := GetNestedInteger(Root, 'formula', 'id');
+        Clear(Fact."Production BOM No.");
+        Clear(Fact."Production BOM Version Code");
+        SeparatorPos := StrPos(ERPCode, '|');
+        if (SeparatorPos <= 1) or (SeparatorPos >= StrLen(ERPCode)) then
+            exit;
+        BOMNoText := CopyStr(ERPCode, 1, SeparatorPos - 1);
+        VersionText := CopyStr(ERPCode, SeparatorPos + 1);
+        if (StrLen(BOMNoText) > MaxStrLen(Fact."Production BOM No.")) or
+           (StrLen(VersionText) > MaxStrLen(Fact."Production BOM Version Code")) or
+           (StrPos(VersionText, '|') <> 0) then
+            exit;
+        if not BOMHeader.Get(BOMNoText) then
+            exit;
+        if not BOMVersion.Get(BOMNoText, VersionText) then
+            exit;
+        Fact."Production BOM No." := BOMHeader."No.";
+        Fact."Production BOM Version Code" := BOMVersion."Version Code";
+    end;
+
+    local procedure GetNestedInteger(Root: JsonObject; ObjectKey: Text; FieldKey: Text): BigInteger
+    var
+        OuterToken: JsonToken;
+        ValueToken: JsonToken;
+        Inner: JsonObject;
+    begin
+        if not Root.Get(ObjectKey, OuterToken) or not OuterToken.IsObject() then
+            exit(0);
+        Inner := OuterToken.AsObject();
+        if not Inner.Get(FieldKey, ValueToken) or not ValueToken.IsValue() then
+            exit(0);
+        if ValueToken.AsValue().IsNull then
+            exit(0);
+        exit(ValueToken.AsValue().AsInteger());
+    end;
 
     local procedure ResolveCaptureRecipe(var Fact: Record "SI Prok Production Fact")
     var
@@ -588,13 +618,191 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Fact."Recipe Revision No." := Revision."Revision No.";
     end;
 
+    // A standard BOM Version is the primary technical identity. A verified historical
+    // Formula UUID mapping may recover the version when legacy ERP Code lacks '|'.
+    local procedure ResolveLegacyFormulaBom(var Fact: Record "SI Prok Production Fact")
+    var
+        Mapping: Record "SI Prok Entity Mapping";
+        Revision: Record "SI Concrete Recipe Revision";
+        Recipe: Record "SI Concrete Recipe";
+        BOMVersion: Record "Production BOM Version";
+        BOMHeader: Record "Production BOM Header";
+    begin
+        if (Fact."Production BOM No." <> '') or (Fact."Production BOM Version Code" <> '') then
+            exit;
+        if (Fact."Connection Code" = '') or IsNullGuid(Fact."Formula UUID") then
+            exit;
+
+        Mapping.SetRange("Connection Code", Fact."Connection Code");
+        Mapping.SetRange("Entity Type", Mapping."Entity Type"::Formula);
+        Mapping.SetRange("Proktek UUID", Fact."Formula UUID");
+        if Mapping.Count() <> 1 then
+            exit;
+        Mapping.FindFirst();
+        if not Revision.GetBySystemId(Mapping."BC SystemId") then
+            exit;
+        if not Recipe.Get(Revision."Recipe No.") then
+            exit;
+        if (Recipe."Production BOM No." = '') or (Revision."Production BOM Version Code" = '') then
+            exit;
+        if not BOMVersion.Get(Recipe."Production BOM No.", Revision."Production BOM Version Code") then
+            exit;
+
+        // An old ERP Code can be a non-standard legacy identifier. However, if it
+        // names an existing BC BOM root, it must not contradict the mapped root.
+        if (Fact."Formula ERP Code" <> '') and BOMHeader.Get(Fact."Formula ERP Code") then
+            if BOMHeader."No." <> Recipe."Production BOM No." then
+                exit;
+
+        Fact."Production BOM No." := Recipe."Production BOM No.";
+        Fact."Production BOM Version Code" := Revision."Production BOM Version Code";
+        Fact."Recipe No." := Revision."Recipe No.";
+        Fact."Recipe Revision No." := Revision."Revision No.";
+    end;
+
+    // Business context is optional. The standard BOM Version remains the canonical identity.
+    local procedure EnrichRecipeContext(var Fact: Record "SI Prok Production Fact")
+    var
+        Recipe: Record "SI Concrete Recipe";
+        Revision: Record "SI Concrete Recipe Revision";
+        CandidateCount: Integer;
+        CandidateRecipe: Code[50];
+        CandidateRevision: Integer;
+    begin
+        Fact."Recipe Resolution Note" := '';
+        if (Fact."Production BOM No." = '') or (Fact."Production BOM Version Code" = '') then begin
+            Fact."Recipe Resolution Note" := 'BOM Version не визначено; зв’язок із рецептурою не підтверджено.';
+            exit;
+        end;
+
+        Recipe.SetRange("Production BOM No.", Fact."Production BOM No.");
+        if Recipe.FindSet() then
+            repeat
+                Revision.Reset();
+                Revision.SetRange("Recipe No.", Recipe."Recipe No.");
+                Revision.SetRange("Production BOM Version Code", Fact."Production BOM Version Code");
+                if Revision.FindSet() then
+                    repeat
+                        CandidateCount += 1;
+                        CandidateRecipe := Revision."Recipe No.";
+                        CandidateRevision := Revision."Revision No.";
+                    until Revision.Next() = 0;
+            until Recipe.Next() = 0;
+
+        case CandidateCount of
+            0:
+                Fact."Recipe Resolution Note" := 'BOM Version визначено; бізнесову ревізію не знайдено.';
+            1:
+                begin
+                    // Do not silently overwrite a contradictory order-linked recipe.
+                    if ((Fact."Recipe No." <> '') and (Fact."Recipe No." <> CandidateRecipe)) or
+                       ((Fact."Recipe Revision No." <> 0) and (Fact."Recipe Revision No." <> CandidateRevision)) then begin
+                        Fact."Recipe Resolution Note" := 'Конфлікт: рецептура заявки не збігається з BOM Version.';
+                        exit;
+                    end;
+                    Fact."Recipe No." := CandidateRecipe;
+                    Fact."Recipe Revision No." := CandidateRevision;
+                    Fact."Recipe Resolution Note" := 'Рецептуру та ревізію підтверджено за BOM Version.';
+                    ResolveFinishedProduct(Fact, CandidateRecipe);
+                end;
+            else
+                Fact."Recipe Resolution Note" := 'Кілька ревізій відповідають BOM Version; автоматичний вибір заборонено.';
+        end;
+    end;
+
+    // Finished product is owned by the recipe root, not by the BOM version.
+    // A base recipe may legitimately have no variant; a variant recipe must have one.
+    // Never guess a product from other Items that happen to reference the same BOM.
+    local procedure ResolveFinishedProduct(var Fact: Record "SI Prok Production Fact"; RecipeNo: Code[50])
+    var
+        Recipe: Record "SI Concrete Recipe";
+        FinishedItem: Record Item;
+        FinishedVariant: Record "Item Variant";
+    begin
+        if not Recipe.Get(RecipeNo) then begin
+            Fact."Recipe Resolution Note" := 'Рецептуру визначено, але кореневий запис не знайдено.';
+            exit;
+        end;
+        if Recipe."Item No." = '' then begin
+            Fact."Recipe Resolution Note" := 'У рецептурі не визначено товар готової продукції.';
+            exit;
+        end;
+        if not FinishedItem.Get(Recipe."Item No.") then begin
+            Fact."Recipe Resolution Note" := 'Товар готової продукції з рецептури не знайдено в BC.';
+            exit;
+        end;
+        if (Recipe."Recipe Type" = Recipe."Recipe Type"::Variant) and (Recipe."Variant Code" = '') then begin
+            Fact."Recipe Resolution Note" := 'Для рецептури варіанта не визначено код варіанта.';
+            exit;
+        end;
+        if Recipe."Variant Code" <> '' then
+            if not FinishedVariant.Get(Recipe."Item No.", Recipe."Variant Code") then begin
+                Fact."Recipe Resolution Note" := 'Варіант готової продукції з рецептури не знайдено в BC.';
+                exit;
+            end;
+        if ((Fact."Item No." <> '') and (Fact."Item No." <> Recipe."Item No.")) or
+           ((Fact."Variant Code" <> '') and (Fact."Variant Code" <> Recipe."Variant Code")) then begin
+            Fact."Recipe Resolution Note" := 'Конфлікт: товар або варіант факту не збігається з рецептурою.';
+            exit;
+        end;
+        Fact."Item No." := Recipe."Item No.";
+        Fact."Variant Code" := Recipe."Variant Code";
+        Fact."Recipe Resolution Note" := 'Рецептуру, ревізію, товар і варіант визначено за BOM Version.';
+    end;
+
+    // Local-only enrichment: original canonical evidence, quantities and posting state
+    // are never rewritten. This operation cannot grant Ready for Posting.
+    procedure EnrichAndRevalidate(var Fact: Record "SI Prok Production Fact")
+    var
+        Root: JsonObject;
+        CanonicalText: Text;
+    begin
+        Fact.TestField("Entry No.");
+        CanonicalText := Fact.GetCanonicalJson();
+        if (CanonicalText <> '') and Root.ReadFrom(CanonicalText) then begin
+            if Fact."Formula Code" = '' then
+                Fact."Formula Code" := CopyStr(GetNestedText(Root, 'formula', 'code'), 1, MaxStrLen(Fact."Formula Code"));
+            if Fact."Formula Name" = '' then
+                Fact."Formula Name" := CopyStr(GetNestedText(Root, 'formula', 'name'), 1, MaxStrLen(Fact."Formula Name"));
+            if (Fact."Formula ERP Code" = '') or (Fact."Production BOM No." = '') then
+                PopulateFormulaBomIdentity(Fact, Root);
+        end;
+        if (Fact."Production BOM No." = '') or (Fact."Production BOM Version Code" = '') then
+            ResolveLegacyFormulaBom(Fact);
+        EnrichRecipeContext(Fact);
+        Fact."Ready for Posting" := false;
+        Fact.Modify(true);
+        DiagnoseCaptureProvenance(Fact);
+    end;
+
     // Diagnostic-only: does not change status or grant posting eligibility.
     procedure DiagnoseCaptureProvenance(var Fact: Record "SI Prok Production Fact")
     var
         Mapping: Record "SI Prok Entity Mapping";
         Revision: Record "SI Concrete Recipe Revision";
+        BOMVersion: Record "Production BOM Version";
         Reason: Text;
     begin
+        // ERP Code is the primary BOM-version identity for Normal Capture.
+        // The old Recipe Revision mapping remains informational only.
+        if (Fact."Production BOM No." <> '') and (Fact."Production BOM Version Code" <> '') and
+           BOMVersion.Get(Fact."Production BOM No.", Fact."Production BOM Version Code") then begin
+            Fact."Ready for Posting" := false;
+            Fact."Validation Message" := CopyStr(
+                StrSubstNo('BOM версію визначено: %1|%2; Capture не надає готовності до проведення.',
+                    Fact."Production BOM No.", Fact."Production BOM Version Code"),
+                1, MaxStrLen(Fact."Validation Message"));
+            Fact.Modify(true);
+            exit;
+        end;
+        if Fact."Formula ERP Code" <> '' then begin
+            Fact."Ready for Posting" := false;
+            Fact."Validation Message" := CopyStr(
+                StrSubstNo('Походження: ERP Code %1 не визначає наявну версію BOM (очікується BOM|VERSION).',
+                    Fact."Formula ERP Code"), 1, MaxStrLen(Fact."Validation Message"));
+            Fact.Modify(true);
+            exit;
+        end;
         if Fact."Connection Code" = '' then
             Reason := 'Не визначено Connection Code.'
         else

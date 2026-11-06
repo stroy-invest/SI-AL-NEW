@@ -726,6 +726,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         FormulaUuid: Text;
         FormulaCode: Text;
         FormulaErpCode: Text;
+        FormulaId: BigInteger;
         FormulaName: Text;
         CustomerUuid: Text;
         CustomerCode: Text;
@@ -761,6 +762,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         TryGetDecimal(ProductionJson, 'irsaliye_no', DeliveryNo);
         TryGetBoolean(ProductionJson, 'irsaliye_basildi', DeliveryPrinted);
 
+        TryGetInteger(ProductionJson, 'recete_kod', FormulaId);
         TryGetText(ProductionJson, 'recete_uuid', FormulaUuid);
         TryGetText(ProductionJson, 'recete_ad', FormulaName);
         if ProductionJson.Get('recete', FormulaToken) and FormulaToken.IsObject() then begin
@@ -815,6 +817,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         FormulaJson.Add('uuid', FormulaUuid);
         FormulaJson.Add('code', FormulaCode);
         FormulaJson.Add('erpCode', FormulaErpCode);
+        FormulaJson.Add('id', FormulaId);
         FormulaJson.Add('name', FormulaName);
         ResultJson.Add('formula', FormulaJson);
 

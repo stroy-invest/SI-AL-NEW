@@ -43,6 +43,7 @@ permissionset 57950 "SI PROK ADMIN"
         codeunit "SI Prok Pilot Ensure" = X,
         codeunit "SI Prok Supply Order Mgt." = X,
         codeunit "SI Prok Prod Simulator" = X,
+        codeunit "SI Prok Two Truck Sim" = X,
         tabledata "SI Prok Production Fact" = RIMD,
         table "SI Prok Production Fact" = X,
         tabledata "SI Prok Prod Fact Material" = RIMD,
@@ -72,5 +73,6 @@ permissionset 57950 "SI PROK ADMIN"
         codeunit "SI Prok Capture Mgt." = X,
         codeunit "SI Prok Fact Intake Worker" = X,
         codeunit "SI Prok Fact Content Compare" = X,
+        codeunit "SI Prok Formula Projector" = X,
         page "SI Prok Formula Sync Status" = X;
 }

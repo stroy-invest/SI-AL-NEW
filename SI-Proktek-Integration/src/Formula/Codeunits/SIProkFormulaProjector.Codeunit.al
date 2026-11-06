@@ -240,7 +240,7 @@ codeunit 57060 "SI Prok Formula Projector"
         else
             FormulaJson.Add('uuid', Format(ProktekFormulaUUID, 0, 4));
         FormulaJson.Add('recete_kod', FormulaCode);
-        FormulaJson.Add('erp_kod', Recipe."Production BOM No.");
+        FormulaJson.Add('erp_kod', StrSubstNo('%1|%2', Recipe."Production BOM No.", RecipeRevision."Production BOM Version Code"));
         FormulaJson.Add('ad', FormulaName);
 
         AddDesktopCompatibleFormulaDefaults(FormulaJson, WaterCementRatio, TotalWeightKg);
