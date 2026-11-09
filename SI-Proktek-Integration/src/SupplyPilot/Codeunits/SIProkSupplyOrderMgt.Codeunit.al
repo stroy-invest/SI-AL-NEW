@@ -1,6 +1,4 @@
-﻿using STROYINVEST.ConcreteRecipeEngine;
-
-codeunit 57076 "SI Prok Supply Order Mgt."
+﻿codeunit 57076 "SI Prok Supply Order Mgt."
 {
     procedure SendAllocation(var Allocation: Record "SI Supply Allocation")
     var

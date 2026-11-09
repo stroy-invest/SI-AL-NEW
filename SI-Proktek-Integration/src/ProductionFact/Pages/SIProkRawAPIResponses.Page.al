@@ -6,6 +6,7 @@ page 57098 "SI Prok Raw API Responses"
     ApplicationArea = All;
     UsageCategory = Tasks;
     Editable = false;
+    CardPageId = "SI Prok Raw API Response Card";
     SourceTableView = sorting("Entry No.") order(descending);
     layout
     {

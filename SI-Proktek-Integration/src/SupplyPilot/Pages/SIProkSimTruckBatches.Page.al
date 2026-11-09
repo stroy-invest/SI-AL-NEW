@@ -25,6 +25,26 @@ page 57096 "SI Prok Sim Truck Batches"
     {
         area(Processing)
         {
+            action(RunProductionIntakePF011)
+            {
+                Caption = 'Імітація Production Intake (PF-01.1)';
+                ApplicationArea = All;
+                Image = TestFile;
+                ToolTip = 'Вибрати виробничий розподіл і виконати тест штатного Production Intake у Sandbox.';
+
+                trigger OnAction()
+                var
+                    Allocation: Record "SI Supply Allocation";
+                    Simulator: Codeunit "SI Prok Prod Simulator";
+                begin
+                    Allocation.SetRange("Supply Method", Allocation."Supply Method"::Production);
+                    if Page.RunModal(0, Allocation) <> Action::LookupOK then
+                        exit;
+
+                    Simulator.RunTruckScenario(Allocation);
+                    CurrPage.Update(false);
+                end;
+            }
             action(RunTwoTruckProdTest)
             {
                 Caption = 'Імітація PROD — 2 автоміксери';

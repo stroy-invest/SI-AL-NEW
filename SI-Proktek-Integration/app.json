@@ -41,7 +41,13 @@
       "name": "SI Concrete Recipe Engine",
       "publisher": "STROYINVEST",
       "version": "1.0.0.23"
-    }	
+    },
+    {
+      "id": "c7ba7490-cd03-4d6c-b987-64d412401a89",
+      "name": "SI Vehicle Management",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.4"
+    }
   ],
   "resourceExposurePolicy": {
     "allowDebugging": true,

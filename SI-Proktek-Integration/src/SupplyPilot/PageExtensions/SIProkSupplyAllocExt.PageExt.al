@@ -65,7 +65,7 @@ pageextension 57076 "SI Prok Supply Alloc Ext" extends "SI Supply Allocations"
                 Caption = 'Імітувати вивантаження по заявці';
                 Image = TestReport;
                 Enabled = Rec."Supply Method" = Rec."Supply Method"::Production;
-                ToolTip = 'Sandbox: 27 замісів / 6 автоміксерів / 51,3 м³. Без проведення.';
+                ToolTip = 'Sandbox: тестові факти для вибраного виробничого розподілу через штатний Production Intake. Без проведення.';
 
                 trigger OnAction()
                 var
