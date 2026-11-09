@@ -14,11 +14,11 @@ page 57092 "SI Prok Prod Fact Materials"
         {
             repeater(Lines)
             {
-                field("External Material Code"; Rec."External Material Code") { ApplicationArea = All; }
-                field("Material UUID"; Rec."Material UUID") { ApplicationArea = All; }
-                field("BC Material Resolved"; Rec."BC Material Resolved") { ApplicationArea = All; }
-                field("Actual Observed Slot Count"; Rec."Actual Observed Slot Count") { ApplicationArea = All; }
-                field("Source Slot Count"; Rec."Source Slot Count") { ApplicationArea = All; }
+                field("External Material Code"; Rec."External Material Code") { ApplicationArea = All; Visible = false; }
+                field("Material UUID"; Rec."Material UUID") { ApplicationArea = All; Visible = false; }
+                field("BC Material Resolved"; Rec."BC Material Resolved") { ApplicationArea = All; Visible = false; }
+                field("Actual Observed Slot Count"; Rec."Actual Observed Slot Count") { ApplicationArea = All; Visible = false; }
+                field("Source Slot Count"; Rec."Source Slot Count") { ApplicationArea = All; Visible = false; }
                 field("Material Name"; Rec."Material Name") { ApplicationArea = All; }
                 field("Item No."; Rec."Item No.") { ApplicationArea = All; }
                 field("Variant Code"; Rec."Variant Code") { ApplicationArea = All; }
@@ -28,12 +28,12 @@ page 57092 "SI Prok Prod Fact Materials"
                 field("Variance Kg"; Rec."Variance Kg") { ApplicationArea = All; }
                 field("Variance %"; Rec."Variance %") { ApplicationArea = All; }
                 field("BC Base UoM"; Rec."BC Base UoM") { ApplicationArea = All; }
-                field("Requested Base Qty"; Rec."Requested Base Qty") { ApplicationArea = All; }
-                field("Adjusted Base Qty"; Rec."Adjusted Base Qty") { ApplicationArea = All; }
+                field("Requested Base Qty"; Rec."Requested Base Qty") { ApplicationArea = All; Visible = false; }
+                field("Adjusted Base Qty"; Rec."Adjusted Base Qty") { ApplicationArea = All; Visible = false; }
                 field("Actual Base Qty"; Rec."Actual Base Qty") { ApplicationArea = All; }
-                field("Variance Base Qty"; Rec."Variance Base Qty") { ApplicationArea = All; }
+                field("Variance Base Qty"; Rec."Variance Base Qty") { ApplicationArea = All; Visible = false; }
                 field("UoM Normalized"; Rec."UoM Normalized") { ApplicationArea = All; }
-                field("UoM Diagnostic"; Rec."UoM Diagnostic") { ApplicationArea = All; }
+                field("UoM Diagnostic"; Rec."UoM Diagnostic") { ApplicationArea = All; Visible = false; }
 
             }
         }

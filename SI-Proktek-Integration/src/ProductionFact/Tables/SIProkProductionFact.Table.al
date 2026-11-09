@@ -62,6 +62,8 @@ table 57091 "SI Prok Production Fact"
         field(294; "Verification Message"; Text[2048]) { Caption = 'Діагностика достовірності'; Editable = false; }
         field(295; "Execution Evidence"; Enum "SI Prok Execution Evidence") { Caption = 'Ознаки виконання'; Editable = false; }
         field(296; "Reported Quantity Present"; Boolean) { Caption = 'Обсяг MES передано'; Editable = false; }
+        field(310; "Technical Validation"; Enum "SI Prok Technical Validation") { Caption = 'Технічна повнота'; Editable = false; }
+        field(311; "Technical Diagnostics"; Text[2048]) { Caption = 'Діагностика технічної перевірки'; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 
@@ -221,6 +223,50 @@ table 57091 "SI Prok Production Fact"
         if Missing then
             exit(Format(Total) + ' (дані неповні)');
         exit(Format(Total));
+    end;
+
+    procedure GetReportedOrderSummaryText(): Text
+    begin
+        // The historical truck simulation stores the simulated order total
+        // in Order Produced Total M3; individual MES readings are per batch.
+        if Simulation then
+            exit(Format("Order Produced Total M3") + ' (симуляція)');
+        exit(GetReportedOrderTotalText());
+    end;
+
+    procedure GetOrderDeviationText(): Text
+    var
+        Total: Decimal;
+        Difference: Decimal;
+        OtherFact: Record "SI Prok Production Fact";
+    begin
+        if "Ordered Quantity M3" <= 0 then
+            exit('Невідомо');
+        if Simulation then
+            Total := "Order Produced Total M3"
+        else begin
+            if IsNullGuid("Order UUID") or ("Connection Code" = '') then
+                exit('Невідомо');
+            OtherFact.SetRange("Order UUID", "Order UUID");
+            OtherFact.SetRange("Connection Code", "Connection Code");
+            OtherFact.SetRange("Capture Mode", OtherFact."Capture Mode"::Normal);
+            OtherFact.SetRange(Simulation, false);
+            OtherFact.SetRange("Verification Status", OtherFact."Verification Status"::Verified);
+            if OtherFact.IsEmpty() then
+                exit('Невідомо');
+            Total := GetConfirmedOrderTotal();
+        end;
+        Difference := Total - "Ordered Quantity M3";
+        if Difference > 0 then
+            exit('+' + Format(Difference) + GetSimulationSuffix());
+        exit(Format(Difference) + GetSimulationSuffix());
+    end;
+
+    local procedure GetSimulationSuffix(): Text
+    begin
+        if Simulation then
+            exit(' (симуляція)');
+        exit('');
     end;
 
     procedure SetCanonicalJson(Value: Text)

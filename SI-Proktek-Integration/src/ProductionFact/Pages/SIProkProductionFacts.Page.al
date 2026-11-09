@@ -27,6 +27,7 @@ page 57091 "SI Prok Production Facts"
                 field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; }
                 field(ReportedQuantity; Rec.GetReportedQuantityText()) { ApplicationArea = All; Caption = 'Заявлено MES, м³'; Editable = false; ToolTip = 'Переданий MES обсяг; не є підтвердженням виробництва. Для історії читається canonical без зміни запису.'; }
                 field(ReportedPresence; Rec.GetReportedPresenceText()) { ApplicationArea = All; Caption = 'Обсяг MES передано'; Editable = false; ToolTip = 'Для історичних записів первинну наявність значення не оцінено.'; }
+                field("Technical Validation"; Rec."Technical Validation") { ApplicationArea = All; }
                 field("Verification Status"; Rec."Verification Status") { ApplicationArea = All; }
                 field("Execution Evidence"; Rec."Execution Evidence") { ApplicationArea = All; }
                 field("Verification Message"; Rec."Verification Message") { ApplicationArea = All; }

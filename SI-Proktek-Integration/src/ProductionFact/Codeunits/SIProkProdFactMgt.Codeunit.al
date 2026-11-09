@@ -205,6 +205,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         end;
 
         NormalizeFactMaterials(Fact);
+        RunTechnicalValidation(Fact);
         ValidateFact(Fact);
         RefreshOrderTotals(Fact."Order UUID");
     end;
@@ -315,6 +316,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         NormalizeFactMaterials(Fact);
         DiagnoseCaptureProvenance(Fact);
         AppendUnmappedDiagnostic(Fact);
+        RunTechnicalValidation(Fact);
     end;
 
     local procedure AssertMaterialConsistency(Root: JsonObject)
@@ -761,6 +763,13 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Normalizer.NormalizeFact(Fact."Entry No.");
     end;
 
+    local procedure RunTechnicalValidation(var Fact: Record "SI Prok Production Fact")
+    var
+        Validator: Codeunit "SI Prok Technical Validator";
+    begin
+        Validator.Assess(Fact);
+    end;
+
     procedure EnrichAndRevalidate(var Fact: Record "SI Prok Production Fact")
     var
         Root: JsonObject;
@@ -783,6 +792,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Fact.Modify(true);
         DiagnoseCaptureProvenance(Fact);
         NormalizeFactMaterials(Fact);
+        RunTechnicalValidation(Fact);
     end;
 
     // Diagnostic-only: does not change status or grant posting eligibility.
