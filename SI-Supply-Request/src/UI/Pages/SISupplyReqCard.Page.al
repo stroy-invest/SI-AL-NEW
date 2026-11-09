@@ -15,7 +15,18 @@ page 61002 "SI Supply Req Card"
                 Caption = 'Загальні';
                 field("No."; Rec."No.") { ApplicationArea = All; Editable = false; }
                 field("Request Type"; Rec."Request Type") { ApplicationArea = All; }
-                field("Request Profile"; Rec."Request Profile") { ApplicationArea = All; }
+                field("Request Profile"; Rec."Request Profile")
+                {
+                    ApplicationArea = All;
+                    trigger OnValidate()
+                    begin
+                        UpdateConcreteProfileVisibility();
+                        // Persist the profile and number before initializing its dependent record.
+                        CurrPage.SaveRecord();
+                        EnsureConcreteSpecForDraft();
+                        CurrPage.Update(false);
+                    end;
+                }
                 field(ProjectDisplayName; ProjectDisplayName)
                 {
                     ApplicationArea = All;
@@ -84,6 +95,7 @@ page 61002 "SI Supply Req Card"
             part(ConcreteSpec; "SI Concrete Supply Spec Part")
             {
                 ApplicationArea = All;
+                Visible = IsConcreteProfile;
                 SubPageLink = "Request No." = field("No.");
                 UpdatePropagation = Both;
             }
@@ -107,6 +119,32 @@ page 61002 "SI Supply Req Card"
     {
         area(Processing)
         {
+            action(CloneRequest)
+            {
+                ApplicationArea = All;
+                Caption = 'Клонувати';
+                ToolTip = 'Створити нову чернетку за задавненою заявкою, без погоджень і планів забезпечення.';
+                Image = Copy;
+                Promoted = true;
+                PromotedCategory = Process;
+                trigger OnAction()
+                var
+                    CloneDialog: Page "SI Supply Req Clone Dialog";
+                    CloneMgt: Codeunit "SI Supply Req Clone Mgt";
+                    NewRequest: Record "SI Supply Req Header";
+                    NewRequiredAt: DateTime;
+                    CloneReason: Text[250];
+                begin
+                    CurrPage.SaveRecord();
+                    CloneMgt.TestCloneAllowed(Rec);
+                    CloneDialog.SetSourceRequest(Rec."No.");
+                    if CloneDialog.RunModal() <> Action::OK then
+                        exit;
+                    CloneDialog.GetValues(NewRequiredAt, CloneReason);
+                    CloneMgt.CloneRequest(Rec."No.", NewRequiredAt, CloneReason, NewRequest);
+                    Page.Run(Page::"SI Supply Req Card", NewRequest);
+                end;
+            }
             action(AdminForceDraft)
             {
                 ApplicationArea = All;
@@ -249,16 +287,53 @@ page 61002 "SI Supply Req Card"
 
     trigger OnAfterGetRecord()
     begin
+        UpdateConcreteProfileVisibility();
         UpdateProjectDisplayName();
         RefreshCreatorDisplay();
         if Rec."No." <> '' then
             CurrPage.DemandLines.Page.SetRequestContext(Rec."No.");
     end;
 
+    trigger OnAfterGetCurrRecord()
+    begin
+        UpdateConcreteProfileVisibility();
+        EnsureConcreteSpecForDraft();
+    end;
+
     trigger OnNewRecord(BelowxRec: Boolean)
     begin
+        UpdateConcreteProfileVisibility();
         Clear(ProjectDisplayName);
         Clear(CreatorDisplay);
+    end;
+
+    local procedure UpdateConcreteProfileVisibility()
+    begin
+        IsConcreteProfile := Rec."Request Profile" = Rec."Request Profile"::Concrete;
+    end;
+
+    local procedure EnsureConcreteSpecForDraft()
+    var
+        ConcreteSpec: Record "SI Concrete Supply Spec";
+        PersistedHeader: Record "SI Supply Req Header";
+    begin
+        if not IsConcreteProfile then
+            exit;
+        if Rec."No." = '' then
+            exit;
+        // Only initialize persisted, editable requests; never modify an approved request.
+        if not PersistedHeader.Get(Rec."No.") then
+            exit;
+        if PersistedHeader."Request Profile" <> PersistedHeader."Request Profile"::Concrete then
+            exit;
+        if PersistedHeader.Status <> PersistedHeader.Status::Draft then
+            exit;
+        if ConcreteSpec.Get(Rec."No.") then
+            exit;
+
+        ConcreteSpec.Init();
+        ConcreteSpec."Request No." := Rec."No.";
+        ConcreteSpec.Insert(true);
     end;
 
     local procedure SelectProject(): Boolean
@@ -334,6 +409,7 @@ page 61002 "SI Supply Req Card"
 
     var
         CreatorDisplay: Text[500];
+        IsConcreteProfile: Boolean;
         IsSuperUser: Boolean;
         ProjectDisplayName: Text[100];
         CreatorUnavailableLbl: Label 'Автор не визначений (%1)', Comment = '%1 = technical BC User Name';

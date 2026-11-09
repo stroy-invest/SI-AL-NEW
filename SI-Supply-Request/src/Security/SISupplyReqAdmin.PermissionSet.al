@@ -10,6 +10,8 @@ permissionset 61000 "SI SUPPLY REQ ADMIN"
         codeunit "SI Supply Req Audit Mgt" = X,
         codeunit "SI Supply Req Overdue Mgt" = X,
         codeunit "SI Supply Req Overdue Job" = X,
+        codeunit "SI Supply Req Clone Mgt" = X,
+        page "SI Supply Req Clone Dialog" = X,
         tabledata "SI Supply Req Delete Audit" = RIMD,
         table "SI Supply Req Delete Audit" = X,
         codeunit "SI Supply Req Admin Delete" = X,

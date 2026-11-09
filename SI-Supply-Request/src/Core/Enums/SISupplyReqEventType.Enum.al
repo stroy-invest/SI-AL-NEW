@@ -12,4 +12,6 @@ enum 61022 "SI Supply Req Event Type"
     value(60; "Approval Reset") { Caption = 'Скинуто погодження'; }
     value(70; "Allocation Cancelled") { Caption = 'Скасовано розподіл'; }
     value(80; "Allocation Recalculated") { Caption = 'Перераховано розподіл'; }
+    value(90; "Request Cloned To") { Caption = 'Заявку клоновано в'; }
+    value(100; "Request Cloned From") { Caption = 'Заявку клоновано з'; }
 }

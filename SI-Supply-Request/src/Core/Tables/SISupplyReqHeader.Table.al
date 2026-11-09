@@ -73,6 +73,13 @@ table 61001 "SI Supply Req Header"
             DataClassification = CustomerContent;
             Editable = false;
         }
+        field(53; "Cloned From Request No."; Code[20])
+        {
+            Caption = 'Клоновано із заявки';
+            DataClassification = CustomerContent;
+            Editable = false;
+            TableRelation = "SI Supply Req Header"."No.";
+        }
         field(60; Status; Enum "SI Supply Req Status")
         {
             Caption = 'Статус';
