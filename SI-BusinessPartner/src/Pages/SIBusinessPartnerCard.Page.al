@@ -160,7 +160,7 @@ page 54004 "SI Business Partner Card"
                     {
                         ApplicationArea = All;
                         ToolTip = 'Specifies the accountant-facing short name generated from the name and the abbreviated country legal form.';
-                        Editable = false;
+                        Editable = true;
                     }
                 }
             }
