@@ -1,0 +1,45 @@
+﻿App: SI Supply Request Engine
+AL files scanned: 139
+
+App ID-range: 61000 - 61999
+Used ID-range area
+Tables: 61000-61004, 61010-61016, 61030-61032, 61040-61045, 61048-61055, 61060-61061, 61090
+TableExtensions: (none)
+Pages: 61000-61006, 61010-61023, 61030-61037, 61041-61043, 61048-61056, 61058, 61060, 61063
+PageExtensions: 61000, 61040-61041, 61044
+Codeunits: 61000-61002, 61010-61015, 61020-61023, 61030, 61040-61047, 61052-61057, 61059, 61062, 61090
+Reports: (none)
+ReportExtensions: (none)
+Queries: (none)
+XMLports: (none)
+Enums: 61000-61021
+EnumExtensions: (none)
+PermissionSets: 61000
+PermissionSetExtensions: (none)
+Interfaces: (none)
+ControlAddIns: (none)
+Profiles: (none)
+DotNet: (none)
+Entitlements: (none)
+--------------------------------
+Free ID-range area
+Tables: 61005-61009, 61017-61029, 61033-61039, 61046-61047, 61056-61059, 61062-61089, 61091-61999
+TableExtensions: 61000-61999
+Pages: 61007-61009, 61024-61029, 61038-61040, 61044-61047, 61057, 61059, 61061-61062, 61064-61999
+PageExtensions: 61001-61039, 61042-61043, 61045-61999
+Codeunits: 61003-61009, 61016-61019, 61024-61029, 61031-61039, 61048-61051, 61058, 61060-61061, 61063-61089, 61091-61999
+Reports: 61000-61999
+ReportExtensions: 61000-61999
+Queries: 61000-61999
+XMLports: 61000-61999
+Enums: 61022-61999
+EnumExtensions: 61000-61999
+PermissionSets: 61001-61999
+PermissionSetExtensions: 61000-61999
+Interfaces: 61000-61999
+ControlAddIns: 61000-61999
+Profiles: 61000-61999
+DotNet: 61000-61999
+Entitlements: 61000-61999
+================================
+

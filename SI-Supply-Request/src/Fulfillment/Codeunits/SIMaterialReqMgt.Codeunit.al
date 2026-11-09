@@ -2,6 +2,7 @@ codeunit 61014 "SI Material Req. Mgt."
 {
     procedure Calculate(var Allocation: Record "SI Supply Allocation")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         RecipeMgt: Codeunit "SI Supply Recipe Mgt.";
         Recipe: Record "SI Concrete Recipe";
         RecipeRevision: Record "SI Concrete Recipe Revision";
@@ -13,6 +14,7 @@ codeunit 61014 "SI Material Req. Mgt."
         HasShortage: Boolean;
         NextLineNo: Integer;
     begin
+        OverdueMgt.TestAllocationNotOverdue(Allocation);
         ValidateContext(Allocation);
 
         // Revalidate the selected revision immediately before using it for planning.

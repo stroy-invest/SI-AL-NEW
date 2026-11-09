@@ -4,6 +4,12 @@ permissionset 61000 "SI SUPPLY REQ ADMIN"
     Caption = 'SI Supply Request Admin';
 
     Permissions =
+        tabledata "SI Supply Req Event Log" = R,
+        table "SI Supply Req Event Log" = X,
+        page "SI Supply Req Event Log" = X,
+        codeunit "SI Supply Req Audit Mgt" = X,
+        codeunit "SI Supply Req Overdue Mgt" = X,
+        codeunit "SI Supply Req Overdue Job" = X,
         tabledata "SI Supply Req Delete Audit" = RIMD,
         table "SI Supply Req Delete Audit" = X,
         codeunit "SI Supply Req Admin Delete" = X,

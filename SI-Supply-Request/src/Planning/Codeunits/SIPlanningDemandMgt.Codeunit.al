@@ -12,10 +12,12 @@ codeunit 61043 "SI Planning Demand Mgt."
 
     procedure EnsurePurchaseDemand(Allocation: Record "SI Supply Allocation"): Integer
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         Demand: Record "SI Planning Demand";
         SyncToken: Guid;
         SyncedAt: DateTime;
     begin
+        OverdueMgt.TestAllocationNotOverdue(Allocation);
         Allocation.TestField("Supply Method", Allocation."Supply Method"::Purchase);
 
         if not IsPlanningEligible(Allocation) then

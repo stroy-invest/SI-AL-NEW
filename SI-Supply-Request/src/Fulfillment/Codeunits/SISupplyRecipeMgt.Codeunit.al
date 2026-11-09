@@ -2,11 +2,13 @@ codeunit 61012 "SI Supply Recipe Mgt."
 {
     procedure Resolve(var Allocation: Record "SI Supply Allocation")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         Resolver: Codeunit "SI Recipe Resolver";
         TempResult: Record "SI Recipe Resolver Result" temporary;
         Outcome: Enum "SI Recipe Resolve Outcome";
         TargetDate: Date;
     begin
+        OverdueMgt.TestAllocationNotOverdue(Allocation);
         ValidateProductionContext(Allocation);
         TargetDate := DT2Date(Allocation."Required on Site At");
 
@@ -49,6 +51,7 @@ codeunit 61012 "SI Supply Recipe Mgt."
 
     procedure SelectManually(var Allocation: Record "SI Supply Allocation")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         Resolver: Codeunit "SI Recipe Resolver";
         CandidatePage: Page "SI Recipe Candidates";
         TempCandidates: Record "SI Recipe Resolver Result" temporary;
@@ -57,6 +60,7 @@ codeunit 61012 "SI Supply Recipe Mgt."
         TargetDate: Date;
         CandidateCount: Integer;
     begin
+        OverdueMgt.TestAllocationNotOverdue(Allocation);
         ValidateProductionContext(Allocation);
         TargetDate := DT2Date(Allocation."Required on Site At");
         Resolver.GetApplicableCandidates(Allocation."Item No.", Allocation."Variant Code", TargetDate, TempCandidates);
@@ -89,11 +93,13 @@ codeunit 61012 "SI Supply Recipe Mgt."
 
     procedure RevalidateForExecution(var Allocation: Record "SI Supply Allocation")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         Resolver: Codeunit "SI Recipe Resolver";
         TempResult: Record "SI Recipe Resolver Result" temporary;
         Outcome: Enum "SI Recipe Resolve Outcome";
         TargetDate: Date;
     begin
+        OverdueMgt.TestAllocationNotOverdue(Allocation);
         ValidateProductionContext(Allocation);
         TargetDate := DT2Date(Allocation."Required on Site At");
 

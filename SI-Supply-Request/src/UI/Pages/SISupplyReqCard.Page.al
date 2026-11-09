@@ -46,6 +46,12 @@ page 61002 "SI Supply Req Card"
                         CurrPage.DemandLines.Page.RefreshFromDatabase();
                     end;
                 }
+                field("Is Overdue"; Rec."Is Overdue")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    ToolTip = 'Ознака прострочення, що оновлюється фоновим завданням. Перед бізнес-операціями актуальність перевіряється за поточним часом.';
+                }
                 field(Status; Rec.Status) { ApplicationArea = All; }
                 field(CreatorDisplay; CreatorDisplay)
                 {

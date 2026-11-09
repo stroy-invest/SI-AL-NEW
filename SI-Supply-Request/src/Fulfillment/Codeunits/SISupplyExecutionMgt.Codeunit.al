@@ -2,11 +2,13 @@ codeunit 61011 "SI Supply Execution Mgt."
 {
     procedure ExecuteProduction(var Allocation: Record "SI Supply Allocation")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         RecipeMgt: Codeunit "SI Supply Recipe Mgt.";
         ExecutionReference: Code[50];
         ExecutionSystemId: Guid;
         Handled: Boolean;
     begin
+        OverdueMgt.TestAllocationNotOverdue(Allocation);
         Allocation.TestField("Supply Method", Allocation."Supply Method"::Production);
         Allocation.TestField(Quantity);
         Allocation.TestField("Item No.");
@@ -31,6 +33,7 @@ codeunit 61011 "SI Supply Execution Mgt."
 
     procedure ExecutePurchase(Allocation: Record "SI Supply Allocation")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         PlanningDemandMgt: Codeunit "SI Planning Demand Mgt.";
         PlanningRunner: Codeunit "SI Proc. Planning Runner";
         Run: Record "SI Proc. Plan Run";
@@ -38,6 +41,7 @@ codeunit 61011 "SI Supply Execution Mgt."
         Snapshot: Record "SI Proc. Plan Snapshot";
         DemandEntryNo: Integer;
     begin
+        OverdueMgt.TestAllocationNotOverdue(Allocation);
         Allocation.TestField("Supply Method", Allocation."Supply Method"::Purchase);
 
         // Idempotent handoff: the source key of SI Planning Demand is unique,

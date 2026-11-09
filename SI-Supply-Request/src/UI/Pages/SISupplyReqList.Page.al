@@ -19,6 +19,11 @@ page 61003 "SI Supply Req List"
                 field("Project No."; Rec."Project No.") { ApplicationArea = All; }
                 field("Project Location Code"; Rec."Project Location Code") { ApplicationArea = All; }
                 field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; }
+                field("Is Overdue"; Rec."Is Overdue")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                }
                 field(Status; Rec.Status) { ApplicationArea = All; }
                 field("Requested By User ID"; Rec."Requested By User ID") { ApplicationArea = All; }
             }

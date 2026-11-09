@@ -67,6 +67,12 @@ table 61001 "SI Supply Req Header"
                 ValidateRequiredOnSiteAt("Required on Site At");
             end;
         }
+        field(52; "Is Overdue"; Boolean)
+        {
+            Caption = 'Задавнена';
+            DataClassification = CustomerContent;
+            Editable = false;
+        }
         field(60; Status; Enum "SI Supply Req Status")
         {
             Caption = 'Статус';

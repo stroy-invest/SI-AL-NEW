@@ -2,8 +2,10 @@ codeunit 61010 "SI Supply Decision Mgt."
 {
     procedure OpenOrCreateFromRequest(var RequestHeader: Record "SI Supply Req Header")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         DecisionHeader: Record "SI Supply Decision Header";
     begin
+        OverdueMgt.TestNotOverdue(RequestHeader);
         RequestHeader.TestField("Project No.");
         RequestHeader.TestField("Project Location Code");
         RequestHeader.TestField("Required on Site At");
@@ -19,10 +21,12 @@ codeunit 61010 "SI Supply Decision Mgt."
 
     procedure SynchronizeDraftDecisionLines(var RequestHeader: Record "SI Supply Req Header"; var DecisionHeader: Record "SI Supply Decision Header")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         RequestLine: Record "SI Supply Req Line";
         DecisionLine: Record "SI Supply Decision Line";
         DemandQty: Decimal;
     begin
+        OverdueMgt.TestNotOverdue(RequestHeader);
         // Never alter a decision already transferred to execution.
         DecisionHeader.TestEditable();
         ValidateRequestDemandLines(RequestHeader);
@@ -79,10 +83,12 @@ codeunit 61010 "SI Supply Decision Mgt."
 
     procedure CreateFromRequest(var RequestHeader: Record "SI Supply Req Header"; var DecisionHeader: Record "SI Supply Decision Header")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         RequestLine: Record "SI Supply Req Line";
         DecisionLine: Record "SI Supply Decision Line";
         DemandQty: Decimal;
     begin
+        OverdueMgt.TestNotOverdue(RequestHeader);
         RequestHeader.TestField("No.");
         RequestHeader.TestField("Project No.");
         RequestHeader.TestField("Project Location Code");
@@ -152,8 +158,10 @@ codeunit 61010 "SI Supply Decision Mgt."
 
     procedure ApproveRequest(var RequestHeader: Record "SI Supply Req Header")
     var
+        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         DecisionHeader: Record "SI Supply Decision Header";
     begin
+        OverdueMgt.TestNotOverdue(RequestHeader);
         RequestHeader.TestField(Status, RequestHeader.Status::Draft);
         RequestHeader.TestField("Project No.");
         RequestHeader.TestField("Project Location Code");
