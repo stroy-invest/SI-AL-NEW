@@ -1,4 +1,4 @@
-﻿codeunit 57069 "SI Prok Order Sync"
+codeunit 57069 "SI Prok Order Sync"
 {
     procedure SendOrder(var ProdRequest: Record "SI Concrete Prod Request")
     var
@@ -37,6 +37,7 @@
         ResponseBuffer: Record "SI EDS Response Buffer" temporary;
         EDSOrchestrator: Codeunit "SI EDS Orchestrator";
         OrderProjector: Codeunit "SI Prok Order Projector";
+        ProductionPlanMgt: Codeunit "SI Prok Production Plan Mgt.";
         RequestBody: Text;
         ResponseText: Text;
         SavedOrderUUID: Guid;
@@ -69,7 +70,12 @@
         ProdRequest.Modify(false);
         Commit();
 
+        // Save the normative snapshot after successful remote SAVE-ORDER.
+        ProductionPlanMgt.EnsurePlan(ProdRequest);
+
         ReconcileOrder(Connection, ProdRequest, SavedOrderUUID, AddOrderNo);
+        Commit(); // Persist confirmed Proktek ID before local BC manufacturing work.
+        EnsureLocalProductionDocuments(ProdRequest);
     end;
 
     local procedure ParseSaveOrderResponse(
@@ -209,6 +215,8 @@
             Error('GET-ORDERS знайшов непідтверджений Order UUID %1 / %2, але повернув id = 0.', ProdRequest."Proktek Order UUID", AddOrderNo);
 
         ConfirmReconciledOrder(ProdRequest, RealOrderId, ReconciledUUID, AddOrderNo);
+        Commit();
+        EnsureLocalProductionDocuments(ProdRequest);
         exit(true);
     end;
 
@@ -325,6 +333,15 @@
 
         ResponseText := GetResponseText(ResponseBuffer, 'GET-ORDERS');
         FindOrderInGetResponse(ResponseText, ExpectedUUID, AddOrderNo, MatchCount, RealOrderId, ReconciledUUID);
+    end;
+
+    local procedure EnsureLocalProductionDocuments(ProdRequest: Record "SI Concrete Prod Request")
+    var
+        PlanMgt: Codeunit "SI Prok Production Plan Mgt.";
+        BCOrderMgt: Codeunit "SI Prok BC Prod Order Mgt.";
+    begin
+        PlanMgt.EnsurePlan(ProdRequest);
+        BCOrderMgt.EnsureOrder(ProdRequest);
     end;
 
     local procedure ConfirmReconciledOrder(

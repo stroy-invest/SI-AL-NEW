@@ -175,7 +175,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
     var
         Connection: Record "SI Prok Connection";
         Vehicle: Record "SI Vehicle Profile";
-        Capacity: Record "SI Vehicle Capacity";
+        CapacityM3: Decimal;
         Mapping: Record "SI Prok Vehicle Mapping";
         Other: Record "SI Prok Vehicle Mapping";
         Auth: Codeunit "SI Prok Auth Mgt.";
@@ -201,11 +201,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
         Vehicle.TestField("Vehicle Type Code", 'CONCRETE-MIXER');
         Vehicle.TestField("Registration No.");
         Vehicle.TestField(Description);
-        if not Capacity.Get(VehicleNo, 'DRUM-VOLUME') then
-            Error('Для ТЗ %1 не задано DRUM-VOLUME.', VehicleNo);
-        Capacity.TestField("Unit of Measure Code", 'M3');
-        if Capacity.Quantity <= 0 then
-            Error('DRUM-VOLUME має бути більше нуля.');
+        CapacityM3 := ResolveDrumVolumeM3(VehicleNo);
         if Mapping.Get(ConnectionCode, VehicleNo) then
             if (Mapping."External Mixer ID" <> 0) or not IsNullGuid(Mapping."External Mixer UUID") then
                 Error('ТЗ %1 уже має зовнішню прив’язку. Create заборонено.', VehicleNo);
@@ -226,7 +222,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
         Mixer.Add('kamyon_kod', VehicleNo);
         Mixer.Add('aktif', not Vehicle.Blocked);
         Mixer.Add('plaka', Vehicle."Registration No.");
-        Mixer.Add('kapasite', Capacity.Quantity);
+        Mixer.Add('kapasite', CapacityM3);
         Mixer.Add('surucu_kod', 0);
         Mixer.Add('aciklama1', Vehicle.Description);
         Mixer.Add('aciklama2', '');
@@ -290,7 +286,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
     var
         Connection: Record "SI Prok Connection";
         Vehicle: Record "SI Vehicle Profile";
-        Capacity: Record "SI Vehicle Capacity";
+        CapacityM3: Decimal;
         Mapping: Record "SI Prok Vehicle Mapping";
         Auth: Codeunit "SI Prok Auth Mgt.";
         EDS: Codeunit "SI EDS Orchestrator";
@@ -321,11 +317,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
         Vehicle.TestField("Vehicle Type Code", 'CONCRETE-MIXER');
         Vehicle.TestField("Registration No.");
         Vehicle.TestField(Description);
-        if not Capacity.Get(VehicleNo, 'DRUM-VOLUME') then
-            Error('Для ТЗ %1 не задано DRUM-VOLUME.', VehicleNo);
-        Capacity.TestField("Unit of Measure Code", 'M3');
-        if Capacity.Quantity <= 0 then
-            Error('DRUM-VOLUME має бути більше нуля.');
+        CapacityM3 := ResolveDrumVolumeM3(VehicleNo);
 
         GetMixers(Connection, ListResponse);
         if not FindMixer(ListResponse, Mapping."External Mixer ID", Mapping."External Mixer UUID", Mixer) then
@@ -349,7 +341,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
 
         if (OldPlate = Vehicle."Registration No.") and
            (OldDescription = Vehicle.Description) and
-           (OldCapacity = Capacity.Quantity) and
+           (OldCapacity = CapacityM3) and
            (OldActive = not Vehicle.Blocked) then begin
             Mapping."Sync Status" := Mapping."Sync Status"::Synced;
             Mapping."Last Synced At" := CurrentDateTime;
@@ -362,13 +354,13 @@ codeunit 57112 "SI Prok Vehicle Sync"
             'Оновити міксер %1 (ID %2)?\Поточні дані Proktek: %3 / %4 / %5 м3 / Active=%6\Дані BC: %7 / %8 / %9 м3 / Active=%10',
             false, VehicleNo, Mapping."External Mixer ID", OldPlate, OldDescription,
             OldCapacity, OldActive, Vehicle."Registration No.", Vehicle.Description,
-            Capacity.Quantity, not Vehicle.Blocked) then
+            CapacityM3, not Vehicle.Blocked) then
             exit(false);
 
         // Merge into the object returned by GetMixers. Preserve driver, hub,
         // timestamps, aciklama2, kod, uuid and all unknown API fields.
         Mixer.Replace('plaka', Vehicle."Registration No.");
-        Mixer.Replace('kapasite', Capacity.Quantity);
+        Mixer.Replace('kapasite', CapacityM3);
         Mixer.Replace('aciklama1', Vehicle.Description);
         Mixer.Replace('aktif', not Vehicle.Blocked);
         Request.Add('guid', Format(Auth.GetSessionGuid(Connection), 0, 4));
@@ -399,7 +391,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
             Error('SaveMixer Update повернув відмінні значення. Перевірте Proktek вручну.');
         if not Returned.Get('kapasite', Token) then
             Error('SaveMixer Update не повернув kapasite.');
-        if Token.AsValue().AsDecimal() <> Capacity.Quantity then
+        if Token.AsValue().AsDecimal() <> CapacityM3 then
             Error('SaveMixer Update повернув іншу місткість.');
         if not Returned.Get('aktif', Token) then
             Error('SaveMixer Update не повернув aktif.');
@@ -413,4 +405,20 @@ codeunit 57112 "SI Prok Vehicle Sync"
         exit(true);
     end;
 
+
+    // PF-01.3A.5: resolve model-level characteristic via Vehicle Management.
+    local procedure ResolveDrumVolumeM3(VehicleNo: Code[20]): Decimal
+    var
+        VehicleMgt: Codeunit "SI Vehicle Management";
+        Quantity: Decimal;
+        UoMCode: Code[10];
+    begin
+        if not VehicleMgt.GetCharacteristicValue(VehicleNo, 'DRUM-VOLUME', Quantity, UoMCode) then
+            Error('Для ТЗ %1 не задано DRUM-VOLUME у характеристиках моделі.', VehicleNo);
+        if UoMCode <> 'M3' then
+            Error('Для ТЗ %1 одиниця DRUM-VOLUME = %2; очікується M3. Синхронізацію зупинено.', VehicleNo, UoMCode);
+        if Quantity <= 0 then
+            Error('DRUM-VOLUME для ТЗ %1 має бути більше нуля.', VehicleNo);
+        exit(Quantity);
+    end;
 }

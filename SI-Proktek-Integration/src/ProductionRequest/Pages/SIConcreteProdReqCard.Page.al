@@ -280,6 +280,100 @@ page 57023 "SI Concrete Prod Req Card"
     {
         area(Processing)
         {
+            action(EnsureProductionPlan)
+            {
+                ApplicationArea = All;
+                Caption = 'Сформувати план виробництва';
+                Image = CreateDocument;
+                ToolTip = 'Створити нормативний план для цієї виробничої заявки, якщо його ще немає. Замовлення до Proktek не надсилається.';
+                trigger OnAction()
+                var
+                    PlanMgt: Codeunit "SI Prok Production Plan Mgt.";
+                    Plan: Record "SI Prok Production Plan";
+                begin
+                    if Plan.Get(Rec."Entry No.") then begin
+                        Message('План виробництва для заявки %1 уже існує.', Rec."Entry No.");
+                        Page.Run(Page::"SI Prok Production Plan Card", Plan);
+                        exit;
+                    end;
+                    PlanMgt.EnsurePlan(Rec);
+                    Plan.Get(Rec."Entry No.");
+                    Page.Run(Page::"SI Prok Production Plan Card", Plan);
+                end;
+            }
+
+            action(EnsureBCProductionOrder)
+            {
+                ApplicationArea = All;
+                Caption = 'Сформувати виробниче замовлення BC';
+                Image = CreateDocument;
+                ToolTip = 'Локально створити відсутнє стандартне виробниче замовлення BC після підтвердження Order у Proktek. Не викликає SAVE-ORDER.';
+                trigger OnAction()
+                var
+                    PlanMgt: Codeunit "SI Prok Production Plan Mgt.";
+                    BCOrderMgt: Codeunit "SI Prok BC Prod Order Mgt.";
+                begin
+                    PlanMgt.EnsurePlan(Rec);
+                    BCOrderMgt.EnsureOrder(Rec);
+                    Message('Виробниче замовлення BC створено або вже існує.');
+                end;
+            }
+
+            action(ViewBCProductionOrder)
+            {
+                ApplicationArea = All;
+                Caption = 'Переглянути виробниче замовлення BC';
+                Image = View;
+                trigger OnAction()
+                var
+                    Plan: Record "SI Prok Production Plan";
+                    ProdOrder: Record "Production Order";
+                begin
+                    if not Plan.Get(Rec."Entry No.") then
+                        Error('Production Plan для заявки %1 не знайдено.', Rec."Entry No.");
+                    Plan.TestField("BC Prod. Order No.");
+                    if not ProdOrder.Get(Plan."BC Prod. Order Status", Plan."BC Prod. Order No.") then
+                        Error('Виробниче замовлення BC %1 не знайдено.', Plan."BC Prod. Order No.");
+                    Page.Run(Page::"Firm Planned Prod. Order", ProdOrder);
+                end;
+            }
+
+            action(ViewProductionPlan)
+            {
+                ApplicationArea = All;
+                Caption = 'Переглянути план виробництва';
+                Image = View;
+                trigger OnAction()
+                var
+                    Plan: Record "SI Prok Production Plan";
+                begin
+                    if not Plan.Get(Rec."Entry No.") then begin
+                        Message('План виробництва для заявки %1 ще не створено.', Rec."Entry No.");
+                        exit;
+                    end;
+                    Page.Run(Page::"SI Prok Production Plan Card", Plan);
+                end;
+            }
+
+
+            action(ViewSourceSupplyRequest)
+            {
+                ApplicationArea = All;
+                Caption = 'Переглянути вихідну заявку';
+                Image = Navigate;
+                ToolTip = 'Відкрити заявку на забезпечення, за якою створено виробниче завдання.';
+                trigger OnAction()
+                var
+                    RequestHeader: Record "SI Supply Req Header";
+                begin
+                    if (Rec."Source Type" <> Rec."Source Type"::"Supply Request") or (Rec."Source No." = '') then
+                        Error('Ця виробнича заявка не має вихідної заявки на забезпечення.');
+                    if not RequestHeader.Get(Rec."Source No.") then
+                        Error('Вихідну заявку %1 не знайдено.', Rec."Source No.");
+                    Page.Run(Page::"SI Supply Req Card", RequestHeader);
+                end;
+            }
+
             action(UseBaseRecipe)
             {
                 ApplicationArea = All;
@@ -395,7 +489,16 @@ page 57023 "SI Concrete Prod Req Card"
                 end;
             }
         }
-    }
+            area(Promoted)
+        {
+            group(ProductionPlan)
+            {
+                Caption = 'План виробництва';
+                actionref(ViewProductionPlanPromoted; ViewProductionPlan) { }
+                actionref(EnsureProductionPlanPromoted; EnsureProductionPlan) { }
+            }
+        }
+}
 
     trigger OnAfterGetRecord()
     begin

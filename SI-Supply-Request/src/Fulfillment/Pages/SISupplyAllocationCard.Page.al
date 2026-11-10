@@ -78,6 +78,19 @@ page 61015 "SI Supply Allocation Card"
     {
         area(Processing)
         {
+            action(ViewExecutionDocument)
+            {
+                ApplicationArea = All;
+                Caption = 'Переглянути документ виконання';
+                Image = ViewDetails;
+                trigger OnAction()
+                var
+                    Navigation: Codeunit "SI Supply Exec. Navigation";
+                begin
+                    Navigation.OpenExecution(Rec);
+                end;
+            }
+
             action(ResolveRecipe)
             {
                 ApplicationArea = All;

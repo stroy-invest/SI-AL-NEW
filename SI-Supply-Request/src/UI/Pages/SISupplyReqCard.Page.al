@@ -119,6 +119,50 @@ page 61002 "SI Supply Req Card"
     {
         area(Processing)
         {
+            action(ViewExecutionDocuments)
+            {
+                ApplicationArea = All;
+                Caption = 'Переглянути документи виконання';
+                Image = ViewDetails;
+                Promoted = true;
+                PromotedCategory = Process;
+                ToolTip = 'Відкрити документ виконання або перелік розподілів із документами виконання за цією заявкою.';
+
+                trigger OnAction()
+                var
+                    Decision: Record "SI Supply Decision Header";
+                    Allocation: Record "SI Supply Allocation";
+                    Navigation: Codeunit "SI Supply Exec. Navigation";
+                    ExecutionCount: Integer;
+                    SingleAllocation: Record "SI Supply Allocation";
+                begin
+                    Decision.Reset();
+                    Decision.SetRange("Request No.", Rec."No.");
+                    if not Decision.FindFirst() then begin
+                        Message('Для заявки %1 рішення щодо забезпечення ще не створено.', Rec."No.");
+                        exit;
+                    end;
+                    Allocation.SetRange("Decision No.", Decision."No.");
+                    if Allocation.FindSet() then
+                        repeat
+                            if not IsNullGuid(Allocation."Execution System ID") then begin
+                                ExecutionCount += 1;
+                                SingleAllocation := Allocation;
+                            end;
+                        until Allocation.Next() = 0;
+                    if ExecutionCount = 0 then begin
+                        Message('Для заявки %1 документи виконання ще не створено.', Rec."No.");
+                        exit;
+                    end;
+                    if ExecutionCount = 1 then begin
+                        Navigation.OpenExecution(SingleAllocation);
+                        exit;
+                    end;
+                    Allocation.Reset();
+                    Allocation.SetRange("Decision No.", Decision."No.");
+                    Page.Run(Page::"SI Supply Exec. Documents", Allocation);
+                end;
+            }
             action(CloneRequest)
             {
                 ApplicationArea = All;

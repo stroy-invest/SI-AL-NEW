@@ -202,6 +202,20 @@ page 61011 "SI Supply Allocations"
                     MaterialReqMgt.OpenRequirements(Rec);
                 end;
             }
+            action(ViewExecutionDocument)
+            {
+                ApplicationArea = All;
+                Caption = 'Переглянути документ виконання';
+                Image = ViewDetails;
+                ToolTip = 'Відкрити документ, створений для вибраного розподілу.';
+
+                trigger OnAction()
+                var
+                    Navigation: Codeunit "SI Supply Exec. Navigation";
+                begin
+                    Navigation.OpenExecution(Rec);
+                end;
+            }
             action(CreateExecutionDocument)
             {
                 ApplicationArea = All;

@@ -30,3 +30,5 @@ cache_*
 
 # Generated app.json copies for ZIP packaging
 **/*_app.json
+# Generated AL object ID reports
+SI-ProductConfigurator/AL-ID-Report.txt

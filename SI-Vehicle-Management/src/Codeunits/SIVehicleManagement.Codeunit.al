@@ -27,7 +27,8 @@ codeunit 63300 "SI Vehicle Management"
     end;
 
     procedure AssertUniqueVIN(Vehicle: Record "SI Vehicle Profile")
-    var Other: Record "SI Vehicle Profile";
+    var
+        Other: Record "SI Vehicle Profile";
     begin
         if Vehicle.VIN = '' then exit;
         Other.SetRange(VIN, Vehicle.VIN);
@@ -37,7 +38,8 @@ codeunit 63300 "SI Vehicle Management"
     end;
 
     procedure AssertUniqueRegistration(Vehicle: Record "SI Vehicle Profile")
-    var Other: Record "SI Vehicle Profile";
+    var
+        Other: Record "SI Vehicle Profile";
     begin
         if Vehicle."Registration No." = '' then exit;
         Other.SetRange("Registration No.", Vehicle."Registration No.");
@@ -47,7 +49,8 @@ codeunit 63300 "SI Vehicle Management"
     end;
 
     procedure AssertOperationallyUsable(VehicleNo: Code[20])
-    var Vehicle: Record "SI Vehicle Profile";
+    var
+        Vehicle: Record "SI Vehicle Profile";
         VehicleType: Record "SI Vehicle Type";
     begin
         Vehicle.Get(VehicleNo);
@@ -60,7 +63,9 @@ codeunit 63300 "SI Vehicle Management"
     end;
 
     procedure AssertBrandModel(Vehicle: Record "SI Vehicle Profile")
-    var Brand: Record "SI Vehicle Brand"; Model: Record "SI Vehicle Model";
+    var
+        Brand: Record "SI Vehicle Brand";
+        Model: Record "SI Vehicle Model";
     begin
         if Vehicle."Model Code" = '' then exit;
         Vehicle.TestField("Brand Code");
@@ -71,7 +76,10 @@ codeunit 63300 "SI Vehicle Management"
     end;
 
     procedure RefreshVehicleDescription(var Vehicle: Record "SI Vehicle Profile")
-    var Brand: Record "SI Vehicle Brand"; Model: Record "SI Vehicle Model"; NewDescription: Text;
+    var
+        Brand: Record "SI Vehicle Brand";
+        Model: Record "SI Vehicle Model";
+        NewDescription: Text;
     begin
         if (Vehicle."Brand Code" = '') or (Vehicle."Model Code" = '') then exit;
         AssertBrandModel(Vehicle);
@@ -83,7 +91,8 @@ codeunit 63300 "SI Vehicle Management"
     end;
 
     procedure ValidateCapacityTypeDependents(CapacityType: Record "SI Vehicle Capacity Type")
-    var Capacity: Record "SI Vehicle Capacity";
+    var
+        Capacity: Record "SI Vehicle Capacity";
         ModelCapacity: Record "SI Vehicle Model Capacity";
         SemanticMgt: Codeunit "SI UoM Semantic Mgt.";
     begin
@@ -100,19 +109,36 @@ codeunit 63300 "SI Vehicle Management"
                 SemanticMgt.AssertPhysicalUoM(ModelCapacity."Unit of Measure Code", CapacityType."Required Semantic Code");
             until ModelCapacity.Next() = 0;
     end;
-    procedure GetCharacteristicValue(VehicleNo: Code[20]; CapacityTypeCode: Code[20]; var Quantity: Decimal; var UoMCode: Code[10]): Boolean
+
+    procedure GetCharacteristicValue(
+        VehicleNo: Code[20];
+        CapacityTypeCode: Code[20];
+        var Quantity: Decimal;
+        var UoMCode: Code[10]
+    ): Boolean
     var
         Vehicle: Record "SI Vehicle Profile";
         ModelCapacity: Record "SI Vehicle Model Capacity";
     begin
         Clear(Quantity);
         Clear(UoMCode);
-        if not Vehicle.Get(VehicleNo) then exit(false);
-        if (Vehicle."Brand Code" = '') or (Vehicle."Model Code" = '') then exit(false);
-        if not ModelCapacity.Get(Vehicle."Brand Code", Vehicle."Model Code", CapacityTypeCode) then exit(false);
+
+        if not Vehicle.Get(VehicleNo) then
+            exit(false);
+
+        if (Vehicle."Brand Code" = '') or (Vehicle."Model Code" = '') then
+            exit(false);
+
+        if not ModelCapacity.Get(
+            Vehicle."Brand Code",
+            Vehicle."Model Code",
+            CapacityTypeCode)
+        then
+            exit(false);
+
         Quantity := ModelCapacity.Quantity;
         UoMCode := ModelCapacity."Unit of Measure Code";
+
         exit(true);
     end;
-
 }
