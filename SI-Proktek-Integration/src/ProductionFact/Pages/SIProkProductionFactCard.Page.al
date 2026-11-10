@@ -117,6 +117,29 @@ page 57093 "SI Prok Production Fact Card"
     {
         area(Processing)
         {
+            action(OpenProkJournalSetup)
+            {
+                ApplicationArea = All;
+                Caption = 'Налаштування журналів Proktek';
+                Image = Setup;
+                trigger OnAction()
+                begin
+                    Page.Run(Page::"SI Prok Journal Setup");
+                end;
+            }
+            action(PrepareProkJournals)
+            {
+                ApplicationArea = All;
+                Caption = 'PF-02.2B: підготувати журнали (без проведення)';
+                Image = Create;
+                trigger OnAction()
+                var
+                    Preparation: Codeunit "SI Prok Journal Preparation";
+                begin
+                    Preparation.Prepare(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
             action(CheckAccountingProduction)
             {
                 ApplicationArea = All;

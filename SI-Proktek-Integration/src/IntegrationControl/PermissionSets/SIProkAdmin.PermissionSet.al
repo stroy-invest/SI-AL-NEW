@@ -4,6 +4,12 @@ permissionset 57950 "SI PROK ADMIN"
     Caption = 'SI Proktek Integration Admin';
 
     Permissions =
+        tabledata "SI Prok Journal Setup" = RIMD,
+        table "SI Prok Journal Setup" = X,
+        page "SI Prok Journal Setup" = X,
+        tabledata "SI Prok Journal Link" = RIMD,
+        table "SI Prok Journal Link" = X,
+        codeunit "SI Prok Journal Preparation" = X,
         tabledata "SI Prok Connection" = RIMD,
         table "SI Prok Connection" = X,
         tabledata "SI Prok Session" = RIMD,
