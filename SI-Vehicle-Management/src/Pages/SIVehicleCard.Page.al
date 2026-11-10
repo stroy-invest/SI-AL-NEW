@@ -24,10 +24,11 @@ page 63251 "SI Vehicle Card"
                 field("Fixed Asset No."; Rec."Fixed Asset No.") { ApplicationArea = All; }
                 field(Blocked; Rec.Blocked) { ApplicationArea = All; }
             }
-            part(Capacities; "SI Vehicle Capacities")
+            part(ModelCapacities; "SI Vehicle Model Capacities")
             {
                 ApplicationArea = All;
-                SubPageLink = "Vehicle No." = field("No.");
+                SubPageLink = "Brand Code" = field("Brand Code"), "Model Code" = field("Model Code");
+                Editable = false;
             }
         }
     }

@@ -3,6 +3,7 @@ table 63205 "SI Vehicle Model"
     Caption = 'Модель транспорту';
     DataClassification = CustomerContent;
     LookupPageId = "SI Vehicle Models";
+    // Card is the owner of model-level characteristics.
     DrillDownPageId = "SI Vehicle Models";
     fields
     {
@@ -30,10 +31,14 @@ table 63205 "SI Vehicle Model"
     keys { key(PK; "Brand Code", Code) { Clustered = true; } }
     fieldgroups { fieldgroup(DropDown; Code, Name, "Brand Code") { } }
     trigger OnDelete()
-    var Vehicle: Record "SI Vehicle Profile";
+    var Vehicle: Record "SI Vehicle Profile"; ModelCapacity: Record "SI Vehicle Model Capacity";
     begin
         Vehicle.SetRange("Brand Code", "Brand Code");
         Vehicle.SetRange("Model Code", Code);
         if not Vehicle.IsEmpty() then Error('Модель %1 / %2 використовується транспортними засобами.', "Brand Code", Code);
+        ModelCapacity.SetRange("Brand Code", "Brand Code");
+        ModelCapacity.SetRange("Model Code", Code);
+        if not ModelCapacity.IsEmpty() then
+            Error('Спочатку видаліть характеристики моделі %1 / %2.', "Brand Code", Code);
     end;
 }

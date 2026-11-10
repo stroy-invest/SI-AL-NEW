@@ -3,6 +3,15 @@ permissionset 63380 "SI VEHICLE MGT"
     Assignable = true;
     Caption = 'SI Vehicle Management';
     Permissions =
+        page "SI Vehicle Model Tree" = X,
+        page "SI Vehicle Model Char FactBox" = X,
+        page "SI Vehicle Tree New Brand" = X,
+        page "SI Vehicle Tree New Model" = X,
+        codeunit "SI Vehicle Capacity Migration" = X,
+        tabledata "SI Vehicle Model Capacity" = RIMD,
+        table "SI Vehicle Model Capacity" = X,
+        page "SI Vehicle Model Capacities" = X,
+        page "SI Vehicle Model Card" = X,
         tabledata "SI Vehicle Brand" = RIMD,
         tabledata "SI Vehicle Model" = RIMD,
         table "SI Vehicle Brand" = X,

@@ -84,6 +84,7 @@ codeunit 63300 "SI Vehicle Management"
 
     procedure ValidateCapacityTypeDependents(CapacityType: Record "SI Vehicle Capacity Type")
     var Capacity: Record "SI Vehicle Capacity";
+        ModelCapacity: Record "SI Vehicle Model Capacity";
         SemanticMgt: Codeunit "SI UoM Semantic Mgt.";
     begin
         Capacity.SetRange("Capacity Type Code", CapacityType.Code);
@@ -92,5 +93,26 @@ codeunit 63300 "SI Vehicle Management"
                 CapacityType.TestField("Required Semantic Code");
                 SemanticMgt.AssertPhysicalUoM(Capacity."Unit of Measure Code", CapacityType."Required Semantic Code");
             until Capacity.Next() = 0;
+        ModelCapacity.SetRange("Capacity Type Code", CapacityType.Code);
+        if ModelCapacity.FindSet() then
+            repeat
+                CapacityType.TestField("Required Semantic Code");
+                SemanticMgt.AssertPhysicalUoM(ModelCapacity."Unit of Measure Code", CapacityType."Required Semantic Code");
+            until ModelCapacity.Next() = 0;
     end;
+    procedure GetCharacteristicValue(VehicleNo: Code[20]; CapacityTypeCode: Code[20]; var Quantity: Decimal; var UoMCode: Code[10]): Boolean
+    var
+        Vehicle: Record "SI Vehicle Profile";
+        ModelCapacity: Record "SI Vehicle Model Capacity";
+    begin
+        Clear(Quantity);
+        Clear(UoMCode);
+        if not Vehicle.Get(VehicleNo) then exit(false);
+        if (Vehicle."Brand Code" = '') or (Vehicle."Model Code" = '') then exit(false);
+        if not ModelCapacity.Get(Vehicle."Brand Code", Vehicle."Model Code", CapacityTypeCode) then exit(false);
+        Quantity := ModelCapacity.Quantity;
+        UoMCode := ModelCapacity."Unit of Measure Code";
+        exit(true);
+    end;
+
 }
