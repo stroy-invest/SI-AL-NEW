@@ -68,6 +68,16 @@ page 57093 "SI Prok Production Fact Card"
                 field("BC Bound At"; Rec."BC Bound At") { ApplicationArea = All; }
                 field("BC Binding Diagnostics"; Rec."BC Binding Diagnostics") { ApplicationArea = All; MultiLine = true; }
             }
+            group(AccountingReadiness)
+            {
+                Caption = 'PF-02.2A — підготовка обліку (без журналів)';
+                field("Accounting Readiness"; Rec."Accounting Readiness") { ApplicationArea = All; }
+                field("Accounting Prep Mode"; Rec."Accounting Prep Mode") { ApplicationArea = All; }
+                field("Accounting Output Qty"; Rec."Accounting Output Qty") { ApplicationArea = All; }
+                field("Accounting Material Lines"; Rec."Accounting Material Lines") { ApplicationArea = All; }
+                field("Accounting Checked At"; Rec."Accounting Checked At") { ApplicationArea = All; }
+                field("Accounting Diagnostics"; Rec."Accounting Diagnostics") { ApplicationArea = All; MultiLine = true; }
+            }
             group(Additional)
             {
                 Caption = 'Додаткові відомості';
@@ -107,6 +117,34 @@ page 57093 "SI Prok Production Fact Card"
     {
         area(Processing)
         {
+            action(CheckAccountingProduction)
+            {
+                ApplicationArea = All;
+                Caption = 'PF-02.2A: перевірити для реального обліку';
+                Image = Check;
+                trigger OnAction()
+                var
+                    Preparation: Codeunit "SI Prok Accounting Prep Mgt.";
+                begin
+                    Preparation.CheckFact(Rec, Rec."Accounting Prep Mode"::Production);
+                    CurrPage.Update(false);
+                    Message('%1. %2', Rec."Accounting Readiness", Rec."Accounting Diagnostics");
+                end;
+            }
+            action(CheckAccountingSimulation)
+            {
+                ApplicationArea = All;
+                Caption = 'PF-02.2A: перевірити симуляцію Sandbox';
+                Image = TestReport;
+                trigger OnAction()
+                var
+                    Preparation: Codeunit "SI Prok Accounting Prep Mgt.";
+                begin
+                    Preparation.CheckFact(Rec, Rec."Accounting Prep Mode"::Simulation);
+                    CurrPage.Update(false);
+                    Message('%1. %2', Rec."Accounting Readiness", Rec."Accounting Diagnostics");
+                end;
+            }
             action(BindBCProductionOrder)
             {
                 ApplicationArea = All;

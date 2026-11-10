@@ -6,6 +6,7 @@ codeunit 57106 "SI Prok Fact BC Binding Mgt."
         Req: Record "SI Concrete Prod Request";
         Plan: Record "SI Prok Production Plan";
         Order: Record "Production Order";
+        StatusSync: Codeunit "SI Prok Prod Order Status Sync";
         ProdLine: Record "Prod. Order Line";
         OtherLine: Record "Prod. Order Line";
         OtherFact: Record "SI Prok Production Fact";
@@ -40,14 +41,23 @@ codeunit 57106 "SI Prok Fact BC Binding Mgt."
             Block(Fact, 'Production Plan не пов’язаний із замовленням BC.');
             exit;
         end;
-        if (Fact."BC Prod. Order No." <> '') and
-           ((Fact."BC Prod. Order No." <> Plan."BC Prod. Order No.") or
-            (Fact."BC Prod. Order Status" <> Plan."BC Prod. Order Status")) then begin
-            Block(Fact, 'Збережений зв’язок відрізняється від Production Plan. Автоматична заміна заборонена.');
+        if not StatusSync.ResolvePlanOrder(Plan, Order, Issue) then begin
+            Block(Fact, Issue);
             exit;
         end;
-        if not Order.Get(Plan."BC Prod. Order Status", Plan."BC Prod. Order No.") then begin
-            Block(Fact, 'Пов’язане виробниче замовлення BC не знайдено.');
+        if (Fact."BC Prod. Order No." <> '') and
+           (Fact."BC Prod. Order No." <> Order."No.") then begin
+            // A renumbered BC order is accepted only if the standard predecessor field
+            // or our exact transition history proves the link.
+            if not IsVerifiedTransition(Fact, Order) then begin
+                Block(Fact, 'Номер BC Production Order змінився без підтвердженого стандартного переходу.');
+                exit;
+            end;
+        end;
+        if (Fact."BC Prod. Order No." <> '') and
+           (Fact."BC Prod. Order Status" <> Order.Status) and
+           not IsVerifiedTransition(Fact, Order) then begin
+            Block(Fact, 'Неочікувана зміна статусу BC Production Order. Автоматична заміна заборонена.');
             exit;
         end;
         if not (Order.Status in [Order.Status::"Firm Planned", Order.Status::Released]) then begin
@@ -117,6 +127,22 @@ codeunit 57106 "SI Prok Fact BC Binding Mgt."
             Clear(Fact."BC Binding Diagnostics");
         end;
         Fact.Modify(true);
+    end;
+
+    local procedure IsVerifiedTransition(Fact: Record "SI Prok Production Fact"; Order: Record "Production Order"): Boolean
+    var
+        Transition: Record "SI Prok Prod Order Transition";
+    begin
+        if (Fact."BC Prod. Order Status" = Fact."BC Prod. Order Status"::"Firm Planned") and
+           (Order.Status = Order.Status::Released) and
+           (Order."Firm Planned Order No." = Fact."BC Prod. Order No.") then
+            exit(true);
+        Transition.SetRange("Prod. Request Entry No.", Fact."Prod. Request Entry No.");
+        Transition.SetRange("From Status", Fact."BC Prod. Order Status");
+        Transition.SetRange("From Order No.", Fact."BC Prod. Order No.");
+        Transition.SetRange("To Status", Order.Status);
+        Transition.SetRange("To Order No.", Order."No.");
+        exit(not Transition.IsEmpty());
     end;
 
     procedure RevalidateBinding(var Fact: Record "SI Prok Production Fact")

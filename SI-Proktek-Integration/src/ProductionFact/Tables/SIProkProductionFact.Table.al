@@ -71,6 +71,13 @@ table 57091 "SI Prok Production Fact"
         field(323; "BC Binding Status"; Enum "SI Prok BC Binding Status") { Caption = 'Статус зв’язування BC'; Editable = false; }
         field(324; "BC Binding Diagnostics"; Text[2048]) { Caption = 'Діагностика зв’язування BC'; Editable = false; }
         field(325; "BC Bound At"; DateTime) { Caption = 'Час зв’язування BC'; Editable = false; }
+        // PF-02.2A: accounting readiness is independent of BC binding and never posts.
+        field(330; "Accounting Readiness"; Enum "SI Prok Accounting Readiness") { Caption = 'Готовність до обліку'; Editable = false; }
+        field(331; "Accounting Prep Mode"; Enum "SI Prok Accounting Prep Mode") { Caption = 'Режим облікової перевірки'; Editable = false; }
+        field(332; "Accounting Diagnostics"; Text[2048]) { Caption = 'Діагностика облікової перевірки'; Editable = false; }
+        field(333; "Accounting Checked At"; DateTime) { Caption = 'Час облікової перевірки'; Editable = false; }
+        field(334; "Accounting Output Qty"; Decimal) { Caption = 'Підготовлений обсяг, м³'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(335; "Accounting Material Lines"; Integer) { Caption = 'Перевірено матеріалів'; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 

@@ -12,6 +12,8 @@ codeunit 57102 "SI Prok BC Prod Order Mgt."
         Item: Record Item;
         ExistingOrder: Record "Production Order";
         ExistingLine: Record "Prod. Order Line";
+        StatusSync: Codeunit "SI Prok Prod Order Status Sync";
+        SyncIssue: Text;
         OrderDate: Date;
         CompCount: Integer;
     begin
@@ -24,9 +26,9 @@ codeunit 57102 "SI Prok BC Prod Order Mgt."
         Plan.LockTable();
         Plan.Get(ProdRequest."Entry No.");
         if Plan."BC Prod. Order No." <> '' then begin
-            if not ExistingOrder.Get(Plan."BC Prod. Order Status", Plan."BC Prod. Order No.") then
-                Error('Заявка %1 уже пов''язана з BC Production Order %2 (%3), але документ не знайдено. Потрібна ручна перевірка.',
-                    ProdRequest."Entry No.", Plan."BC Prod. Order No.", Plan."BC Prod. Order Status");
+            if not StatusSync.ResolvePlanOrder(Plan, ExistingOrder, SyncIssue) then
+                Error('Заявка %1: BC Production Order %2 не можна синхронізувати. %3',
+                    ProdRequest."Entry No.", Plan."BC Prod. Order No.", SyncIssue);
             ExistingLine.SetRange(Status, Plan."BC Prod. Order Status");
             ExistingLine.SetRange("Prod. Order No.", Plan."BC Prod. Order No.");
             if not ExistingLine.FindFirst() then
