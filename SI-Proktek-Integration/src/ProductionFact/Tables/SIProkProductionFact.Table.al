@@ -64,6 +64,13 @@ table 57091 "SI Prok Production Fact"
         field(296; "Reported Quantity Present"; Boolean) { Caption = 'Обсяг MES передано'; Editable = false; }
         field(310; "Technical Validation"; Enum "SI Prok Technical Validation") { Caption = 'Технічна повнота'; Editable = false; }
         field(311; "Technical Diagnostics"; Text[2048]) { Caption = 'Діагностика технічної перевірки'; Editable = false; }
+        // PF-02.1: local-only binding; not a posting state.
+        field(320; "BC Prod. Order Status"; Enum "Production Order Status") { Caption = 'Статус замовлення BC'; Editable = false; }
+        field(321; "BC Prod. Order No."; Code[20]) { Caption = 'Виробниче замовлення BC'; Editable = false; }
+        field(322; "BC Prod. Order Line No."; Integer) { Caption = 'Рядок замовлення BC'; Editable = false; }
+        field(323; "BC Binding Status"; Enum "SI Prok BC Binding Status") { Caption = 'Статус зв’язування BC'; Editable = false; }
+        field(324; "BC Binding Diagnostics"; Text[2048]) { Caption = 'Діагностика зв’язування BC'; Editable = false; }
+        field(325; "BC Bound At"; DateTime) { Caption = 'Час зв’язування BC'; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 

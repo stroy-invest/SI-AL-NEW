@@ -67,11 +67,16 @@ codeunit 57077 "SI Prok Prod Simulator"
     end;
 
 
-    // PF-01.2: universal Sandbox scenario. Production facts are persisted only
-    // through the standard Raw API Response -> Fact Intake Worker pipeline.
+    // PF-02.1A: one simulated Production Fact per physical truck load.
+    // Only existing, verified Proktek <-> BC Vehicle mappings are accepted.
     procedure RunTruckScenario(Allocation: Record "SI Supply Allocation")
     var
         ProdRequest: Record "SI Concrete Prod Request";
+        Mapping: Record "SI Prok Vehicle Mapping";
+        Vehicle: Record "SI Vehicle Profile";
+        ExistingFact: Record "SI Prok Production Fact";
+        Fact: Record "SI Prok Production Fact";
+        VehicleMgt: Codeunit "SI Vehicle Management";
         ExportMgt: Codeunit "SI Prok Production Export Mgt.";
         Connection: Record "SI Prok Connection";
         ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
@@ -86,167 +91,188 @@ codeunit 57077 "SI Prok Prod Simulator"
         Production: JsonObject;
         ProductionToken: JsonToken;
         ProductionArray: JsonArray;
-        TruckCapacity: array[100] of Decimal;
-        TruckTarget: array[100] of Decimal;
-        TruckCount: Integer;
+        VehicleNos: array[100] of Code[20];
+        MixerIds: array[100] of Integer;
+        MixerUuids: array[100] of Guid;
+        Plates: array[100] of Text[50];
+        Capacities: array[100] of Decimal;
+        FleetCount: Integer;
         TruckNo: Integer;
-        MixNo: Integer;
-        MixCount: Integer;
-        GlobalMixNo: Integer;
-        TargetTotal: Decimal;
-        TargetQty: Decimal;
-        MixQty: Decimal;
+        FleetIndex: Integer;
+        LoadCount: Integer;
+        Capacity: Decimal;
+        UoMCode: Code[10];
+        RemainingQty: Decimal;
+        LoadQty: Decimal;
         ProducedQty: Decimal;
-        RemainingTruckQty: Decimal;
-        RemainingOrderQty: Decimal;
         CreatedCount: Integer;
         ExistingCount: Integer;
         ConflictCount: Integer;
         ErrorCount: Integer;
+        BoundCount: Integer;
         MixUuid: Text;
-        TruckUuid: Text;
         WorkerError: Text;
         ScenarioId: Guid;
+        ProductionGuid: Guid;
     begin
         if not IsSandbox() then
-            Error('Імітація виробництва дозволена виключно в Sandbox.');
+            Error('Симуляція дозволена лише в Sandbox.');
         ValidateAllocation(Allocation, ProdRequest);
         Allocation.TestField(Quantity);
-        if Allocation.Quantity <= 0 then
-            Error('Обсяг виробничого розподілу має бути додатним.');
-        if ProdRequest.Quantity <= 0 then
-            Error('Обсяг виробничої заявки має бути додатним.');
-        if Allocation.Quantity <> ProdRequest.Quantity then
-            Error('PF-01.2: обсяг розподілу (%1) не збігається з обсягом документа виконання (%2). Сценарій часткового розподілу поки не підтримується.',
-                Allocation.Quantity, ProdRequest.Quantity);
+        if (ProdRequest.Quantity <= 0) or (Allocation.Quantity <> ProdRequest.Quantity) then
+            Error('Для симуляції потрібен повний виробничий розподіл із додатним обсягом.');
         if ProdRequest.Quantity < 0.3 then
-            Error('Обсяг %1 м³ менший за мінімальний технологічний заміс 0,3 м³.', ProdRequest.Quantity);
+            Error('Мінімальний обсяг симуляції — 0,3 м³.');
 
-        // Use a simple repeating fleet, not Vehicle Management. The 0.90
-        // coefficient is a simulation target, never a production restriction.
-        while TargetTotal < ProdRequest.Quantity do begin
-            TruckCount += 1;
-            if TruckCount > ArrayLen(TruckCapacity) then
-                Error('Сценарій перевищує 100 умовних завантажень.');
-            case (TruckCount - 1) mod 3 of
-                0:
-                    TruckCapacity[TruckCount] := 8;
-                1:
-                    TruckCapacity[TruckCount] := 10;
-                2:
-                    TruckCapacity[TruckCount] := 12;
-            end;
-            TruckTarget[TruckCount] := TruckCapacity[TruckCount] * 0.9;
-            TargetTotal += TruckTarget[TruckCount];
-        end;
-
-        if not Confirm('PF-01.2: створити тестові виробничі факти для заявки %1 (%2 м³), умовних завантажень: %3? Проведення заборонене.',
-            false, ProdRequest."Source No.", ProdRequest.Quantity, TruckCount) then
-            exit;
+        // Do not silently duplicate test production facts for the same request.
+        ExistingFact.SetRange("Prod. Request Entry No.", ProdRequest."Entry No.");
+        ExistingFact.SetRange(Simulation, true);
+        if not ExistingFact.IsEmpty() then
+            Error('Для виробничої заявки %1 вже існують симульовані факти. Повторний запуск заблоковано.',
+                ProdRequest."Source No.");
 
         ConnectionMgt.GetActive(Connection);
-        ScenarioId := CreateGuid();
-        RemainingOrderQty := ProdRequest.Quantity;
-        for TruckNo := 1 to TruckCount do begin
-            // Proportional balancing prevents an almost-empty last truck.
-            if TruckNo < TruckCount then
-                TargetQty := Round(ProdRequest.Quantity * TruckTarget[TruckNo] / TargetTotal, 0.001, '=')
-            else
-                TargetQty := RemainingOrderQty;
-            RemainingOrderQty -= TargetQty;
-            if TargetQty > TruckCapacity[TruckNo] then
-                Error('Завантаження %1 перевищує місткість автоміксера.', TruckNo);
-
-            MixCount := Round(TargetQty / 2, 1, '>');
-            if (MixCount < 1) or (TargetQty / MixCount < 0.3) then
-                Error('Не вдалося розподілити %1 м³ на технологічно допустимі заміси.', TargetQty);
-            RemainingTruckQty := TargetQty;
-            TruckUuid := Format(CreateGuid(), 0, 4);
-            for MixNo := 1 to MixCount do begin
-                GlobalMixNo += 1;
-                if MixNo < MixCount then
-                    MixQty := Round(RemainingTruckQty / (MixCount - MixNo + 1), 0.001, '=')
-                else
-                    MixQty := RemainingTruckQty;
-                RemainingTruckQty -= MixQty;
-                if (MixQty < 0.3) or (MixQty > 2) then
-                    Error('Заміс %1 має неприпустимий обсяг %2 м³.', GlobalMixNo, MixQty);
-
-                BuildProduction01(ProdRequest, 1, 'PF-01.2', ProductionsText, DetailsText, MaterialsText);
-                Clear(DetailsRoot);
-                if not DetailsRoot.ReadFrom(DetailsText) then
-                    Error('Некоректний JSON ProductionDetails.');
-                if not DetailsRoot.Get('production', ProductionToken) then
-                    Error('ProductionDetails не містить production.');
-                Production := ProductionToken.AsObject();
-                MixUuid := Format(CreateGuid(), 0, 4);
-                Production.Replace('uuid', MixUuid);
-                Production.Replace('kod', 910000 + GlobalMixNo);
-                Production.Replace('metrekup', MixQty);
-                Production.Replace('irsaliye_no', TruckNo);
-                Production.Add('kamyon_uuid', TruckUuid);
-                Production.Add('kamyon_index', StrSubstNo('SIM-%1-%2', CopyStr(Format(ScenarioId, 0, 4), 1, 8), TruckNo));
-                Production.Add('kamyon_plk', StrSubstNo('SIM-%1', TruckNo));
-                AdjustMaterialSlots(Production, MixQty, ProdRequest.Quantity * 0.75, GlobalMixNo);
-                DetailsRoot.Replace('production', Production);
-                DetailsRoot.WriteTo(DetailsText);
-
-                Clear(ProductionRoot);
-                Clear(ProductionArray);
-                ProductionArray.Add(Production);
-                ProductionRoot.Add('responseStatus', true);
-                ProductionRoot.Add('responseMessage', 'PF-01.2');
-                ProductionRoot.Add('productions', ProductionArray);
-                ProductionRoot.Add('totalrecords', 1);
-                ProductionRoot.Add('totalmetercubes', MixQty);
-                ProductionRoot.Add('totalpages', 1);
-                ProductionRoot.Add('perpage', 100);
-                ProductionRoot.Add('page', 1);
-                ProductionRoot.WriteTo(ProductionsText);
-                ExportMgt.ParsePilotRawResponses(ProductionsText, DetailsText, MaterialsText, MixUuid, CanonicalText);
-                MarkCanonicalSimulation(CanonicalText);
-
-                Clear(Archive);
-                Archive.Init();
-                Archive."Connection Code" := Connection.Code;
-                Archive."API Operation" := 'GetProductionDetails';
-                Archive."Production UUID" := CopyStr(MixUuid, 1, MaxStrLen(Archive."Production UUID"));
-                Archive."Capture Mode" := Archive."Capture Mode"::Test;
-                Archive.SetRaw(DetailsText);
-                Archive.Insert(true);
-                Commit();
-
-                Clear(Worker);
-                Worker.SetCanonical(CanonicalText);
-                ClearLastError();
-                if not Worker.Run(Archive) then begin
-                    WorkerError := GetLastErrorText();
-                    Archive.Get(Archive."Entry No.");
-                    Archive."Processing Status" := Archive."Processing Status"::Error;
-                    Archive."Intake Result" := Archive."Intake Result"::Error;
-                    Archive."Error Message" := CopyStr(WorkerError, 1, MaxStrLen(Archive."Error Message"));
-                    Archive.Modify(true);
-                    ErrorCount += 1;
-                end else begin
-                    Archive.Get(Archive."Entry No.");
-                    case Archive."Intake Result" of
-                        Archive."Intake Result"::Imported:
-                            CreatedCount += 1;
-                        Archive."Intake Result"::Existing:
-                            ExistingCount += 1;
-                        Archive."Intake Result"::Conflict:
-                            ConflictCount += 1;
-                        else
-                            ErrorCount += 1;
-                    end;
+        Mapping.SetRange("Connection Code", Connection.Code);
+        Mapping.SetRange("Sync Status", Mapping."Sync Status"::Synced);
+        if Mapping.FindSet() then
+            repeat
+                if (Mapping."External Mixer Code" <> Mapping."Vehicle No.") or
+                   (Mapping."External Mixer ID" <= 0) or
+                   IsNullGuid(Mapping."External Mixer UUID") then
+                    Error('Мапінг міксера %1 неповний або неузгоджений.', Mapping."Vehicle No.");
+                Vehicle.Get(Mapping."Vehicle No.");
+                if not Vehicle.Blocked then begin
+                    if not VehicleMgt.GetCharacteristicValue(Mapping."Vehicle No.", 'DRUM-VOLUME', Capacity, UoMCode) then
+                        Error('Для %1 не задано характеристику DRUM-VOLUME.', Mapping."Vehicle No.");
+                    if (UoMCode <> 'M3') or (Capacity <= 0) then
+                        Error('Для %1 DRUM-VOLUME має бути додатним значенням у M3.', Mapping."Vehicle No.");
+                    FleetCount += 1;
+                    if FleetCount > ArrayLen(VehicleNos) then
+                        Error('Симулятор підтримує не більше 100 міксерів.');
+                    VehicleNos[FleetCount] := Mapping."Vehicle No.";
+                    MixerIds[FleetCount] := Mapping."External Mixer ID";
+                    MixerUuids[FleetCount] := Mapping."External Mixer UUID";
+                    Plates[FleetCount] := CopyStr(Vehicle."Registration No.", 1, MaxStrLen(Plates[FleetCount]));
+                    Capacities[FleetCount] := Capacity;
                 end;
-                Commit();
-                ProducedQty += MixQty;
-            end;
+            until Mapping.Next() = 0;
+        if FleetCount = 0 then
+            Error('Немає активних міксерів із підтвердженим SI Prok Vehicle Mapping для %1.', Connection.Code);
+
+        // Capacity-limited round robin. No synthetic 8/10/12 m³ trucks.
+        RemainingQty := ProdRequest.Quantity;
+        FleetIndex := 1;
+        while RemainingQty > 0 do begin
+            LoadQty := Capacities[FleetIndex];
+            if LoadQty > RemainingQty then
+                LoadQty := RemainingQty;
+            if LoadQty < 0.3 then
+                Error('Залишок %1 м³ менший за мінімальний технологічний обсяг.', LoadQty);
+            LoadCount += 1;
+            if LoadCount > 100 then
+                Error('Сценарій перевищує 100 завантажень.');
+            RemainingQty -= LoadQty;
+            FleetIndex += 1;
+            if FleetIndex > FleetCount then
+                FleetIndex := 1;
         end;
-        Message('PF-01.2: заявка %1, %2 замісів, %3 завантажень, %4 м³. Imported: %5, Existing: %6, Conflict: %7, Error: %8.',
-            ProdRequest."Source No.", GlobalMixNo, TruckCount, ProducedQty,
-            CreatedCount, ExistingCount, ConflictCount, ErrorCount);
+
+        if not Confirm('PF-02.1A: створити %1 симульованих завантажень для %2 (%3 м³) на реальних міксерах? Без проведення.',
+            false, LoadCount, ProdRequest."Source No.", ProdRequest.Quantity) then
+            exit;
+
+        ScenarioId := CreateGuid();
+        RemainingQty := ProdRequest.Quantity;
+        for TruckNo := 1 to LoadCount do begin
+            FleetIndex := ((TruckNo - 1) mod FleetCount) + 1;
+            LoadQty := Capacities[FleetIndex];
+            if LoadQty > RemainingQty then
+                LoadQty := RemainingQty;
+            RemainingQty -= LoadQty;
+
+            BuildProduction01(ProdRequest, 1, 'PF-02.1A', ProductionsText, DetailsText, MaterialsText);
+            Clear(DetailsRoot);
+            if not DetailsRoot.ReadFrom(DetailsText) then
+                Error('Некоректний JSON ProductionDetails.');
+            if not DetailsRoot.Get('production', ProductionToken) then
+                Error('ProductionDetails не містить production.');
+            Production := ProductionToken.AsObject();
+            MixUuid := Format(CreateGuid(), 0, 4);
+            Production.Replace('uuid', MixUuid);
+            Production.Replace('kod', 910000 + TruckNo);
+            Production.Replace('metrekup', LoadQty);
+            Production.Replace('irsaliye_no', TruckNo);
+            Production.Add('kamyon_uuid', Format(MixerUuids[FleetIndex], 0, 4));
+            Production.Add('kamyon_index', Format(VehicleNos[FleetIndex]));
+            Production.Add('kamyon_plk', Plates[FleetIndex]);
+            AdjustMaterialSlots(Production, LoadQty, ProdRequest.Quantity * 0.75, TruckNo);
+            DetailsRoot.Replace('production', Production);
+            DetailsRoot.WriteTo(DetailsText);
+
+            Clear(ProductionRoot);
+            Clear(ProductionArray);
+            ProductionArray.Add(Production);
+            ProductionRoot.Add('responseStatus', true);
+            ProductionRoot.Add('responseMessage', 'PF-02.1A simulation');
+            ProductionRoot.Add('productions', ProductionArray);
+            ProductionRoot.Add('totalrecords', 1);
+            ProductionRoot.Add('totalmetercubes', LoadQty);
+            ProductionRoot.Add('totalpages', 1);
+            ProductionRoot.Add('perpage', 100);
+            ProductionRoot.Add('page', 1);
+            ProductionRoot.WriteTo(ProductionsText);
+            ExportMgt.ParsePilotRawResponses(ProductionsText, DetailsText, MaterialsText, MixUuid, CanonicalText);
+            MarkCanonicalSimulation(CanonicalText);
+
+            Clear(Archive);
+            Archive.Init();
+            Archive."Connection Code" := Connection.Code;
+            Archive."API Operation" := 'GetProductionDetails';
+            Archive."Production UUID" := CopyStr(MixUuid, 1, MaxStrLen(Archive."Production UUID"));
+            Archive."Capture Mode" := Archive."Capture Mode"::Test;
+            Archive.SetRaw(DetailsText);
+            Archive.Insert(true);
+            Commit();
+
+            Clear(Worker);
+            Worker.SetCanonical(CanonicalText);
+            ClearLastError();
+            if not Worker.Run(Archive) then begin
+                WorkerError := GetLastErrorText();
+                Archive.Get(Archive."Entry No.");
+                Archive."Processing Status" := Archive."Processing Status"::Error;
+                Archive."Intake Result" := Archive."Intake Result"::Error;
+                Archive."Error Message" := CopyStr(WorkerError, 1, MaxStrLen(Archive."Error Message"));
+                Archive.Modify(true);
+                ErrorCount += 1;
+            end else begin
+                Archive.Get(Archive."Entry No.");
+                case Archive."Intake Result" of
+                    Archive."Intake Result"::Imported: begin
+                        CreatedCount += 1;
+                        Evaluate(ProductionGuid, MixUuid);
+                        Fact.SetRange("Production UUID", ProductionGuid);
+                        if Fact.FindFirst() then begin
+                            // The common Fact Intake Worker already performed binding.
+                            // Read the persisted result; do not invoke binding twice.
+                            if Fact."BC Binding Status" in [Fact."BC Binding Status"::Bound, Fact."BC Binding Status"::Warning] then
+                                BoundCount += 1;
+                        end;
+                    end;
+                    Archive."Intake Result"::Existing:
+                        ExistingCount += 1;
+                    Archive."Intake Result"::Conflict:
+                        ConflictCount += 1;
+                    else
+                        ErrorCount += 1;
+                end;
+            end;
+            Commit();
+            ProducedQty += LoadQty;
+        end;
+        Message('PF-02.1A: %1, завантажень %2, обсяг %3 м³. Imported %4, Bound/Warning %5, Existing %6, Conflict %7, Error %8. Проведень немає.',
+            ProdRequest."Source No.", LoadCount, ProducedQty,
+            CreatedCount, BoundCount, ExistingCount, ConflictCount, ErrorCount);
     end;
 
     local procedure AdjustMaterialSlots(var Production: JsonObject; MixQty: Decimal; BaseQty: Decimal; MixNumber: Integer)

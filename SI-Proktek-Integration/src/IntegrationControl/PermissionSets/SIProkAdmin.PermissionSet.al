@@ -64,6 +64,7 @@ permissionset 57950 "SI PROK ADMIN"
         page "SI Prok Prod Sim Result" = X,
         codeunit "SI Prok Order Sync" = X,
         codeunit "SI Prok BC Prod Order Mgt." = X,
+        codeunit "SI Prok Fact BC Binding Mgt." = X,
         tabledata "SI Prok Production Plan" = RIMD,
         tabledata "SI Prok Production Plan Line" = RIMD,
         table "SI Prok Production Plan" = X,

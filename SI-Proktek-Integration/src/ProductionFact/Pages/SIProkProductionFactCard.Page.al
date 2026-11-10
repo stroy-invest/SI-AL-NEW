@@ -58,6 +58,16 @@ page 57093 "SI Prok Production Fact Card"
                 Caption = 'Діагностика технічної перевірки';
                 SubPageLink = "Production Fact Entry No." = field("Entry No.");
             }
+            group(BCProductionBinding)
+            {
+                Caption = 'Зв’язок із виробничим замовленням BC';
+                field("BC Binding Status"; Rec."BC Binding Status") { ApplicationArea = All; }
+                field("BC Prod. Order No."; Rec."BC Prod. Order No.") { ApplicationArea = All; }
+                field("BC Prod. Order Status"; Rec."BC Prod. Order Status") { ApplicationArea = All; }
+                field("BC Prod. Order Line No."; Rec."BC Prod. Order Line No.") { ApplicationArea = All; }
+                field("BC Bound At"; Rec."BC Bound At") { ApplicationArea = All; }
+                field("BC Binding Diagnostics"; Rec."BC Binding Diagnostics") { ApplicationArea = All; MultiLine = true; }
+            }
             group(Additional)
             {
                 Caption = 'Додаткові відомості';
@@ -97,6 +107,39 @@ page 57093 "SI Prok Production Fact Card"
     {
         area(Processing)
         {
+            action(BindBCProductionOrder)
+            {
+                ApplicationArea = All;
+                Caption = 'Зв’язати з виробничим замовленням BC';
+                Image = Link;
+                trigger OnAction()
+                var
+                    Binding: Codeunit "SI Prok Fact BC Binding Mgt.";
+                begin
+                    Binding.BindFact(Rec);
+                    CurrPage.Update(false);
+                    Message('Статус зв’язування: %1. %2', Rec."BC Binding Status", Rec."BC Binding Diagnostics");
+                end;
+            }
+            action(OpenBCProductionOrder)
+            {
+                ApplicationArea = All;
+                Caption = 'Відкрити виробниче замовлення BC';
+                Image = View;
+                trigger OnAction()
+                var
+                    ProdOrder: Record "Production Order";
+                begin
+                    Rec.TestField("BC Prod. Order No.");
+                    if not ProdOrder.Get(Rec."BC Prod. Order Status", Rec."BC Prod. Order No.") then
+                        Error('Виробниче замовлення BC %1 не знайдено.', Rec."BC Prod. Order No.");
+                    case ProdOrder.Status of
+                        ProdOrder.Status::"Firm Planned": Page.Run(Page::"Firm Planned Prod. Order", ProdOrder);
+                        ProdOrder.Status::Released: Page.Run(Page::"Released Production Order", ProdOrder);
+                        else Error('Статус замовлення BC не підтримується.');
+                    end;
+                end;
+            }
             action(EnrichAndRevalidate)
             {
                 ApplicationArea = All;
