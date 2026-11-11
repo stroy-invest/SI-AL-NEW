@@ -4,6 +4,14 @@ permissionset 57950 "SI PROK ADMIN"
     Caption = 'SI Proktek Integration Admin';
 
     Permissions =
+        tabledata "SI Prok Driver Mapping" = RIMD,
+        table "SI Prok Driver Mapping" = X,
+        page "SI Prok Driver Mappings" = X,
+        tabledata "SI Prok Shipment" = RIMD,
+        table "SI Prok Shipment" = X,
+        page "SI Prok Shipment Card" = X,
+        page "SI Prok Shipments" = X,
+        codeunit "SI Prok Shipment Mgt." = X,
         tabledata "SI Prok Journal Setup" = RIMD,
         table "SI Prok Journal Setup" = X,
         page "SI Prok Journal Setup" = X,

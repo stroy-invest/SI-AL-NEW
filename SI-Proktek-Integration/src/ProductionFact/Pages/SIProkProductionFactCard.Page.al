@@ -117,6 +117,22 @@ page 57093 "SI Prok Production Fact Card"
     {
         area(Processing)
         {
+            action(OpenShipment)
+            {
+                Caption = 'Документ відвантаження';
+                ApplicationArea = All;
+                Image = Shipment;
+                trigger OnAction()
+                var
+                    Shipment: Record "SI Prok Shipment";
+                begin
+                    Shipment.SetRange("Production UUID", Rec."Production UUID");
+                    if not Shipment.FindFirst() then
+                        Error('Для цього факту документ відвантаження ще не створено.');
+                    Page.Run(Page::"SI Prok Shipment Card", Shipment);
+                end;
+            }
+
             action(OpenProkJournalSetup)
             {
                 ApplicationArea = All;

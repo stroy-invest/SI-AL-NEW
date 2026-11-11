@@ -7,6 +7,7 @@ codeunit 57103 "SI Prok Fact Intake Worker"
         Fact: Record "SI Prok Production Fact";
         FactMgt: Codeunit "SI Prok Prod Fact Mgt.";
         Binding: Codeunit "SI Prok Fact BC Binding Mgt.";
+        ShipmentMgt: Codeunit "SI Prok Shipment Mgt.";
         Reason: Text;
     begin
         // Run's Boolean return gives this detail its own rollback boundary.
@@ -26,8 +27,10 @@ codeunit 57103 "SI Prok Fact Intake Worker"
         Rec.Modify(true);
         // PF-02.1C: shared automatic binding for all newly imported facts.
         // Existing/conflicting captures are not rebound implicitly.
-        if Rec."Intake Result" = Rec."Intake Result"::Imported then
+        if Rec."Intake Result" = Rec."Intake Result"::Imported then begin
             Binding.BindFact(Fact);
+            ShipmentMgt.TryCreateForFact(Fact."Entry No.");
+        end;
     end;
 
     procedure SetCanonical(Value: Text)

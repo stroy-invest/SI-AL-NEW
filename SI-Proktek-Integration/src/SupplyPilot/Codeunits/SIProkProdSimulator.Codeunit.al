@@ -73,6 +73,8 @@ codeunit 57077 "SI Prok Prod Simulator"
     var
         ProdRequest: Record "SI Concrete Prod Request";
         Mapping: Record "SI Prok Vehicle Mapping";
+        DriverMapping: Record "SI Prok Driver Mapping";
+        DriverEmployee: Record Employee;
         Vehicle: Record "SI Vehicle Profile";
         ExistingFact: Record "SI Prok Production Fact";
         Fact: Record "SI Prok Production Fact";
@@ -96,6 +98,10 @@ codeunit 57077 "SI Prok Prod Simulator"
         MixerUuids: array[100] of Guid;
         Plates: array[100] of Text[50];
         Capacities: array[100] of Decimal;
+        DriverUuids: array[100] of Guid;
+        DriverNames: array[100] of Text[100];
+        DriverCount: Integer;
+        DriverIndex: Integer;
         FleetCount: Integer;
         TruckNo: Integer;
         FleetIndex: Integer;
@@ -159,6 +165,22 @@ codeunit 57077 "SI Prok Prod Simulator"
         if FleetCount = 0 then
             Error('Немає активних міксерів із підтвердженим SI Prok Vehicle Mapping для %1.', Connection.Code);
 
+        // Only explicit UUID -> Employee mapping; no fragile name matching.
+        DriverMapping.SetRange("Connection Code", Connection.Code);
+        if DriverMapping.FindSet() then
+            repeat
+                if not IsNullGuid(DriverMapping."Driver UUID") and
+                   DriverEmployee.Get(DriverMapping."Employee No.") then begin
+                    DriverCount += 1;
+                    if DriverCount > ArrayLen(DriverUuids) then
+                        Error('Симулятор підтримує не більше 100 водіїв.');
+                    DriverUuids[DriverCount] := DriverMapping."Driver UUID";
+                    DriverNames[DriverCount] := CopyStr(DriverEmployee.FullName(), 1, MaxStrLen(DriverNames[DriverCount]));
+                end;
+            until DriverMapping.Next() = 0;
+        if DriverCount = 0 then
+            Error('Для профілю %1 немає зіставлених водіїв. Заповніть «Зіставлення водіїв Proktek».', Connection.Code);
+
         // Capacity-limited round robin. No synthetic 8/10/12 m³ trucks.
         RemainingQty := ProdRequest.Quantity;
         FleetIndex := 1;
@@ -205,6 +227,9 @@ codeunit 57077 "SI Prok Prod Simulator"
             Production.Add('kamyon_uuid', Format(MixerUuids[FleetIndex], 0, 4));
             Production.Add('kamyon_index', Format(VehicleNos[FleetIndex]));
             Production.Add('kamyon_plk', Plates[FleetIndex]);
+            DriverIndex := ((TruckNo - 1) mod DriverCount) + 1;
+            Production.Add('surucu_uuid', Format(DriverUuids[DriverIndex], 0, 4));
+            Production.Add('surucu_ad', DriverNames[DriverIndex]);
             AdjustMaterialSlots(Production, LoadQty, ProdRequest.Quantity * 0.75, TruckNo);
             DetailsRoot.Replace('production', Production);
             DetailsRoot.WriteTo(DetailsText);
