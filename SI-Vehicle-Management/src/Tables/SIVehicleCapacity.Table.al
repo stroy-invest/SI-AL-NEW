@@ -29,6 +29,21 @@ table 63203 "SI Vehicle Capacity"
                 if Quantity <= 0 then Error('Значення характеристики має бути більшим за нуль.');
             end;
         }
+        field(5; "Nominal Quantity"; Decimal)
+        {
+            Caption = 'Номінальне значення';
+            DecimalPlaces = 0 : 5;
+            Editable = false;
+        }
+        field(6; "Actual Quantity"; Decimal)
+        {
+            Caption = 'Реальне значення';
+            DecimalPlaces = 0 : 5;
+            trigger OnValidate()
+            begin
+                ValidateActualQuantity();
+            end;
+        }
         field(4; "Unit of Measure Code"; Code[10])
         {
             Caption = 'Одиниця вимірювання';
@@ -47,12 +62,24 @@ table 63203 "SI Vehicle Capacity"
         TestField("Unit of Measure Code");
         if Quantity <= 0 then Error('Значення характеристики має бути більшим за нуль.');
         ValidateCapacity();
+        ValidateActualQuantity();
     end;
     trigger OnModify()
     begin
         TestField("Unit of Measure Code");
         if Quantity <= 0 then Error('Значення характеристики має бути більшим за нуль.');
         ValidateCapacity();
+        ValidateActualQuantity();
+    end;
+    local procedure ValidateActualQuantity()
+    begin
+        if "Nominal Quantity" <= 0 then
+            Error('Спочатку визначте номінальне значення характеристики ТЗ.');
+        if "Actual Quantity" <= 0 then
+            Error('Реальне значення має бути більшим за нуль.');
+        if "Actual Quantity" > "Nominal Quantity" then
+            Error('Реальне значення %1 не може перевищувати номінальне %2.',
+                "Actual Quantity", "Nominal Quantity");
     end;
     local procedure ValidateCapacity()
     var

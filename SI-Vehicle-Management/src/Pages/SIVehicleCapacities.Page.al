@@ -7,7 +7,8 @@ page 63254 "SI Vehicle Capacities"
     DelayedInsert = true;
     layout { area(Content) { repeater(Capacities) {
         field("Capacity Type Code"; Rec."Capacity Type Code") { ApplicationArea = All; }
-        field(Quantity; Rec.Quantity) { ApplicationArea = All; }
+        field("Nominal Quantity"; Rec."Nominal Quantity") { ApplicationArea = All; Editable = false; }
+        field("Actual Quantity"; Rec."Actual Quantity") { ApplicationArea = All; }
         field("Unit of Measure Code"; Rec."Unit of Measure Code") { ApplicationArea = All; }
     } } }
 }

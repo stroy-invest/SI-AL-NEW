@@ -2,7 +2,7 @@
   "id": "bca54530-bd7f-45ec-b290-81531873ad33",
   "name": "SI Supply Request Engine",
   "publisher": "STROYINVEST",
-  "version": "1.0.0.56",
+  "version": "1.0.0.57",
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
   "idRanges": [
@@ -41,6 +41,12 @@
       "name": "SI Business Partner",
       "publisher": "STROYINVEST",
       "version": "1.1.2.28"
+    },
+    {
+      "id": "23461143-2512-4e6f-9d8c-39ad62f17407",
+      "name": "SI Geo Service",
+      "publisher": "STROYINVEST",
+      "version": "1.0.0.8"
     }
   ],
   "resourceExposurePolicy": {

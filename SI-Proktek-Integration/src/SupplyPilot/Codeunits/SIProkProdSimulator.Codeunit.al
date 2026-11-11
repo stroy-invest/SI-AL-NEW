@@ -148,7 +148,7 @@ codeunit 57077 "SI Prok Prod Simulator"
                     Error('Мапінг міксера %1 неповний або неузгоджений.', Mapping."Vehicle No.");
                 Vehicle.Get(Mapping."Vehicle No.");
                 if not Vehicle.Blocked then begin
-                    if not VehicleMgt.GetCharacteristicValue(Mapping."Vehicle No.", 'DRUM-VOLUME', Capacity, UoMCode) then
+                    if not VehicleMgt.GetActualCharacteristicValue(Mapping."Vehicle No.", 'DRUM-VOLUME', Capacity, UoMCode) then
                         Error('Для %1 не задано характеристику DRUM-VOLUME.', Mapping."Vehicle No.");
                     if (UoMCode <> 'M3') or (Capacity <= 0) then
                         Error('Для %1 DRUM-VOLUME має бути додатним значенням у M3.', Mapping."Vehicle No.");

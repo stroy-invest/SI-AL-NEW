@@ -27,6 +27,7 @@ table 61001 "SI Supply Req Header"
             begin
                 if "Project No." = '' then begin
                     "Project Location Code" := '';
+                    "Destination Point Code" := '';
                     RequestSiteMgt.ClearSites("No.");
                     exit;
                 end;
@@ -34,6 +35,8 @@ table 61001 "SI Supply Req Header"
                 Project.Get("Project No.");
                 Project.TestField("Location Code");
                 "Project Location Code" := Project."Location Code";
+                "Destination Point Code" := '';
+                InitDestinationPoint();
 
                 // If the header already exists, materialize site context immediately.
                 // For programmatic creation that validates Project before Insert,
@@ -154,6 +157,44 @@ table 61001 "SI Supply Req Header"
             Caption = 'Заявка Schrift';
             DataClassification = CustomerContent;
         }
+        // SR-GEO-02A: internal supply only; do not introduce Customer/Ship-to here.
+        field(210; "Departure Location Code"; Code[10])
+        {
+            Caption = 'Склад відправлення';
+            TableRelation = Location.Code;
+            trigger OnValidate()
+            var
+                GeoMgt: Codeunit "SI Supply Geo Mgt";
+            begin
+                GeoMgt.CheckDepartureLocation("Departure Location Code");
+                if "Departure Location Code" <> xRec."Departure Location Code" then begin
+                    "Departure Point Code" := '';
+                    GeoMgt.DefaultPoint("Departure Location Code", "Departure Point Code");
+                end;
+            end;
+        }
+        field(211; "Departure Point Code"; Code[20])
+        {
+            Caption = 'Точка відправлення';
+            TableRelation = "SI Geo Location Point"."Point Code" where("Location Code" = field("Departure Location Code"), Active = const(true));
+            trigger OnValidate()
+            var
+                GeoMgt: Codeunit "SI Supply Geo Mgt";
+            begin
+                GeoMgt.CheckPoint("Departure Location Code", "Departure Point Code", true);
+            end;
+        }
+        field(212; "Destination Point Code"; Code[20])
+        {
+            Caption = 'Точка розвантаження';
+            TableRelation = "SI Geo Location Point"."Point Code" where("Location Code" = field("Project Location Code"), Active = const(true));
+            trigger OnValidate()
+            var
+                GeoMgt: Codeunit "SI Supply Geo Mgt";
+            begin
+                GeoMgt.CheckPoint("Project Location Code", "Destination Point Code", false);
+            end;
+        }
     }
 
     keys
@@ -163,6 +204,13 @@ table 61001 "SI Supply Req Header"
         key(RequiredDate; "Required on Site At") { }
         key(ExternalDocument; "External System Code", "External Document ID") { }
     }
+
+    local procedure InitDestinationPoint()
+    var
+        GeoMgt: Codeunit "SI Supply Geo Mgt";
+    begin
+        GeoMgt.DefaultPoint("Project Location Code", "Destination Point Code");
+    end;
 
     trigger OnInsert()
     var

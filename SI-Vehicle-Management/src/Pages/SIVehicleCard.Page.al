@@ -24,6 +24,11 @@ page 63251 "SI Vehicle Card"
                 field("Fixed Asset No."; Rec."Fixed Asset No.") { ApplicationArea = All; }
                 field(Blocked; Rec.Blocked) { ApplicationArea = All; }
             }
+            part(VehicleCapacities; "SI Vehicle Capacities")
+            {
+                ApplicationArea = All;
+                SubPageLink = "Vehicle No." = field("No.");
+            }
             part(ModelCapacities; "SI Vehicle Model Capacities")
             {
                 ApplicationArea = All;
@@ -36,6 +41,19 @@ page 63251 "SI Vehicle Card"
     {
         area(Processing)
         {
+            action(SyncActualCapacities)
+            {
+                Caption = 'Оновити характеристики з моделі';
+                ApplicationArea = All;
+                Image = Refresh;
+                trigger OnAction()
+                var Mgt: Codeunit "SI Vehicle Management";
+                begin
+                    CurrPage.SaveRecord();
+                    Mgt.SyncVehicleActualCapacities(Rec."No.");
+                    CurrPage.Update(false);
+                end;
+            }
             action(CheckOperationalUse)
             {
                 Caption = 'Перевірити готовність до використання';

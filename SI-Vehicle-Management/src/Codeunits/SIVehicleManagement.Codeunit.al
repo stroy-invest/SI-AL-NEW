@@ -141,4 +141,73 @@ codeunit 63300 "SI Vehicle Management"
 
         exit(true);
     end;
+    // Synchronizes model characteristics to a specific vehicle. Existing actual
+    // values are retained unless the nominal limit was reduced below them.
+    procedure SyncVehicleActualCapacities(VehicleNo: Code[20])
+    var
+        Vehicle: Record "SI Vehicle Profile";
+        ModelCapacity: Record "SI Vehicle Model Capacity";
+        Capacity: Record "SI Vehicle Capacity";
+        UoMMgt: Codeunit "SI UoM Mgt.";
+        ActualInModelUoM: Decimal;
+    begin
+        Vehicle.Get(VehicleNo);
+        Vehicle.TestField("Brand Code");
+        Vehicle.TestField("Model Code");
+        ModelCapacity.SetRange("Brand Code", Vehicle."Brand Code");
+        ModelCapacity.SetRange("Model Code", Vehicle."Model Code");
+        if ModelCapacity.FindSet() then
+            repeat
+                if Capacity.Get(VehicleNo, ModelCapacity."Capacity Type Code") then begin
+                    if (Capacity."Unit of Measure Code" <> ModelCapacity."Unit of Measure Code") and
+                       (Capacity."Unit of Measure Code" <> '') then begin
+                        if not UoMMgt.AreConvertible(Capacity."Unit of Measure Code", ModelCapacity."Unit of Measure Code") then
+                            Error('Несумісні одиниці вимірювання для ТЗ %1, характеристики %2.', VehicleNo, ModelCapacity."Capacity Type Code");
+                        ActualInModelUoM := UoMMgt.ConvertQuantity(
+                            Capacity."Actual Quantity", Capacity."Unit of Measure Code", ModelCapacity."Unit of Measure Code");
+                    end else
+                        ActualInModelUoM := Capacity."Actual Quantity";
+                    // Legacy rows without Actual Quantity receive the nominal value.
+                    if Capacity."Actual Quantity" = 0 then
+                        ActualInModelUoM := ModelCapacity.Quantity;
+                    if ActualInModelUoM > ModelCapacity.Quantity then
+                        Error('Реальне значення ТЗ %1 (%2) перевищує нове номінальне (%3). Спочатку скоригуйте характеристику.',
+                            VehicleNo, ActualInModelUoM, ModelCapacity.Quantity);
+                    Capacity.Validate("Unit of Measure Code", ModelCapacity."Unit of Measure Code");
+                    Capacity.Validate(Quantity, ModelCapacity.Quantity);
+                    Capacity."Nominal Quantity" := ModelCapacity.Quantity;
+                    Capacity.Validate("Actual Quantity", ActualInModelUoM);
+                    Capacity.Modify(true);
+                end else begin
+                    Capacity.Init();
+                    Capacity.Validate("Vehicle No.", VehicleNo);
+                    Capacity.Validate("Capacity Type Code", ModelCapacity."Capacity Type Code");
+                    Capacity.Validate("Unit of Measure Code", ModelCapacity."Unit of Measure Code");
+                    Capacity.Validate(Quantity, ModelCapacity.Quantity);
+                    Capacity."Nominal Quantity" := ModelCapacity.Quantity;
+                    Capacity.Validate("Actual Quantity", ModelCapacity.Quantity);
+                    Capacity.Insert(true);
+                end;
+            until ModelCapacity.Next() = 0;
+    end;
+
+    procedure GetActualCharacteristicValue(
+        VehicleNo: Code[20]; CapacityTypeCode: Code[20];
+        var ActualQuantity: Decimal; var UoMCode: Code[10]): Boolean
+    var
+        Capacity: Record "SI Vehicle Capacity";
+    begin
+        Clear(ActualQuantity);
+        Clear(UoMCode);
+        if not Capacity.Get(VehicleNo, CapacityTypeCode) then
+            exit(false);
+        if (Capacity."Actual Quantity" <= 0) or
+           (Capacity."Nominal Quantity" <= 0) or
+           (Capacity."Actual Quantity" > Capacity."Nominal Quantity") then
+            Error('Некоректна реальна характеристика %1 для ТЗ %2.', CapacityTypeCode, VehicleNo);
+        ActualQuantity := Capacity."Actual Quantity";
+        UoMCode := Capacity."Unit of Measure Code";
+        exit(true);
+    end;
+
 }

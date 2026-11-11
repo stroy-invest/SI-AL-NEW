@@ -43,6 +43,9 @@ codeunit 61065 "SI Supply Req Clone Mgt"
         NewHeader."Request Profile" := SourceHeader."Request Profile";
         NewHeader."Project No." := SourceHeader."Project No.";
         NewHeader."Project Location Code" := SourceHeader."Project Location Code";
+        NewHeader."Departure Location Code" := SourceHeader."Departure Location Code";
+        NewHeader."Departure Point Code" := SourceHeader."Departure Point Code";
+        NewHeader."Destination Point Code" := SourceHeader."Destination Point Code";
         NewHeader."Required on Site At" := NewRequiredAt;
         NewHeader.Description := SourceHeader.Description;
         NewHeader."Cloned From Request No." := SourceHeader."No.";

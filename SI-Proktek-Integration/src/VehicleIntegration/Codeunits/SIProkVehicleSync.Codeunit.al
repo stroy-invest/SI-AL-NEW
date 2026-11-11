@@ -406,15 +406,15 @@ codeunit 57112 "SI Prok Vehicle Sync"
     end;
 
 
-    // PF-01.3A.5: resolve model-level characteristic via Vehicle Management.
+    // VM-01: resolve validated actual vehicle characteristic via Vehicle Management.
     local procedure ResolveDrumVolumeM3(VehicleNo: Code[20]): Decimal
     var
         VehicleMgt: Codeunit "SI Vehicle Management";
         Quantity: Decimal;
         UoMCode: Code[10];
     begin
-        if not VehicleMgt.GetCharacteristicValue(VehicleNo, 'DRUM-VOLUME', Quantity, UoMCode) then
-            Error('Для ТЗ %1 не задано DRUM-VOLUME у характеристиках моделі.', VehicleNo);
+        if not VehicleMgt.GetActualCharacteristicValue(VehicleNo, 'DRUM-VOLUME', Quantity, UoMCode) then
+            Error('Для ТЗ %1 не задано реальне DRUM-VOLUME у характеристиках ТЗ.', VehicleNo);
         if UoMCode <> 'M3' then
             Error('Для ТЗ %1 одиниця DRUM-VOLUME = %2; очікується M3. Синхронізацію зупинено.', VehicleNo, UoMCode);
         if Quantity <= 0 then

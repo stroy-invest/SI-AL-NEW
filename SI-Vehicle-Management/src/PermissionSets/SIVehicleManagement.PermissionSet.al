@@ -8,6 +8,8 @@ permissionset 63380 "SI VEHICLE MGT"
         page "SI Vehicle Tree New Brand" = X,
         page "SI Vehicle Tree New Model" = X,
         codeunit "SI Vehicle Capacity Migration" = X,
+        codeunit "SI Vehicle Actual Capacity Upg" = X,
+        codeunit "SI Veh Actual Cap Events" = X,
         tabledata "SI Vehicle Model Capacity" = RIMD,
         table "SI Vehicle Model Capacity" = X,
         page "SI Vehicle Model Capacities" = X,
