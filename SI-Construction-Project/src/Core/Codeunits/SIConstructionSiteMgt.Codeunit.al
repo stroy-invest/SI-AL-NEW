@@ -12,6 +12,7 @@ codeunit 60003 "SI Construction Site Mgt."
         if FindDefaultSite(Project."No.", Site) then begin
             if Site.Status <> Site.Status::Active then
                 Error('Основний будівельний майданчик %1 проєкту %2 не є активним.', Site."Site Code", Project."No.");
+            EnsureSiteShipTo(Site);
             exit;
         end;
 
@@ -23,6 +24,7 @@ codeunit 60003 "SI Construction Site Mgt."
         Site.Status := Site.Status::Active;
         Site."Default" := true;
         Site.Insert(true);
+        EnsureSiteShipTo(Site);
     end;
 
     procedure CreateSite(ProjectNo: Code[20]; SiteName: Text[100]; SiteDescription: Text[250]; var CreatedSite: Record "SI Construction Site")
@@ -49,12 +51,86 @@ codeunit 60003 "SI Construction Site Mgt."
         NewSite."Default" := false;
         NewSite.Status := NewSite.Status::Active;
         NewSite.Insert(true);
+        EnsureSiteShipTo(NewSite);
 
         // Never return an in-memory buffer that was used for INSERT. Re-read the
         // persisted entity explicitly by the complete composite primary key.
         Clear(CreatedSite);
         if not CreatedSite.Get(ProjectNo, NewSiteCode) then
             Error('Створений будівельний майданчик %1 проєкту %2 не знайдено.', NewSiteCode, ProjectNo);
+    end;
+
+    procedure EnsureSiteShipTo(var Site: Record "SI Construction Site")
+    var
+        Project: Record Job;
+        InternalCustomer: Record Customer;
+        InternalCustomerMgt: Codeunit "SI Internal Customer Mgt.";
+        ShipTo: Record "Ship-to Address";
+        Candidate: Code[10];
+        SequenceNo: Integer;
+    begin
+        Project.Get(Site."Project No.");
+        InternalCustomerMgt.ValidateInternalSICustomer(Project, InternalCustomer);
+
+        if Site."Ship-to Code" <> '' then begin
+            if not ShipTo.Get(InternalCustomer."No.", Site."Ship-to Code") then
+                Error('Адресу доставки %1 майданчика %2 не знайдено.', Site."Ship-to Code", Site."Site Code");
+            exit;
+        end;
+
+        // Use a generated 10-character key, independent of Site Code[20].
+        // Do not reuse any Ship-to record, including one created outside this module.
+        for SequenceNo := 1 to 9999 do begin
+            Candidate := CopyStr(StrSubstNo('SITE-%1', PadNumber(SequenceNo, 4)), 1, 10);
+            if not ShipTo.Get(InternalCustomer."No.", Candidate) then
+                break;
+        end;
+        if SequenceNo > 9999 then
+            Error('Не вдалося сформувати код адреси доставки для проєкту %1.', Site."Project No.");
+
+        ShipTo.Init();
+        ShipTo.Validate("Customer No.", InternalCustomer."No.");
+        ShipTo.Validate(Code, Candidate);
+        ShipTo.Validate(Name, CopyStr(Site.Name, 1, MaxStrLen(ShipTo.Name)));
+        // One-way transfer of legacy site address fields on initial creation.
+        ShipTo.Address := CopyStr(Site.Address, 1, MaxStrLen(ShipTo.Address));
+        ShipTo."Address 2" := CopyStr(Site."Address 2", 1, MaxStrLen(ShipTo."Address 2"));
+        ShipTo.City := CopyStr(Site.City, 1, MaxStrLen(ShipTo.City));
+        ShipTo."Post Code" := CopyStr(Site."Post Code", 1, MaxStrLen(ShipTo."Post Code"));
+        ShipTo.County := CopyStr(Site.County, 1, MaxStrLen(ShipTo.County));
+        ShipTo."Country/Region Code" := Site."Country/Region Code";
+        ShipTo.Insert(true);
+        Site."Ship-to Code" := Candidate;
+        Site.Modify(true);
+    end;
+
+    procedure OpenSiteShipTo(Site: Record "SI Construction Site")
+    var
+        Project: Record Job;
+        InternalCustomer: Record Customer;
+        InternalCustomerMgt: Codeunit "SI Internal Customer Mgt.";
+        ShipTo: Record "Ship-to Address";
+    begin
+        Project.Get(Site."Project No.");
+        InternalCustomerMgt.ValidateInternalSICustomer(Project, InternalCustomer);
+        Site.TestField("Ship-to Code");
+        ShipTo.Get(InternalCustomer."No.", Site."Ship-to Code");
+        Page.RunModal(Page::"Ship-to Address", ShipTo);
+    end;
+
+    procedure MigrateAllSiteAddresses(): Integer
+    var
+        Site: Record "SI Construction Site";
+        Migrated: Integer;
+    begin
+        if Site.FindSet() then
+            repeat
+                if Site."Ship-to Code" = '' then begin
+                    EnsureSiteShipTo(Site);
+                    Migrated += 1;
+                end;
+            until Site.Next() = 0;
+        exit(Migrated);
     end;
 
     procedure FindDefaultSite(ProjectNo: Code[20]; var Site: Record "SI Construction Site"): Boolean

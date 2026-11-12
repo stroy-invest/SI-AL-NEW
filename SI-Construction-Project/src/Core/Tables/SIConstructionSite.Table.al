@@ -82,6 +82,12 @@ table 60013 "SI Construction Site"
                     Error('Основний майданчик не можна заморозити або анулювати. Спочатку призначте інший активний майданчик основним.');
             end;
         }
+        field(20; "Ship-to Code"; Code[10])
+        {
+            Caption = 'Код адреси доставки';
+            Editable = false;
+            TableRelation = "Ship-to Address".Code;
+        }
         field(10; Address; Text[100])
         {
             Caption = 'Адреса';

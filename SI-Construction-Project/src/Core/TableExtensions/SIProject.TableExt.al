@@ -104,6 +104,11 @@ tableextension 60001 "SI Project Ext." extends Job
             DataClassification = CustomerContent;
             TableRelation = "Country/Region".Code;
         }
+        field(60014; "SI District"; Text[100])
+        {
+            Caption = 'Район';
+            DataClassification = CustomerContent;
+        }
         field(60009; "SI Project Status"; Enum "SI Project Status")
         {
             Caption = 'Статус будівельного проєкту';

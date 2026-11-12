@@ -70,14 +70,13 @@ page 60019 "SI Construction Site Card"
             }
             group(AddressGroup)
             {
-                Caption = 'Адреса майданчика';
-
-                field("Country/Region Code"; Rec."Country/Region Code") { ApplicationArea = All; }
-                field("Post Code"; Rec."Post Code") { ApplicationArea = All; }
-                field(County; Rec.County) { ApplicationArea = All; }
-                field(City; Rec.City) { ApplicationArea = All; }
-                field(Address; Rec.Address) { ApplicationArea = All; }
-                field("Address 2"; Rec."Address 2") { ApplicationArea = All; }
+                Caption = 'Адреса доставки';
+                field("Ship-to Code"; Rec."Ship-to Code")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    ToolTip = 'Системний код стандартної адреси доставки.';
+                }
             }
         }
     }
@@ -86,6 +85,23 @@ page 60019 "SI Construction Site Card"
     {
         area(Processing)
         {
+            action(EditDeliveryAddress)
+            {
+                ApplicationArea = All;
+                Caption = 'Адреса та географічні точки';
+                Image = Addresses;
+                Promoted = true;
+                PromotedCategory = Process;
+                trigger OnAction()
+                var
+                    SiteMgt: Codeunit "SI Construction Site Mgt.";
+                begin
+                    SiteMgt.EnsureSiteShipTo(Rec);
+                    SiteMgt.OpenSiteShipTo(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
+
             action(SetDefault)
             {
                 ApplicationArea = All;

@@ -6,7 +6,8 @@ permissionset 60000 "SI CP ADMIN"
 
     Permissions =
         tabledata Customer = RIM,
-        tabledata Job = RM,
+        tabledata "Ship-to Address" = RIM,
+        tabledata Job = RIM,
         tabledata "Job Task" = RIM,
         tabledata Location = R,
         tabledata Employee = R,
@@ -24,6 +25,13 @@ permissionset 60000 "SI CP ADMIN"
         table "SI Project Assignment" = X,
         table "SI Construction Site" = X,
         table "SI Site Assignment" = X,
+        table "SI Project Wizard Buffer" = X,
+        table "SI Project Wizard Site" = X,
+        tabledata "SI Project Wizard Buffer" = RIMD,
+        tabledata "SI Project Wizard Site" = RIMD,
+        page "SI Project Creation Wizard" = X,
+        page "SI Project Wizard Sites" = X,
+        codeunit "SI Project Wizard Orch" = X,
         codeunit "SI Internal Customer Mgt." = X,
         codeunit "SI Construction Project Mgt." = X,
         codeunit "SI Project Repair Runner" = X,

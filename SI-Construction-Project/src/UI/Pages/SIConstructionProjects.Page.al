@@ -65,6 +65,24 @@ page 60010 "SI Construction Projects"
         }
     }
 
+    actions
+    {
+        area(Processing)
+        {
+            action(CreateProjectWizard)
+            {
+                ApplicationArea = All;
+                Caption = 'Створити проєкт';
+                Image = New;
+                trigger OnAction()
+                begin
+                    Page.RunModal(Page::"SI Project Creation Wizard");
+                    CurrPage.Update(false);
+                end;
+            }
+        }
+    }
+
     trigger OnAfterGetRecord()
     begin
         RefreshDisplayValues();
