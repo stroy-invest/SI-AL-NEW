@@ -47,6 +47,45 @@ page 60017 "SI Project Admin Console"
     {
         area(Processing)
         {
+            action(ReconcileSelected)
+            {
+                ApplicationArea = All;
+                Caption = 'Перевірити та відновити зв’язки';
+                Image = Reconcile;
+                ToolTip = 'Повторно перевіряє вибрані проєкти та всі їхні майданчики; записує результати в журнал.';
+                trigger OnAction()
+                var
+                    Selected: Record Job;
+                    Reconcile: Codeunit "SI Project Reconcile";
+                    RunId: Guid;
+                    CountProjects: Integer;
+                begin
+                    CurrPage.SetSelectionFilter(Selected);
+                    Selected.SetRange("SI Construction Project", true);
+                    CountProjects := Selected.Count();
+                    if CountProjects = 0 then
+                        Error('Не вибрано проєктів.');
+                    if not Confirm('Перевірити й відновити зв’язки для %1 проєктів?', false, CountProjects) then
+                        exit;
+                    RunId := CreateGuid();
+                    if Selected.FindSet() then
+                        repeat
+                            Reconcile.RunProject(Selected."No.", RunId);
+                        until Selected.Next() = 0;
+                    Message('Перевірку завершено. Результати записано в журнал.');
+                    Page.Run(Page::"SI Project Reconcile Log");
+                end;
+            }
+            action(OpenReconcileLog)
+            {
+                ApplicationArea = All;
+                Caption = 'Журнал перевірки';
+                Image = Log;
+                trigger OnAction()
+                begin
+                    Page.Run(Page::"SI Project Reconcile Log");
+                end;
+            }
             action(SyncProjection)
             {
                 ApplicationArea = All;

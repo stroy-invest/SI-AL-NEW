@@ -15,16 +15,6 @@ page 60019 "SI Construction Site Card"
             {
                 Caption = 'Загальне';
 
-                field("Project No."; Rec."Project No.")
-                {
-                    ApplicationArea = All;
-                    Editable = false;
-                }
-                field("Site Code"; Rec."Site Code")
-                {
-                    ApplicationArea = All;
-                    Editable = false;
-                }
                 field(Name; Rec.Name)
                 {
                     ApplicationArea = All;
@@ -71,11 +61,11 @@ page 60019 "SI Construction Site Card"
             group(AddressGroup)
             {
                 Caption = 'Адреса доставки';
-                field("Ship-to Code"; Rec."Ship-to Code")
+                field(DeliveryAddressDisplay; DeliveryAddressDisplay)
                 {
                     ApplicationArea = All;
+                    Caption = 'Адреса';
                     Editable = false;
-                    ToolTip = 'Системний код стандартної адреси доставки.';
                 }
             }
         }
@@ -96,7 +86,7 @@ page 60019 "SI Construction Site Card"
                 var
                     SiteMgt: Codeunit "SI Construction Site Mgt.";
                 begin
-                    SiteMgt.EnsureSiteShipTo(Rec);
+                    Rec.TestField("Ship-to Code");
                     SiteMgt.OpenSiteShipTo(Rec);
                     CurrPage.Update(false);
                 end;
@@ -167,4 +157,20 @@ page 60019 "SI Construction Site Card"
             }
         }
     }
+    trigger OnAfterGetRecord()
+    var
+        Project: Record Job;
+        ShipTo: Record "Ship-to Address";
+    begin
+        Clear(DeliveryAddressDisplay);
+        if Project.Get(Rec."Project No.") then
+            if (Project."SI Internal Customer No." <> '') and (Rec."Ship-to Code" <> '') then
+                if ShipTo.Get(Project."SI Internal Customer No.", Rec."Ship-to Code") then
+                    DeliveryAddressDisplay := CopyStr(ShipTo.Address + ', ' + ShipTo.City, 1, MaxStrLen(DeliveryAddressDisplay));
+    end;
+
+
+    var
+        DeliveryAddressDisplay: Text[150];
+
 }

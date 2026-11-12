@@ -30,6 +30,25 @@ page 57111 "SI Prok Vehicle Mappings"
     {
         area(Processing)
         {
+            action(SyncAllMixers)
+            {
+                ApplicationArea = All;
+                Caption = 'Синхронізувати всі міксери';
+                Image = Refresh;
+                Promoted = true;
+                PromotedCategory = Process;
+                trigger OnAction()
+                var
+                    Manager: Codeunit "SI Prok Mixer Sync Manager";
+                begin
+                    CurrPage.SaveRecord();
+                    Rec.TestField("Connection Code");
+                    if not Confirm('Синхронізувати всі міксери BC типу CONCRETE-MIXER з Proktek через підключення %1?', false, Rec."Connection Code") then
+                        exit;
+                    Manager.SyncAll(Rec."Connection Code");
+                    CurrPage.Update(false);
+                end;
+            }
             action(CreateMixer)
             {
                 ApplicationArea = All;

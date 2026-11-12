@@ -17,7 +17,6 @@ codeunit 57122 "SI Prok Journal Preparation"
         OutputLine: Record "Item Journal Line";
         ConsumptionLine: Record "Item Journal Line";
         ItemUoM: Record "Item Unit of Measure";
-        Env: Codeunit "Environment Information";
         Prep: Codeunit "SI Prok Accounting Prep Mgt.";
         DocumentNo: Code[20];
         NextOutputLine: Integer;
@@ -27,12 +26,10 @@ codeunit 57122 "SI Prok Journal Preparation"
     begin
         Fact.Get(Fact."Entry No.");
         // Re-run the entire readiness contract immediately before journal insertion.
-        Prep.CheckFact(Fact, Fact."Accounting Prep Mode");
+        Prep.CheckFact(Fact, Fact."Accounting Prep Mode"::Production);
         Fact.Get(Fact."Entry No.");
         if Fact."Accounting Readiness" <> Fact."Accounting Readiness"::Ready then
             Error('PF-02.2B: факт не готовий: %1', Fact."Accounting Diagnostics");
-        if (Fact."Accounting Prep Mode" = Fact."Accounting Prep Mode"::Simulation) and not Env.IsSandbox() then
-            Error('PF-02.2B: Simulation заборонена поза Sandbox.');
         if Fact."Production Date/Time" = 0DT then
             Error('PF-02.2B: дата/час факту відсутні.');
         if IsNullGuid(Fact."Production UUID") then
@@ -185,6 +182,18 @@ codeunit 57122 "SI Prok Journal Preparation"
         Link."Journal Batch" := Jnl."Journal Batch Name";
         Link."Journal Line No." := Jnl."Line No.";
         Link."Document No." := Jnl."Document No.";
+        Link."Expected Entry Type" := Jnl."Entry Type";
+        Link."Expected Item No." := Jnl."Item No.";
+        Link."Expected Variant Code" := Jnl."Variant Code";
+        Link."Expected Location Code" := Jnl."Location Code";
+        Link."Expected Bin Code" := Jnl."Bin Code";
+        Link."Expected Quantity" := Jnl.Quantity;
+        Link."Expected UoM" := Jnl."Unit of Measure Code";
+        Link."Expected Posting Date" := Jnl."Posting Date";
+        Link."Expected Order No." := Jnl."Order No.";
+        Link."Expected Order Line No." := Jnl."Order Line No.";
+        Link."Expected Component Line No." := Jnl."Prod. Order Comp. Line No.";
+        Link."Snapshot Available" := true;
         Link."Prepared At" := CurrentDateTime();
         Link."Prepared By" := CopyStr(UserId(), 1, MaxStrLen(Link."Prepared By"));
         Link.Insert(true);

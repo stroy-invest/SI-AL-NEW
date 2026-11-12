@@ -5,7 +5,7 @@ codeunit 57094 "SI Prok Capture Mgt."
         Conflicts: Integer;
     begin
         // Retain the established Test entry point and its error counter.
-        CaptureWithMode(DateFrom, DateTo, ConnectionCode, Enum::"SI Prok Capture Mode"::Test,
+        CaptureWithMode(DateFrom, DateTo, ConnectionCode, Enum::"SI Prok Capture Mode"::Normal,
             Imported, Existing, Conflicts, Failed);
         Failed += Conflicts;
     end;

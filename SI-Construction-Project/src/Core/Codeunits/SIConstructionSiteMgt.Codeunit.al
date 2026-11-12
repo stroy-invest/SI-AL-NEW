@@ -75,6 +75,11 @@ codeunit 60003 "SI Construction Site Mgt."
         if Site."Ship-to Code" <> '' then begin
             if not ShipTo.Get(InternalCustomer."No.", Site."Ship-to Code") then
                 Error('Адресу доставки %1 майданчика %2 не знайдено.', Site."Ship-to Code", Site."Site Code");
+            if ShipTo."Location Code" <> Project."Location Code" then begin
+                Project.TestField("Location Code");
+                ShipTo.Validate("Location Code", Project."Location Code");
+                ShipTo.Modify(true);
+            end;
             exit;
         end;
 
@@ -99,6 +104,8 @@ codeunit 60003 "SI Construction Site Mgt."
         ShipTo."Post Code" := CopyStr(Site."Post Code", 1, MaxStrLen(ShipTo."Post Code"));
         ShipTo.County := CopyStr(Site.County, 1, MaxStrLen(ShipTo.County));
         ShipTo."Country/Region Code" := Site."Country/Region Code";
+        Project.TestField("Location Code");
+        ShipTo.Validate("Location Code", Project."Location Code");
         ShipTo.Insert(true);
         Site."Ship-to Code" := Candidate;
         Site.Modify(true);
@@ -115,7 +122,7 @@ codeunit 60003 "SI Construction Site Mgt."
         InternalCustomerMgt.ValidateInternalSICustomer(Project, InternalCustomer);
         Site.TestField("Ship-to Code");
         ShipTo.Get(InternalCustomer."No.", Site."Ship-to Code");
-        Page.RunModal(Page::"Ship-to Address", ShipTo);
+        Page.RunModal(Page::"SI Site Delivery Address", ShipTo);
     end;
 
     procedure MigrateAllSiteAddresses(): Integer

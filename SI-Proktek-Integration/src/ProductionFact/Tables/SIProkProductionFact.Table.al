@@ -109,10 +109,6 @@ table 57091 "SI Prok Production Fact"
 
     procedure AssertAllowedForPosting()
     begin
-        if "Simulation" then
-            Error('Проведення симульованого Production Fact %1 заборонено.', "Production UUID");
-        if "Capture Mode" = "Capture Mode"::Test then
-            Error('Проведення заборонено: Production UUID %1 отримано в режимі Test.', "Production UUID");
         if "Verification Status" <> "Verification Status"::Verified then
             Error('Обсяг виробничого факту не підтверджено.');
         if not "Ready for Posting" then
@@ -123,16 +119,10 @@ table 57091 "SI Prok Production Fact"
     begin
         if "Ready for Posting" and ("Verification Status" <> "Verification Status"::Verified) then
             Error('Непідтверджений факт не може бути готовим до проведення.');
-        if "Simulation" and "Ready for Posting" then
-            Error('Симульований факт виробництва не може бути готовим до проведення.');
-        if ("Capture Mode" = "Capture Mode"::Test) and "Ready for Posting" then
-            Error('Тестовий факт виробництва не може бути готовим до проведення.');
     end;
 
     procedure GetProducedQuantityText(): Text
     begin
-        if Simulation then
-            exit(Format("Produced Quantity M3") + ' (симуляція)');
         if "Verification Status" = "Verification Status"::NotAssessed then
             exit('Перевірку не виконано');
         if "Verification Status" <> "Verification Status"::Verified then
@@ -181,8 +171,6 @@ table 57091 "SI Prok Production Fact"
             exit(0);
         OtherFact.SetRange("Order UUID", "Order UUID");
         OtherFact.SetRange("Connection Code", "Connection Code");
-        OtherFact.SetRange("Capture Mode", OtherFact."Capture Mode"::Normal);
-        OtherFact.SetRange(Simulation, false);
         OtherFact.SetRange("Verification Status", OtherFact."Verification Status"::Verified);
         if OtherFact.FindSet() then
             repeat
@@ -263,9 +251,7 @@ table 57091 "SI Prok Production Fact"
                 exit('Невідомо');
             OtherFact.SetRange("Order UUID", "Order UUID");
             OtherFact.SetRange("Connection Code", "Connection Code");
-            OtherFact.SetRange("Capture Mode", OtherFact."Capture Mode"::Normal);
-            OtherFact.SetRange(Simulation, false);
-            OtherFact.SetRange("Verification Status", OtherFact."Verification Status"::Verified);
+                    OtherFact.SetRange("Verification Status", OtherFact."Verification Status"::Verified);
             if OtherFact.IsEmpty() then
                 exit('Невідомо');
             Total := GetConfirmedOrderTotal();

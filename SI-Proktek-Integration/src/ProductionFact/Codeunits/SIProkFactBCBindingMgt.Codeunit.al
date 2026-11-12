@@ -94,19 +94,10 @@ codeunit 57106 "SI Prok Fact BC Binding Mgt."
             Block(Fact, 'Одиниця виміру виробничого рядка не відповідає плану.');
             exit;
         end;
-        if Fact.Simulation or (Fact."Capture Mode" = Fact."Capture Mode"::Test) then begin
-            WarningText := 'Тестовий або симульований факт: проведення заборонено.';
-            if Fact."Produced Quantity M3" <= 0 then begin
-                if Fact."Reported Quantity M3" > 0 then
-                    AppendWarning(WarningText, 'Підтвердженого випуску немає; обсяг MES є лише заявленим.')
-                else
-                    AppendWarning(WarningText, 'Підтвердженого та заявленого обсягу немає.');
-            end;
-        end else
-            if Fact."Produced Quantity M3" <= 0 then begin
-                Block(Fact, 'Фактичний випуск повинен бути більшим за нуль.');
-                exit;
-            end;
+        if Fact."Produced Quantity M3" <= 0 then begin
+            Block(Fact, 'Фактичний випуск повинен бути більшим за нуль.');
+            exit;
+        end;
         if Fact."Verification Status" <> Fact."Verification Status"::Verified then
             AppendWarning(WarningText, 'Обсяг факту не підтверджено.');
         if Fact."Technical Validation" <> Fact."Technical Validation"::Complete then

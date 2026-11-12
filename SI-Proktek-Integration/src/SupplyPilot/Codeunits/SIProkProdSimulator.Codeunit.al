@@ -120,6 +120,18 @@ codeunit 57077 "SI Prok Prod Simulator"
         WorkerError: Text;
         ScenarioId: Guid;
         ProductionGuid: Guid;
+        RequiredAt: DateTime;
+        ProducedAt: DateTime;
+        StartAt: DateTime;
+        MinutesBefore: Integer;
+        ProductionDate: Date;
+        ProductionClock: Time;
+        StartClock: Time;
+        ActualLoadQty: Decimal;
+        UsedFleet: array[100] of Boolean;
+        UsedDriver: array[100] of Boolean;
+        Candidate: Integer;
+        Attempt: Integer;
     begin
         if not IsSandbox() then
             Error('Симуляція дозволена лише в Sandbox.');
@@ -129,6 +141,10 @@ codeunit 57077 "SI Prok Prod Simulator"
             Error('Для симуляції потрібен повний виробничий розподіл із додатним обсягом.');
         if ProdRequest.Quantity < 0.3 then
             Error('Мінімальний обсяг симуляції — 0,3 м³.');
+
+        RequiredAt := ProdRequest."Required Date/Time";
+        if RequiredAt = 0DT then
+            Error('Для заявки %1 не задано дату/час потреби.', ProdRequest."Source No.");
 
         // Do not silently duplicate test production facts for the same request.
         ExistingFact.SetRange("Prod. Request Entry No.", ProdRequest."Entry No.");
@@ -142,15 +158,14 @@ codeunit 57077 "SI Prok Prod Simulator"
         Mapping.SetRange("Sync Status", Mapping."Sync Status"::Synced);
         if Mapping.FindSet() then
             repeat
-                if (Mapping."External Mixer Code" <> Mapping."Vehicle No.") or
-                   (Mapping."External Mixer ID" <= 0) or
+                if (Mapping."External Mixer ID" <= 0) or
                    IsNullGuid(Mapping."External Mixer UUID") then
                     Error('Мапінг міксера %1 неповний або неузгоджений.', Mapping."Vehicle No.");
                 Vehicle.Get(Mapping."Vehicle No.");
                 if not Vehicle.Blocked then begin
                     if not VehicleMgt.GetActualCharacteristicValue(Mapping."Vehicle No.", 'DRUM-VOLUME', Capacity, UoMCode) then
                         Error('Для %1 не задано характеристику DRUM-VOLUME.', Mapping."Vehicle No.");
-                    if (UoMCode <> 'M3') or (Capacity <= 0) then
+                    if (UoMCode <> 'M3') or (Capacity < 10) then
                         Error('Для %1 DRUM-VOLUME має бути додатним значенням у M3.', Mapping."Vehicle No.");
                     FleetCount += 1;
                     if FleetCount > ArrayLen(VehicleNos) then
@@ -185,7 +200,7 @@ codeunit 57077 "SI Prok Prod Simulator"
         RemainingQty := ProdRequest.Quantity;
         FleetIndex := 1;
         while RemainingQty > 0 do begin
-            LoadQty := Capacities[FleetIndex];
+            LoadQty := 10; // Working load, not nominal 12 m3 drum volume.
             if LoadQty > RemainingQty then
                 LoadQty := RemainingQty;
             if LoadQty < 0.3 then
@@ -204,13 +219,41 @@ codeunit 57077 "SI Prok Prod Simulator"
             exit;
 
         ScenarioId := CreateGuid();
+        Randomize();
         RemainingQty := ProdRequest.Quantity;
         for TruckNo := 1 to LoadCount do begin
-            FleetIndex := ((TruckNo - 1) mod FleetCount) + 1;
-            LoadQty := Capacities[FleetIndex];
+            // Random fleet selection; unique trucks within a cycle while possible.
+            FleetIndex := Random(FleetCount);
+            if TruckNo <= FleetCount then begin
+                Attempt := 0;
+                while UsedFleet[FleetIndex] and (Attempt < FleetCount) do begin
+                    FleetIndex := (FleetIndex mod FleetCount) + 1;
+                    Attempt += 1;
+                end;
+            end;
+            UsedFleet[FleetIndex] := true;
+            LoadQty := 10;
             if LoadQty > RemainingQty then
                 LoadQty := RemainingQty;
             RemainingQty -= LoadQty;
+            // Actual output differs slightly from the 10 m3 working plan.
+            // It must never exceed the truck's working capacity.
+            ActualLoadQty := Round(LoadQty * (0.97 + Random(31) / 1000), 0.01, '=');
+            if ActualLoadQty > 10 then
+                ActualLoadQty := 10;
+            if ActualLoadQty <= 0 then
+                Error('Некоректний фактичний обсяг партії %1.', TruckNo);
+
+            // First load: 90 min before demand; last: 15..20 min before.
+            if LoadCount = 1 then
+                MinutesBefore := 90
+            else
+                MinutesBefore := 90 - Round((TruckNo - 1) * 72 / (LoadCount - 1), 1, '=');
+            ProducedAt := RequiredAt - MinutesBefore * 60000;
+            StartAt := ProducedAt - 10 * 60000;
+            ProductionDate := DT2Date(ProducedAt);
+            ProductionClock := DT2Time(ProducedAt);
+            StartClock := DT2Time(StartAt);
 
             BuildProduction01(ProdRequest, 1, 'PF-02.1A', ProductionsText, DetailsText, MaterialsText);
             Clear(DetailsRoot);
@@ -222,7 +265,12 @@ codeunit 57077 "SI Prok Prod Simulator"
             MixUuid := Format(CreateGuid(), 0, 4);
             Production.Replace('uuid', MixUuid);
             Production.Replace('kod', 910000 + TruckNo);
-            Production.Replace('metrekup', LoadQty);
+            Production.Replace('metrekup', ActualLoadQty);
+            Production.Replace('tarih', Format(ProductionDate, 0, '<Day,2>.<Month,2>.<Year4>'));
+            Production.Replace('saat', Format(ProductionClock, 0, '<Hours24,2>:<Minutes,2>:<Seconds,2>'));
+            Production.Replace('tarihsaat', Format(ProductionDate, 0, '<Year4>-<Month,2>-<Day,2>') + 'T' + Format(ProductionClock, 0, '<Hours24,2>:<Minutes,2>:<Seconds,2>'));
+            Production.Replace('baslangic_saati', Format(StartClock, 0, '<Hours24,2>:<Minutes,2>:<Seconds,2>'));
+            Production.Replace('bitis_saati', Format(ProductionClock, 0, '<Hours24,2>:<Minutes,2>:<Seconds,2>'));
             Production.Replace('irsaliye_no', TruckNo);
             Production.Add('kamyon_uuid', Format(MixerUuids[FleetIndex], 0, 4));
             Production.Add('kamyon_index', Format(VehicleNos[FleetIndex]));
@@ -230,7 +278,7 @@ codeunit 57077 "SI Prok Prod Simulator"
             DriverIndex := ((TruckNo - 1) mod DriverCount) + 1;
             Production.Add('surucu_uuid', Format(DriverUuids[DriverIndex], 0, 4));
             Production.Add('surucu_ad', DriverNames[DriverIndex]);
-            AdjustMaterialSlots(Production, LoadQty, ProdRequest.Quantity * 0.75, TruckNo);
+            AdjustMaterialSlots(Production, ActualLoadQty, ProdRequest.Quantity * 0.75, TruckNo);
             DetailsRoot.Replace('production', Production);
             DetailsRoot.WriteTo(DetailsText);
 
@@ -241,7 +289,7 @@ codeunit 57077 "SI Prok Prod Simulator"
             ProductionRoot.Add('responseMessage', 'PF-02.1A simulation');
             ProductionRoot.Add('productions', ProductionArray);
             ProductionRoot.Add('totalrecords', 1);
-            ProductionRoot.Add('totalmetercubes', LoadQty);
+            ProductionRoot.Add('totalmetercubes', ActualLoadQty);
             ProductionRoot.Add('totalpages', 1);
             ProductionRoot.Add('perpage', 100);
             ProductionRoot.Add('page', 1);
@@ -293,7 +341,7 @@ codeunit 57077 "SI Prok Prod Simulator"
                 end;
             end;
             Commit();
-            ProducedQty += LoadQty;
+            ProducedQty += ActualLoadQty;
         end;
         Message('PF-02.1A: %1, завантажень %2, обсяг %3 м³. Imported %4, Bound/Warning %5, Existing %6, Conflict %7, Error %8. Проведень немає.',
             ProdRequest."Source No.", LoadCount, ProducedQty,

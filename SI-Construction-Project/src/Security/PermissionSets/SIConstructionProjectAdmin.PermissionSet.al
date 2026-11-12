@@ -5,6 +5,13 @@ permissionset 60000 "SI CP ADMIN"
     Caption = 'SI Construction Project Admin';
 
     Permissions =
+        tabledata "SI Project Reconcile Log" = RIMD,
+        table "SI Project Reconcile Log" = X,
+        codeunit "SI Site ShipTo Sync" = X,
+        codeunit "SI Site Reconcile Runner" = X,
+        codeunit "SI Project Reconcile" = X,
+        page "SI Site Delivery Address" = X,
+        page "SI Project Reconcile Log" = X,
         tabledata Customer = RIM,
         tabledata "Ship-to Address" = RIM,
         tabledata Job = RIM,

@@ -36,6 +36,18 @@ page 57000 "SI Prok Connections"
     {
         area(Processing)
         {
+            action(SyncDrivers)
+            {
+                ApplicationArea = All;
+                Caption = 'Синхронізувати водіїв';
+                Image = Refresh;
+                trigger OnAction()
+                var
+                    DriverSync: Codeunit "SI Prok Driver Sync Manager";
+                begin
+                    DriverSync.SyncAll(Rec.Code);
+                end;
+            }
             action(SetActive)
             {
                 ApplicationArea = All;

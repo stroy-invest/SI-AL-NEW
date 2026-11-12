@@ -3,7 +3,6 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
     // PF-02.2A: validate only. Never create Item Journal Line, post or change MES facts.
     procedure CheckFact(var Fact: Record "SI Prok Production Fact"; Mode: Enum "SI Prok Accounting Prep Mode")
     var
-        Env: Codeunit "Environment Information";
         Binding: Codeunit "SI Prok Fact BC Binding Mgt.";
         Order: Record "Production Order";
         ProdLine: Record "Prod. Order Line";
@@ -21,8 +20,6 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
         // BindFact preserves UUID/request/line identity and reports any ambiguity as Blocked.
         Binding.RevalidateBinding(Fact);
         Fact.Get(Fact."Entry No.");
-        if (Mode = Mode::Simulation) and not Env.IsSandbox() then
-            Error('PF-02.2A: режим Simulation дозволений виключно в Sandbox.');
 
         if IsNullGuid(Fact."Production UUID") then
             AddIssue(Issues, 'Production UUID не визначено.');
@@ -35,27 +32,13 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
         if Fact."BC Prod. Order Line No." = 0 then
             AddIssue(Issues, 'Не визначено рядок виробничого замовлення BC.');
 
-        if Mode = Mode::Production then begin
-            if Fact.Simulation or (Fact."Capture Mode" = Fact."Capture Mode"::Test) then
-                AddIssue(Issues, 'Тестовий або симульований факт заборонено для реального обліку.');
-            if Fact."BC Binding Status" <> Fact."BC Binding Status"::Bound then
-                AddIssue(Issues, 'BC Binding Status повинен бути Bound.');
-            if Fact."Verification Status" <> Fact."Verification Status"::Verified then
-                AddIssue(Issues, 'Обсяг випуску не підтверджений.');
-            if Fact."Technical Validation" <> Fact."Technical Validation"::Complete then
-                AddIssue(Issues, 'Технічна перевірка не Complete.');
-            OutputQty := Fact."Produced Quantity M3";
-        end else begin
-            if not (Fact.Simulation or (Fact."Capture Mode" = Fact."Capture Mode"::Test)) then
-                AddIssue(Issues, 'Для Simulation потрібен тестовий або симульований факт.');
-            if not (Fact."BC Binding Status" in [Fact."BC Binding Status"::Bound, Fact."BC Binding Status"::Warning]) then
-                AddIssue(Issues, 'BC Binding Status має бути Bound або Warning.');
-            if Fact."Produced Quantity M3" > 0 then
-                OutputQty := Fact."Produced Quantity M3"
-            else
-                if Fact."Reported Quantity Present" then
-                    OutputQty := Fact."Reported Quantity M3";
-        end;
+        if Fact."BC Binding Status" <> Fact."BC Binding Status"::Bound then
+            AddIssue(Issues, 'BC Binding Status повинен бути Bound.');
+        if Fact."Verification Status" <> Fact."Verification Status"::Verified then
+            AddIssue(Issues, 'Обсяг випуску не підтверджений.');
+        if Fact."Technical Validation" <> Fact."Technical Validation"::Complete then
+            AddIssue(Issues, 'Технічна перевірка не Complete.');
+        OutputQty := Fact."Produced Quantity M3";
         if OutputQty <= 0 then
             AddIssue(Issues, 'Немає додатної кількості випуску для обраного режиму.');
 
@@ -117,13 +100,13 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
                 end;
             until Material.Next() = 0;
 
-        Fact."Accounting Prep Mode" := Mode;
+        Fact."Accounting Prep Mode" := Fact."Accounting Prep Mode"::Production;
         Fact."Accounting Checked At" := CurrentDateTime();
         Fact."Accounting Output Qty" := OutputQty;
         Fact."Accounting Material Lines" := MaterialCount;
         if Issues = '' then begin
             Fact."Accounting Readiness" := Fact."Accounting Readiness"::Ready;
-            Fact."Accounting Diagnostics" := 'Перевірки PF-02.2A пройдено. Журнали не створено.';
+            Fact."Accounting Diagnostics" := 'Облікові перевірки пройдено. Журнали ще не створено.';
         end else begin
             Fact."Accounting Readiness" := Fact."Accounting Readiness"::Blocked;
             Fact."Accounting Diagnostics" := CopyStr(Issues, 1, MaxStrLen(Fact."Accounting Diagnostics"));

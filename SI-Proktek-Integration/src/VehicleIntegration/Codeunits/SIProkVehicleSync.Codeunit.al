@@ -200,7 +200,6 @@ codeunit 57112 "SI Prok Vehicle Sync"
         Vehicle.Get(VehicleNo);
         Vehicle.TestField("Vehicle Type Code", 'CONCRETE-MIXER');
         Vehicle.TestField("Registration No.");
-        Vehicle.TestField(Description);
         CapacityM3 := ResolveDrumVolumeM3(VehicleNo);
         if Mapping.Get(ConnectionCode, VehicleNo) then
             if (Mapping."External Mixer ID" <> 0) or not IsNullGuid(Mapping."External Mixer UUID") then
@@ -224,7 +223,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
         Mixer.Add('plaka', Vehicle."Registration No.");
         Mixer.Add('kapasite', CapacityM3);
         Mixer.Add('surucu_kod', 0);
-        Mixer.Add('aciklama1', Vehicle.Description);
+        Mixer.Add('aciklama1', Vehicle."VIN");
         Mixer.Add('aciklama2', '');
         Mixer.Add('hub', EmptyHub);
         Mixer.Add('uuid', '00000000-0000-0000-0000-000000000000');
@@ -282,129 +281,17 @@ codeunit 57112 "SI Prok Vehicle Sync"
 
     // PF-01.3A.4: controlled update of BC-owned fields only.
     // Returns false if the remote record already matches BC; no SaveMixer call in that case.
+    // Compatibility entry point: all updates are delegated to the same upsert
+    // engine used by the mass synchronization action.
     procedure UpdateMixer(ConnectionCode: Code[50]; VehicleNo: Code[20]): Boolean
     var
-        Connection: Record "SI Prok Connection";
-        Vehicle: Record "SI Vehicle Profile";
-        CapacityM3: Decimal;
-        Mapping: Record "SI Prok Vehicle Mapping";
-        Auth: Codeunit "SI Prok Auth Mgt.";
-        EDS: Codeunit "SI EDS Orchestrator";
-        RuntimeParam: Record "SI EDS Runtime Param" temporary;
-        Buffer: Record "SI EDS Response Buffer" temporary;
-        ListResponse: JsonObject;
-        Mixer: JsonObject;
-        Request: JsonObject;
-        Response: JsonObject;
-        Returned: JsonObject;
-        Token: JsonToken;
-        Body: Text;
-        OldCode: Text;
-        OldPlate: Text;
-        OldDescription: Text;
-        OldCapacity: Decimal;
-        OldActive: Boolean;
+        Manager: Codeunit "SI Prok Mixer Sync Manager";
     begin
-        Mapping.Get(ConnectionCode, VehicleNo);
-        Mapping.TestField("External Mixer ID");
-        if IsNullGuid(Mapping."External Mixer UUID") then
-            Error('Відсутній Mixer UUID. Спочатку виконайте Adopt Existing.');
-        if Mapping."External Mixer Code" <> VehicleNo then
-            Error('Код у мапінгу не відповідає Vehicle No. Update заблоковано.');
-
-        Connection.Get(ConnectionCode);
-        Vehicle.Get(VehicleNo);
-        Vehicle.TestField("Vehicle Type Code", 'CONCRETE-MIXER');
-        Vehicle.TestField("Registration No.");
-        Vehicle.TestField(Description);
-        CapacityM3 := ResolveDrumVolumeM3(VehicleNo);
-
-        GetMixers(Connection, ListResponse);
-        if not FindMixer(ListResponse, Mapping."External Mixer ID", Mapping."External Mixer UUID", Mixer) then
-            Error('Міксер ID %1 / UUID %2 не знайдено. Update заборонено.',
-                Mapping."External Mixer ID", Mapping."External Mixer UUID");
-        OldCode := GetText(Mixer, 'kamyon_kod');
-        if OldCode <> VehicleNo then
-            Error('Mixer Code (%1) не відповідає Vehicle No. (%2).', OldCode, VehicleNo);
-        if not Mixer.Contains('hub') or not Mixer.Contains('surucu_kod') or
-           not Mixer.Contains('surucu_uuid') or not Mixer.Contains('aciklama2') then
-            Error('GetMixers не повернув усі сторонні поля. Безпечний merge неможливий.');
-
-        OldPlate := GetText(Mixer, 'plaka');
-        OldDescription := GetText(Mixer, 'aciklama1');
-        if not Mixer.Get('kapasite', Token) then
-            Error('GetMixers не повернув kapasite.');
-        OldCapacity := Token.AsValue().AsDecimal();
-        if not Mixer.Get('aktif', Token) then
-            Error('GetMixers не повернув aktif.');
-        OldActive := Token.AsValue().AsBoolean();
-
-        if (OldPlate = Vehicle."Registration No.") and
-           (OldDescription = Vehicle.Description) and
-           (OldCapacity = CapacityM3) and
-           (OldActive = not Vehicle.Blocked) then begin
-            Mapping."Sync Status" := Mapping."Sync Status"::Synced;
-            Mapping."Last Synced At" := CurrentDateTime;
-            Mapping."Last Error" := '';
-            Mapping.Modify(true);
+        if not Confirm('Синхронізувати міксер %1 з Proktek через підключення %2?', false,
+            VehicleNo, ConnectionCode) then
             exit(false);
-        end;
-
-        if not Confirm(
-            'Оновити міксер %1 (ID %2)?\Поточні дані Proktek: %3 / %4 / %5 м3 / Active=%6\Дані BC: %7 / %8 / %9 м3 / Active=%10',
-            false, VehicleNo, Mapping."External Mixer ID", OldPlate, OldDescription,
-            OldCapacity, OldActive, Vehicle."Registration No.", Vehicle.Description,
-            CapacityM3, not Vehicle.Blocked) then
-            exit(false);
-
-        // Merge into the object returned by GetMixers. Preserve driver, hub,
-        // timestamps, aciklama2, kod, uuid and all unknown API fields.
-        Mixer.Replace('plaka', Vehicle."Registration No.");
-        Mixer.Replace('kapasite', CapacityM3);
-        Mixer.Replace('aciklama1', Vehicle.Description);
-        Mixer.Replace('aktif', not Vehicle.Blocked);
-        Request.Add('guid', Format(Auth.GetSessionGuid(Connection), 0, 4));
-        Request.Add('mixer', Mixer);
-        Request.WriteTo(Body);
-        Connection.TestField("EDS Service Code");
-        Connection.TestField("EDS Provider Code");
-        EDS.ExecuteProviderBody(Connection."EDS Service Code", 'SAVE-MIXER', Connection."EDS Provider Code",
-            RuntimeParam, Body, 'application/json-patch+json', 'text/plain', Buffer);
-        if Buffer."Result Type" <> Buffer."Result Type"::Success then
-            Error('SaveMixer Update: HTTP %1; %2. Перед повтором перевірте Proktek.',
-                Buffer."HTTP Status Code", Buffer."Error Message");
-        if not Response.ReadFrom(Buffer.GetBodyText()) then
-            Error('SaveMixer Update повернув некоректний JSON. Перевірте Proktek.');
-        if not Response.Get('responseStatus', Token) then
-            Error('SaveMixer Update не повернув responseStatus.');
-        if not Token.AsValue().AsBoolean() then
-            Error('SaveMixer Update: %1', GetText(Response, 'responseMessage'));
-        if not Response.Get('mixer', Token) then
-            Error('SaveMixer Update не повернув mixer. Перевірте Proktek.');
-        Returned := Token.AsObject();
-        if (GetInteger(Returned, 'kod') <> Mapping."External Mixer ID") or
-           (GetGuid(Returned, 'uuid') <> Mapping."External Mixer UUID") or
-           (GetText(Returned, 'kamyon_kod') <> VehicleNo) then
-            Error('SaveMixer Update змінив або повернув неочікувану ідентичність. Перевірте Proktek вручну.');
-        if (GetText(Returned, 'plaka') <> Vehicle."Registration No.") or
-           (GetText(Returned, 'aciklama1') <> Vehicle.Description) then
-            Error('SaveMixer Update повернув відмінні значення. Перевірте Proktek вручну.');
-        if not Returned.Get('kapasite', Token) then
-            Error('SaveMixer Update не повернув kapasite.');
-        if Token.AsValue().AsDecimal() <> CapacityM3 then
-            Error('SaveMixer Update повернув іншу місткість.');
-        if not Returned.Get('aktif', Token) then
-            Error('SaveMixer Update не повернув aktif.');
-        if Token.AsValue().AsBoolean() <> (not Vehicle.Blocked) then
-            Error('SaveMixer Update повернув інший статус Active.');
-
-        Mapping."Sync Status" := Mapping."Sync Status"::Synced;
-        Mapping."Last Synced At" := CurrentDateTime;
-        Mapping."Last Error" := '';
-        Mapping.Modify(true);
-        exit(true);
+        exit(Manager.SyncOne(ConnectionCode, VehicleNo));
     end;
-
 
     // VM-01: resolve validated actual vehicle characteristic via Vehicle Management.
     local procedure ResolveDrumVolumeM3(VehicleNo: Code[20]): Decimal
