@@ -35,9 +35,9 @@ page 57093 "SI Prok Production Fact Card"
             group(BatchOutput)
             {
                 Caption = 'Випуск бетону в партії, м³';
-                field(BatchPlanView; BatchPlanView) { ApplicationArea = All; Caption = 'План, м³'; ToolTip = 'Не заповнюється, якщо джерело не передало план конкретної партії.'; }
+                field(BatchPlanView; BatchPlanView) { ApplicationArea = All; Caption = 'План, м³'; ToolTip = 'План конкретної партії; порожньо, якщо план не підтверджено.'; }
                 field(BatchActualView; BatchActualView) { ApplicationArea = All; Caption = 'Факт, м³'; DecimalPlaces = 0 : 5; }
-                field(BatchVarianceView; BatchVarianceView) { ApplicationArea = All; Caption = 'Відхилення, м³'; ToolTip = 'Не обчислюється без плану конкретної партії.'; }
+                field(BatchVarianceView; BatchVarianceView) { ApplicationArea = All; Caption = 'Відхилення, м³'; ToolTip = 'Факт мінус план; порожньо, якщо план партії відсутній.'; }
             }
             part(Materials; "SI Prok Prod Fact Materials")
             {
@@ -129,6 +129,10 @@ page 57093 "SI Prok Production Fact Card"
         Clear(BatchPlanView);
         Clear(BatchVarianceView);
         BatchActualView := Rec."Produced Quantity M3";
+        if Rec."Planned Quantity M3" > 0 then begin
+            BatchPlanView := Format(Rec."Planned Quantity M3");
+            BatchVarianceView := Format(Rec."Produced Quantity M3" - Rec."Planned Quantity M3");
+        end;
 
         if Item.Get(Rec."Item No.") then
             ConcreteView := Item.Description;

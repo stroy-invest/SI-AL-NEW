@@ -78,6 +78,8 @@ table 57091 "SI Prok Production Fact"
         field(333; "Accounting Checked At"; DateTime) { Caption = 'Час облікової перевірки'; Editable = false; }
         field(334; "Accounting Output Qty"; Decimal) { Caption = 'Підготовлений обсяг, м³'; DecimalPlaces = 0 : 5; Editable = false; }
         field(335; "Accounting Material Lines"; Integer) { Caption = 'Перевірено матеріалів'; Editable = false; }
+        // TC-01: test fixture only. Real plan must come from a verified MES batch source.
+        field(336; "Planned Quantity M3"; Decimal) { Caption = 'План партії, м³'; DecimalPlaces = 0 : 5; Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 
