@@ -26,6 +26,28 @@ table 57142 "SI Prok Shipment"
         field(150; "Connection Code"; Code[50]) { Caption = 'Профіль Proktek'; Editable = false; }
         field(160; "Created At"; DateTime) { Caption = 'Створено'; Editable = false; }
         field(170; "Closed At"; DateTime) { Caption = 'Закрито'; Editable = false; }
+        // SH-03.2: immutable source identity, copied from the production request.
+        field(180; "Supply Decision No."; Code[20]) { Caption = 'Рішення забезпечення'; Editable = false; }
+        field(181; "Supply Decision Line No."; Integer) { Caption = 'Рядок рішення'; Editable = false; }
+        field(182; "Supply Allocation Line No."; Integer) { Caption = 'Рядок розподілу'; Editable = false; }
+        field(183; "Supply Allocation System ID"; Guid) { Caption = 'SystemId розподілу'; Editable = false; }
+        field(184; "Allocation Binding Status"; Code[30]) { Caption = 'Статус зв’язку з розподілом'; Editable = false; }
+
+
+        // SH-03.3: document snapshots (never calculated dynamically on reprint).
+        field(190; "Concrete Description"; Text[150]) { Caption = 'Бетон'; Editable = false; }
+        field(191; "Delivery Project No."; Code[20]) { Caption = 'Проєкт доставки'; Editable = false; }
+        field(192; "Delivery Site Code"; Code[20]) { Caption = 'Код майданчика'; Editable = false; }
+        field(193; "Delivery Site Name"; Text[100]) { Caption = 'Точка розвантаження'; Editable = false; }
+        field(194; "Delivery Address"; Text[250]) { Caption = 'Адреса'; Editable = false; }
+        field(195; "Shipped By Employee No."; Code[20]) { Caption = 'Відвантажив (Employee)'; Editable = false; TableRelation = Employee."No."; }
+        field(196; "Shipped By Name"; Text[100]) { Caption = 'Відвантажив'; Editable = false; }
+        field(197; "Received By Employee No."; Code[20]) { Caption = 'Прийняв (Employee)'; Editable = false; TableRelation = Employee."No."; }
+        field(198; "Received By Name"; Text[100]) { Caption = 'Прийняв'; Editable = false; }
+        field(199; "Shipped By Manual"; Boolean) { Caption = 'Відвантажив: ручний вибір'; Editable = false; }
+        field(200; "Received By Manual"; Boolean) { Caption = 'Прийняв: ручний вибір'; Editable = false; }
+        field(201; "Document Snapshot Status"; Code[30]) { Caption = 'Стан реквізитів'; Editable = false; }
+        field(202; "Snapshot Created At"; DateTime) { Caption = 'Реквізити зафіксовано'; Editable = false; }
     }
     keys
     {

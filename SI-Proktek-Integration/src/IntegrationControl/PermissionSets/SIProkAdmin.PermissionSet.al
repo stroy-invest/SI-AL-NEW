@@ -4,6 +4,9 @@ permissionset 57950 "SI PROK ADMIN"
     Caption = 'SI Proktek Integration Admin';
 
     Permissions =
+        codeunit "SI Prok Allocation Binder" = X,
+        codeunit "SI Prok Shipment Snapshot" = X,
+        page "SI Prok Shipment Links FB" = X,
         tabledata "SI Prok Driver Mapping" = RIMD,
         table "SI Prok Driver Mapping" = X,
         page "SI Prok Driver Mappings" = X,

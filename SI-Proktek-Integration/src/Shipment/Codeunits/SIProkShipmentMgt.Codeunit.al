@@ -17,6 +17,8 @@ codeunit 57145 "SI Prok Shipment Mgt."
         DriverUuidText: Text;
         DriverCode: Code[20];
         DriverUuid: Guid;
+        AllocationBinder: Codeunit "SI Prok Allocation Binder";
+        Snapshot: Codeunit "SI Prok Shipment Snapshot";
     begin
         if not Fact.Get(FactEntryNo) then
             exit;
@@ -81,6 +83,8 @@ codeunit 57145 "SI Prok Shipment Mgt."
             Shipment."Employee No." := Employee."No.";
             Shipment."Driver Name" := CopyStr(Employee.FullName(), 1, MaxStrLen(Shipment."Driver Name"));
         end;
+        AllocationBinder.Bind(Shipment);
+        Snapshot.InitializeOpen(Shipment, false);
         Shipment.Insert(true);
     end;
 
