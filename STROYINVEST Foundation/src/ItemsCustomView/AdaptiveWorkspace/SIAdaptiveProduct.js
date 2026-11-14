@@ -44,8 +44,22 @@ function SelectProduct(nodeType, itemNo, variantCode) {
     entry.row.scrollIntoView({ block: 'nearest' });
 }
 
+// Sort only the presentation tree; do not change ERP identifiers or server-side order.
+const siProductNameCollator = new Intl.Collator('uk', { sensitivity: 'base', numeric: true });
+
+function sortProductNodesByName(nodes, fallbackField) {
+    return [...nodes].sort((a, b) => {
+        const aName = String(a.name || a[fallbackField] || '');
+        const bName = String(b.name || b[fallbackField] || '');
+        const byName = siProductNameCollator.compare(aName, bName);
+        if (byName !== 0) return byName;
+        return String(a[fallbackField] || '').localeCompare(String(b[fallbackField] || ''));
+    });
+}
+
 function RenderProducts(productTreeJson) {
-    const data = JSON.parse(productTreeJson || '[]');
+    const parsed = JSON.parse(productTreeJson || '[]');
+    const data = sortProductNodesByName(Array.isArray(parsed) ? parsed : [], 'itemNo');
     const root = siAdaptiveProductRoot;
 
     siProductNodeMap = {};
@@ -54,6 +68,8 @@ function RenderProducts(productTreeJson) {
 
     root.innerHTML = '';
     root.style.height = '100%';
+    root.style.minWidth = '0';
+    root.style.containerType = 'inline-size';
     root.style.boxSizing = 'border-box';
     root.style.fontFamily = '"Segoe UI", sans-serif';
     root.style.fontSize = '14px';
@@ -72,11 +88,11 @@ function RenderProducts(productTreeJson) {
             overflow: auto;
             overscroll-behavior: contain;
         }
-        .si-product-grid { min-width: 620px; }
+        .si-product-grid { min-width: 0; width: 100%; }
         .si-product-header,
         .si-product-row {
             display: grid;
-            grid-template-columns: minmax(420px, 1fr) 140px;
+            grid-template-columns: minmax(160px, 1fr) minmax(90px, 140px);
             align-items: center;
             box-sizing: border-box;
         }
@@ -159,6 +175,14 @@ function RenderProducts(productTreeJson) {
         .si-product-link:focus {
             outline: 1px dotted #605e5c;
             outline-offset: 2px;
+        }
+        @container (max-width: 460px) {
+            .si-product-grid { min-width: 340px; }
+            .si-product-header, .si-product-row {
+                grid-template-columns: minmax(220px, 1fr) 95px;
+            }
+            .si-product-header { padding: 0 5px; }
+            .si-product-row { padding: 0 5px; }
         }
         .si-product-variant-row { background: #fff; }
         .si-product-children { display: block; }
@@ -275,7 +299,7 @@ function RenderProducts(productTreeJson) {
 
             grid.appendChild(itemRow);
 
-            (item.children || []).forEach(variant => {
+            sortProductNodesByName(Array.isArray(item.children) ? item.children : [], 'variantCode').forEach(variant => {
                 const variantRow = document.createElement('div');
                 variantRow.className = 'si-product-row si-product-variant-row';
 

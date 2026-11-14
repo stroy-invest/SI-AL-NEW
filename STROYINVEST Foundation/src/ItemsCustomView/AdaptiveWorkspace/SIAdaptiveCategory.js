@@ -87,6 +87,8 @@ function RenderTree(treeJson) {
 
     root.innerHTML = '';
     root.style.height = '100%';
+    root.style.minWidth = '0';
+    root.style.containerType = 'inline-size';
     root.style.boxSizing = 'border-box';
     root.style.fontFamily = '"Segoe UI", sans-serif';
     root.style.fontSize = '14px';
@@ -116,7 +118,8 @@ function RenderTree(treeJson) {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 8px;
+            flex-wrap: wrap;
             box-sizing: border-box;
         }
 
@@ -131,6 +134,9 @@ function RenderTree(treeJson) {
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            min-width: 0;
         }
 
         .si-tree-button {
@@ -188,13 +194,14 @@ function RenderTree(treeJson) {
         }
 
         .si-tree-grid {
-            min-width: 850px;
+            min-width: 0;
+            width: 100%;
         }
 
         .si-tree-header,
         .si-tree-row {
             display: grid;
-            grid-template-columns: minmax(280px, 1fr) 120px 170px 190px;
+            grid-template-columns: minmax(150px, 1fr) minmax(75px, 0.28fr);
             align-items: center;
             box-sizing: border-box;
         }
@@ -277,6 +284,24 @@ function RenderTree(treeJson) {
 
         .si-tree-value {
             padding-right: 12px;
+        }
+
+        /* Container queries follow the actual add-in width, not the browser viewport. */
+        @container (max-width: 820px) {
+            .si-tree-toolbar { align-items: flex-start; }
+            .si-tree-toolbar-buttons { justify-content: flex-start; }
+            .si-tree-button { font-size: 12px; padding: 3px 7px; }
+            .si-tree-header, .si-tree-row {
+                grid-template-columns: minmax(145px, 1fr) minmax(70px, .25fr);
+                font-size: 12px;
+            }
+            .si-tree-header { padding: 0 6px; }
+            .si-tree-row { padding: 3px 6px; }
+        }
+        @container (max-width: 560px) {
+            /* Two visible fields; keep the grid flexible on narrow screens. */
+            .si-tree-grid { min-width: 0; }
+            .si-tree-search-input { flex-basis: 140px; }
         }
 
         .si-tree-context-menu {
@@ -381,7 +406,7 @@ function RenderTree(treeJson) {
     const header = document.createElement('div');
     header.className = 'si-tree-header';
 
-    ['Категорія', 'Базова UoM', 'Вид категорії', 'Вид готової продукції']
+    ['Категорія', 'Базова UoM']
         .forEach(caption => {
             const cell = document.createElement('div');
             cell.textContent = caption;
@@ -466,8 +491,6 @@ function RenderTree(treeJson) {
 
         row.appendChild(categoryCell);
         row.appendChild(createValueCell(node.baseUomCode));
-        row.appendChild(createValueCell(node.categoryKind));
-        row.appendChild(createValueCell(node.finishedProductType));
 
         const childrenContainer = document.createElement('div');
         childrenContainer.style.display = 'none';
