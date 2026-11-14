@@ -2,8 +2,13 @@ page 50182 "SI Item Class. Workspace"
 {
     PageType = Card;
     ApplicationArea = All;
-    UsageCategory = Administration;
-    Caption = 'Дерево груп товарів';
+    Caption = 'Дерево груп товарів (застаріле)';
+
+    ObsoleteState = Pending;
+    ObsoleteReason = 'Replaced by page 50290 SI Item Hierarchy V2.';
+    ObsoleteTag = '1.0.0.89';
+
+    UsageCategory = None;
 
     layout
     {

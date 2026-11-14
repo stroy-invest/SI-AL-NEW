@@ -2,8 +2,8 @@ page 50290 "SI Item Hierarchy V2"
 {
     PageType = Card;
     ApplicationArea = All;
-    UsageCategory = Administration;
-    Caption = 'Дерево груп товарів (адаптивне)';
+    UsageCategory = Lists;
+    Caption = 'Дерево груп товарів';
 
     layout
     {
@@ -81,8 +81,10 @@ page 50290 "SI Item Hierarchy V2"
                     OpenItemNo := CopyStr(ItemNo, 1, MaxStrLen(OpenItemNo));
                     OpenVariantCode := CopyStr(VariantCode, 1, MaxStrLen(OpenVariantCode));
                     case NodeType of
-                        'Item': OpenItemCard(OpenItemNo);
-                        'Variant': OpenVariant(OpenItemNo, OpenVariantCode);
+                        'Item':
+                            OpenItemCard(OpenItemNo);
+                        'Variant':
+                            OpenVariant(OpenItemNo, OpenVariantCode);
                     end;
                 end;
             }
