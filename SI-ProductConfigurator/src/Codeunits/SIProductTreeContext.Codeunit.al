@@ -10,6 +10,14 @@ codeunit 53038 "SI Product Tree Context"
         CurrentVariantCode := VariantCode;
     end;
 
+    [EventSubscriber(ObjectType::Page, Page::"SI Item Hierarchy V2", 'OnProductContextChanged', '', false, false)]
+    local procedure OnAdaptiveProductContextChanged(NodeType: Text; ItemNo: Code[20]; VariantCode: Code[10])
+    begin
+        CurrentNodeType := CopyStr(NodeType, 1, MaxStrLen(CurrentNodeType));
+        CurrentItemNo := ItemNo;
+        CurrentVariantCode := VariantCode;
+    end;
+
     procedure GetContext(var NodeType: Text[20]; var ItemNo: Code[20]; var VariantCode: Code[10])
     begin
         NodeType := CurrentNodeType;
