@@ -22,7 +22,7 @@ page 61065 "SI Supply Req Clone Dialog"
                     ApplicationArea = All;
                     Caption = 'Нова дата потреби';
                     ShowMandatory = true;
-                    ToolTip = 'Дата та час мають бути пізнішими за попередню дату потреби й поточний момент.';
+                    ToolTip = 'Дата та час нової потреби мають бути в майбутньому, але можуть бути ранішими за дату вихідної заявки.';
                 }
                 field(CloneReason; CloneReason)
                 {

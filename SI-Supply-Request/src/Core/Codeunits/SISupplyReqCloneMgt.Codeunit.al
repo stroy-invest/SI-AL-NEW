@@ -1,6 +1,7 @@
 codeunit 61065 "SI Supply Req Clone Mgt"
 {
     // SR-CLONE-001: creates a new business request, not a reopened old request.
+    // Cloning does not depend on the source due date; the new request is independent.
     // All writes and both audit events are in the caller transaction (no COMMIT).
     Permissions = tabledata "SI Supply Req Header" = rim,
                   tabledata "SI Supply Req Line" = ri,
@@ -12,8 +13,6 @@ codeunit 61065 "SI Supply Req Clone Mgt"
     begin
         SourceHeader.TestField("No.");
         SourceHeader.TestField("Required on Site At");
-        if CurrentDateTime() < SourceHeader."Required on Site At" then
-            Error('Заявка %1 ще не задавнена. Клонування доступне після настання дати потреби.', SourceHeader."No.");
         if SourceHeader.Status in [SourceHeader.Status::Fulfilled, SourceHeader.Status::Cancelled] then
             Error('Заявку %1 у статусі %2 не можна клонувати.', SourceHeader."No.", SourceHeader.Status);
     end;
@@ -29,8 +28,6 @@ codeunit 61065 "SI Supply Req Clone Mgt"
         SourceHeader.LockTable();
         SourceHeader.Get(SourceRequestNo);
         TestCloneAllowed(SourceHeader);
-        if NewRequiredAt <= SourceHeader."Required on Site At" then
-            Error('Нова дата потреби має бути пізнішою за дату вихідної заявки.');
         if NewRequiredAt <= CurrentDateTime() then
             Error('Нова дата потреби має бути строго пізнішою за поточний момент.');
         if DT2Time(NewRequiredAt) = 000000T then

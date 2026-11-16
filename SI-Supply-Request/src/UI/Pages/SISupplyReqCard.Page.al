@@ -137,7 +137,7 @@ page 61002 "SI Supply Req Card"
             {
                 ApplicationArea = All;
                 Caption = 'Клонувати';
-                ToolTip = 'Створити нову чернетку за задавненою заявкою, без погоджень і планів забезпечення.';
+                ToolTip = 'Створити нову чернетку на основі заявки незалежно від дати її потреби, без погоджень і планів забезпечення.';
                 Image = Copy;
                 Promoted = true;
                 PromotedCategory = Process;
