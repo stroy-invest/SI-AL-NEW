@@ -17,7 +17,14 @@ table 57142 "SI Prok Shipment"
         field(80; "Variant Code"; Code[10]) { Caption = 'Варіант'; Editable = false; }
         field(90; "Recipe Name"; Text[150]) { Caption = 'Рецептура'; Editable = false; }
         field(100; "Quantity M3"; Decimal) { Caption = 'Кількість, м³'; DecimalPlaces = 0 : 5; Editable = false; }
-        field(101; "Simulation Quantity"; Boolean) { Caption = 'Обсяг симуляції (не фактичний випуск)'; Editable = false; }
+        field(101; "Simulation Quantity"; Boolean)
+        {
+            Caption = 'Історична ознака (не використовується)';
+            Editable = false;
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Для відвантаження використовується лише підтверджений обсяг.';
+            ObsoleteTag = '1.0.0.79';
+        }
         field(110; "Truck Plate"; Text[50]) { Caption = 'Державний номер автомобіля'; Editable = false; }
         field(120; "Driver UUID"; Guid) { Caption = 'UUID водія Proktek'; Editable = false; }
         field(130; "Employee No."; Code[20]) { Caption = 'Водій (Employee)'; Editable = false; TableRelation = Employee."No."; }

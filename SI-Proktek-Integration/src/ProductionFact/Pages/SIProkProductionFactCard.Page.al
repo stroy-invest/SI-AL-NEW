@@ -45,12 +45,257 @@ page 57093 "SI Prok Production Fact Card"
                 Caption = 'Матеріали';
                 SubPageLink = "Production Fact Entry No." = field("Entry No.");
             }
+            group(AccountingControl)
+            {
+                Caption = 'Контроль виробничого обліку';
+                field("Production UUID"; Rec."Production UUID") { ApplicationArea = All; }
+                field("BC Prod. Order No."; Rec."BC Prod. Order No.") { ApplicationArea = All; }
+                field("BC Prod. Order Line No."; Rec."BC Prod. Order Line No.") { ApplicationArea = All; }
+                field("Verification Status"; Rec."Verification Status") { ApplicationArea = All; }
+                field("Technical Validation"; Rec."Technical Validation") { ApplicationArea = All; }
+                field("BC Binding Status"; Rec."BC Binding Status") { ApplicationArea = All; }
+                field("Accounting Readiness"; Rec."Accounting Readiness") { ApplicationArea = All; }
+                field("Accounting Posting Model"; Rec."Accounting Posting Model") { ApplicationArea = All; }
+                field("Accounting Output Qty"; Rec."Accounting Output Qty") { ApplicationArea = All; }
+                field("Accounting Document No."; Rec."Accounting Document No.") { ApplicationArea = All; }
+                field("Accounting Material Lines"; Rec."Accounting Material Lines") { ApplicationArea = All; }
+                field("Accounting Diagnostics"; Rec."Accounting Diagnostics") { ApplicationArea = All; MultiLine = true; }
+            }
         }
     }
     actions
     {
         area(Processing)
         {
+            group(ProductionAccounting)
+            {
+                Caption = 'Виробничий облік';
+                action(CheckAccounting)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Перевірити готовність';
+                    Image = Check;
+                    trigger OnAction()
+                    var
+                        Prep: Codeunit "SI Prok Accounting Prep Mgt.";
+                    begin
+                        Prep.CheckFact(Rec);
+                        CurrPage.Update(false);
+                        Message('Accounting Readiness: %1. %2', Rec."Accounting Readiness", Rec."Accounting Diagnostics");
+                    end;
+                }
+                action(PrepareAccountingJournals)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Підготувати журнали (без проведення)';
+                    Image = Create;
+                    trigger OnAction()
+                    var
+                        Prepare: Codeunit "SI Prok Journal Preparation";
+                    begin
+                        Prepare.Prepare(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(PrepareProcessAdjustments)
+                {
+                    ApplicationArea = All;
+                    Caption = 'SI Process: підготувати товарний журнал (Sandbox)';
+                    Image = Create;
+                    ToolTip = 'Формує тільки НЕПРОВЕДЕНІ Negative/Positive Adjustment за фактом Proktek. Не змінює MES-факт, Production Order та не виконує проведення.';
+                    trigger OnAction()
+                    var
+                        ProcessPrep: Codeunit "SI Prok Process Journal Prep";
+                    begin
+                        ProcessPrep.PrepareSandbox(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                group(SIProcessStage2)
+                {
+                    Caption = 'SI Process Production — Stage 2';
+                    action(CheckProcessJournal)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'SI Process: перевірити журнал (без змін)';
+                        Image = Check;
+                        ToolTip = 'Перевіряє сім або більше непроведених рядків, Journal Links, складські та облікові групи. Не змінює дані та не проводить.';
+                        trigger OnAction()
+                        var
+                            Control: Codeunit "SI Prok Process Control";
+                        begin
+                            Control.CheckReady(Rec);
+                        end;
+                    }
+                    action(ReviewProcessPosting)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'SI Process: аудит проведення (без змін)';
+                        Image = ViewDetails;
+                        ToolTip = 'Перевіряє Item Ledger Entries за документом і знімками Journal Links. 0 — немає, 1 — повністю, 2 — частково. Нічого не змінює.';
+                        trigger OnAction()
+                        var
+                            Control: Codeunit "SI Prok Process Control";
+                        begin
+                            Control.Review(Rec);
+                        end;
+                    }
+                    action(PostProcessControlled)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'SI Process: провести товарний журнал (Sandbox)';
+                        Image = Post;
+                        ToolTip = 'РЕАЛЬНЕ проведення Negative/Positive Adjustment стандартним BC. Створює durable Started-спробу до проведення; автоматичний повтор заборонений.';
+                        trigger OnAction()
+                        var
+                            Posting: Codeunit "SI Prok Process Posting";
+                        begin
+                            Posting.PostSandbox(Rec);
+                            CurrPage.Update(false);
+                        end;
+                    }
+                    action(RecoverProcessControlled)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'SI Process: відновити Started (Sandbox)';
+                        Image = Refresh;
+                        ToolTip = 'Тільки після 10 хв: якщо 0 проведено і журнал цілий — дозволяє контрольований повтор; якщо 1 — завершує спробу без повтору; часткове проведення блокує.';
+                        trigger OnAction()
+                        var
+                            Posting: Codeunit "SI Prok Process Posting";
+                        begin
+                            Posting.RecoverSandbox(Rec);
+                            CurrPage.Update(false);
+                        end;
+                    }
+                }
+                action(RenumberPreparedAccountingJournals)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Призначити номер підготовленим журналам (Sandbox)';
+                    Image = Refresh;
+                    ToolTip = 'Одноразово призначає номер із налаштованої No. Series існуючим непроведеним рядкам та їхнім Journal Links. Не створює і не проводить журнали.';
+                    trigger OnAction()
+                    var
+                        Prepare: Codeunit "SI Prok Journal Preparation";
+                    begin
+                        Prepare.RenumberPreparedSandbox(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(ResetAccountingOrderSandbox)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Очистити облікову підготовку замовлення (Sandbox)';
+                    Image = Delete;
+                    ToolTip = 'Очищає ТІЛЬКИ непроведені Item Journal Lines, SI Prok Journal Link, Started Posting Attempt та номер облікового документа всіх фактів цього BC Production Order. Факти, матеріали, JSON, замовлення та компоненти не змінює.';
+                    trigger OnAction()
+                    var
+                        ResetMgt: Codeunit "SI Prok Accounting Reset";
+                    begin
+                        ResetMgt.ResetOrderSandbox(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(RedatePreparedAccountingJournals)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Змінити дату підготовлених журналів (Sandbox)';
+                    Image = Refresh;
+                    ToolTip = 'Застосовує політику Posting Date до непроведених журналів факту. Дозволено для Started лише за відсутності проведених Consumption та Output. Не змінює дату виробництва і не проводить журнали.';
+                    trigger OnAction()
+                    var
+                        Prepare: Codeunit "SI Prok Journal Preparation";
+                    begin
+                        Prepare.RedatePreparedSandbox(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(ReconcileAccountingJournals)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Звірити журнали';
+                    Image = Calculate;
+                    trigger OnAction()
+                    var
+                        Recon: Codeunit "SI Prok Journal Reconciliation";
+                    begin
+                        Recon.ReconcileFact(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(ReviewAccountingPosting)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Перевірити проведені записи';
+                    Image = ViewDetails;
+                    trigger OnAction()
+                    var
+                        Audit: Codeunit "SI Prok Posting Audit";
+                    begin
+                        Audit.Review(Rec);
+                    end;
+                }
+                action(DiagnosePostingGroups)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Діагностика облікових груп журналів (без змін)';
+                    Image = ViewDetails;
+                    ToolTip = 'Показує фактичну Inventory Posting Group кожного рядка Item Journal, групу картки Item та наявність Inventory Posting Setup. Нічого не змінює і не проводить.';
+                    trigger OnAction()
+                    var
+                        Audit: Codeunit "SI Prok Posting Audit";
+                    begin
+                        Audit.DiagnosePostingGroups(Rec);
+                    end;
+                }
+                action(PostFactControlled)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Провести Output / Consumption (Sandbox)';
+                    Image = Post;
+                    trigger OnAction()
+                    var
+                        Posting: Codeunit "SI Prok Controlled Posting";
+                    begin
+                        Posting.PostSandbox(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(RecoverOutputControlled)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Відновити лише Output (Sandbox)';
+                    Image = Refresh;
+                    trigger OnAction()
+                    var
+                        Posting: Codeunit "SI Prok Controlled Posting";
+                    begin
+                        Posting.RecoverOutputSandbox(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(RecoverUnpostedControlled)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Відновити непроведену спробу (Sandbox)';
+                    Image = Refresh;
+                    trigger OnAction()
+                    var
+                        Posting: Codeunit "SI Prok Controlled Posting";
+                    begin
+                        Posting.RecoverUnpostedSandbox(Rec);
+                        CurrPage.Update(false);
+                    end;
+                }
+                action(OpenAccountingSetup)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Налаштування виробничих журналів Proktek';
+                    Image = Setup;
+                    RunObject = page "SI Prok Journal Setup";
+                }
+            }
             action(OpenShipment)
             {
                 Caption = 'Документ відвантаження';

@@ -22,7 +22,6 @@ page 57091 "SI Prok Production Facts"
                 field("Recipe No."; Rec."Recipe No.") { ApplicationArea = All; }
                 field("Recipe Revision No."; Rec."Recipe Revision No.") { ApplicationArea = All; }
                 field("Capture Mode"; Rec."Capture Mode") { ApplicationArea = All; }
-                field("Simulation"; Rec."Simulation") { ApplicationArea = All; }
                 field("Truck Code"; Rec."Truck Code") { ApplicationArea = All; }
                 field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; }
                 field(ReportedQuantity; Rec.GetReportedQuantityText()) { ApplicationArea = All; Caption = 'Заявлено MES, м³'; Editable = false; ToolTip = 'Переданий MES обсяг; не є підтвердженням виробництва. Для історії читається canonical без зміни запису.'; }
@@ -32,8 +31,8 @@ page 57091 "SI Prok Production Facts"
                 field("Execution Evidence"; Rec."Execution Evidence") { ApplicationArea = All; }
                 field("Verification Message"; Rec."Verification Message") { ApplicationArea = All; }
                 field(ProducedQuantity; Rec.GetProducedQuantityText()) { ApplicationArea = All; Caption = 'Підтверджено, м³'; Editable = false; ToolTip = 'Не підтверджено означає відсутність підтвердженого обсягу, а не доведений нуль виробництва.'; }
-                field(ConfirmedOrderTotal; Rec.GetOrderTotalText()) { ApplicationArea = All; Caption = 'Підтверджено по Order, м³'; Editable = false; ToolTip = 'Лише реальні Normal-факти з підтвердженим обсягом; симуляції показано окремо.'; }
-                field(ReportedOrderTotal; Rec.GetReportedOrderTotalText()) { ApplicationArea = All; Caption = 'Заявлено MES по Order, м³'; Editable = false; ToolTip = 'Операційний підсумок у межах підключення, Order, режиму і ознаки симуляції. Не підтверджений випуск.'; }
+                field(ConfirmedOrderTotal; Rec.GetOrderTotalText()) { ApplicationArea = All; Caption = 'Підтверджено по Order, м³'; Editable = false; ToolTip = 'Сума підтвердженого випуску за Order UUID у межах конкретного підключення.'; }
+                field(ReportedOrderTotal; Rec.GetReportedOrderTotalText()) { ApplicationArea = All; Caption = 'Заявлено MES по Order, м³'; Editable = false; ToolTip = 'Операційний підсумок MES за Order UUID у межах підключення, не підтверджений випуск.'; }
                 field(OrderRemaining; Rec.GetOrderRemainingText()) { ApplicationArea = All; Caption = 'Залишок за підтвердженнями, м³'; Editable = false; ToolTip = 'Непідтверджені обсяги MES не зменшують цей залишок. За невідомої замовленої кількості залишок невідомий.'; }
                 field(Status; Rec.Status) { ApplicationArea = All; }
                 field("Ready for Posting"; Rec."Ready for Posting") { ApplicationArea = All; }

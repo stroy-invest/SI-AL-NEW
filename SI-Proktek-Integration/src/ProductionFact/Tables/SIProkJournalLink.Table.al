@@ -27,6 +27,8 @@ table 57121 "SI Prok Journal Link"
         field(52; "Reconciliation Status"; Enum "SI Prok Journal Recon Status") { Caption = 'Статус звіряння'; }
         field(53; "Reconciliation Details"; Text[500]) { Caption = 'Діагностика звіряння'; }
         field(54; "Reconciled At"; DateTime) { Caption = 'Перевірено'; }
+        field(55; "Journal Line SystemId"; Guid) { Caption = 'SystemId фізичного рядка журналу'; }
+        field(56; "Expected Gen. Bus. Group"; Code[20]) { Caption = 'Очікувана загальна бізнес-група'; }
         field(30; "Prepared At"; DateTime) { Caption = 'Створено'; }
         field(31; "Prepared By"; Code[50]) { Caption = 'Користувач'; }
     }

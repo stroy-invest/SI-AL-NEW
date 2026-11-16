@@ -12,6 +12,8 @@ codeunit 57102 "SI Prok BC Prod Order Mgt."
         Item: Record Item;
         ExistingOrder: Record "Production Order";
         ExistingLine: Record "Prod. Order Line";
+        MaterialLocation: Record Location;
+        LocationSemantics: Codeunit "SI Prok Location Semantics";
         StatusSync: Codeunit "SI Prok Prod Order Status Sync";
         SyncIssue: Text;
         OrderDate: Date;
@@ -45,6 +47,8 @@ codeunit 57102 "SI Prok BC Prod Order Mgt."
         Item.Get(Plan."Item No.");
         Item.TestField("Replenishment System", Item."Replenishment System"::"Prod. Order");
         ProdRequest.TestField("Required Date/Time");
+        LocationSemantics.AssertFinishedGoods(ProdRequest."Source Location Code");
+        LocationSemantics.ResolveMaterialWarehouse(MaterialLocation);
         OrderDate := DT2Date(ProdRequest."Required Date/Time");
 
         // Standard BC header numbering via Manufacturing Setup / No. Series.
@@ -92,11 +96,14 @@ codeunit 57102 "SI Prok BC Prod Order Mgt."
             Component.Validate("Item No.", PlanLine."Item No.");
             Component.Validate("Variant Code", PlanLine."Variant Code");
             Component.Validate("Unit of Measure Code", PlanLine."Unit of Measure Code");
-            Component.Validate("Location Code", ProdOrder."Location Code");
+            Component.Validate("Location Code", MaterialLocation.Code);
+            Component.Validate("Flushing Method", Component."Flushing Method"::Manual);
             Component.Validate("Quantity per", PlanLine."Planned Quantity" / Plan."Planned Quantity");
             Component.Validate("Expected Quantity", PlanLine."Planned Quantity");
             Component.Validate("Due Date", OrderDate);
             Component.Insert(true);
+            LocationSemantics.AssertMaterial(Component."Location Code");
+            Component.TestField("Flushing Method", Component."Flushing Method"::Manual);
             CompCount += 1;
         until PlanLine.Next() = 0;
         if CompCount = 0 then

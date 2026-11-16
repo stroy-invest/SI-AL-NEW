@@ -2,6 +2,9 @@ table 57096 "SI Prok Sim Truck Batch"
 {
     Caption = 'Тестова партія Proktek (автоміксер)';
     DataClassification = CustomerContent;
+    ObsoleteState = Pending;
+    ObsoleteReason = 'Тестовий генератор вилучено. Історичні записи зберігаються для безпечного оновлення.';
+    ObsoleteTag = '1.0.0.79';
     fields
     {
         field(1; "Order UUID"; Guid) { Caption = 'Proktek Order UUID'; }

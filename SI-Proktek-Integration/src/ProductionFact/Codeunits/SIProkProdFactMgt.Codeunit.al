@@ -63,7 +63,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             end;
         end;
 
-        RefreshOrderTotals(ProdRequest."Proktek Order UUID");
     end;
 
     // Explicit provenance for callers that know the source connection.
@@ -84,7 +83,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
             AssertSameConnection(Fact, ConnectionCode);
             AssertSameContent(Fact, CanonicalText);
-            RefreshOrderTotals(Fact."Order UUID");
             Fact.Get(Fact."Entry No.");
             exit(false);
         end;
@@ -110,7 +108,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
             AssertSameConnection(Fact, '');
             AssertSameContent(Fact, CanonicalText);
-            RefreshOrderTotals(Fact."Order UUID");
             Fact.Get(Fact."Entry No.");
             exit(false);
         end;
@@ -185,7 +182,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if Fact."Production BOM No." = '' then
             ResolveLegacyFormulaBom(Fact);
         EnrichRecipeContext(Fact);
-        Fact."Simulation" := IsSimulated(Root);
         AssessNewFact(Fact, Root);
         ReadTruckFromCanonical(Root, Fact);
         Fact."Ordered Quantity M3" := ProdRequest.Quantity;
@@ -207,7 +203,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         NormalizeFactMaterials(Fact);
         RunTechnicalValidation(Fact);
         ValidateFact(Fact);
-        RefreshOrderTotals(Fact."Order UUID");
     end;
 
     procedure PersistCaptureOnly(CanonicalText: Text; var Fact: Record "SI Prok Production Fact"): Boolean
@@ -298,7 +293,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             ResolveLegacyFormulaBom(Fact);
         end;
         EnrichRecipeContext(Fact);
-        Fact.Simulation := IsSimulated(Root);
         ReadTruckFromCanonical(Root, Fact);
         AssessNewFact(Fact, Root);
         Fact.Status := Fact.Status::Received;
@@ -408,14 +402,13 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         end;
     end;
 
-    procedure RepairSimulationTruckFields(OrderUuid: Guid)
+    procedure RepairMissingTruckFields(OrderUuid: Guid)
     var
         Fact: Record "SI Prok Production Fact";
         Root: JsonObject;
         CanonicalText: Text;
     begin
         Fact.SetRange("Order UUID", OrderUuid);
-        Fact.SetRange("Simulation", true);
         Fact.SetRange("Truck Code", '');
         if Fact.FindSet(true) then
             repeat
@@ -536,10 +529,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             Fact.Status := Fact.Status::Blocked;
             Fact."Validation Message" := CopyStr(BlockReason, 1, MaxStrLen(Fact."Validation Message"));
         end else
-            if Fact.Simulation then
-                Fact."Validation Message" := 'SIMULATION: BOM і матеріали визначено; проведення заборонено.'
-            else
-                Fact."Validation Message" := 'BOM і матеріали визначено; проведення очікує окремої перевірки.';
+            Fact."Validation Message" := 'BOM і матеріали визначено; проведення очікує окремої перевірки.';
         Fact.Modify(true);
     end;
 
@@ -860,14 +850,10 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
     local procedure AssertSameContent(Fact: Record "SI Prok Production Fact"; CanonicalText: Text)
     var
         Compare: Codeunit "SI Prok Fact Content Compare";
-        Root: JsonObject;
         Reason: Text;
     begin
         if Fact."Capture Mode" <> Fact."Capture Mode"::Normal then
             Error('Конфлікт режиму приймання: UUID вже існує як Test.');
-        if Root.ReadFrom(CanonicalText) then
-            if IsSimulated(Root) <> Fact.Simulation then
-                Error('Конфлікт контексту симуляції.');
         if not Compare.SameContent(Fact.GetCanonicalJson(), CanonicalText, Reason) then
             Error('%1', Reason);
     end;
@@ -877,60 +863,6 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if Fact."Connection Code" <> ConnectionCode then
             Error('Production UUID %1 уже існує з Connection Code %2; нове джерело %3. Конфлікт походження.',
                 Fact."Production UUID", Fact."Connection Code", ConnectionCode);
-    end;
-
-    local procedure IsSimulated(Root: JsonObject): Boolean
-    var
-        Token: JsonToken;
-    begin
-        if Root.Get('simulated', Token) and Token.IsValue() then
-            exit(Token.AsValue().AsBoolean());
-        exit(false);
-    end;
-
-    local procedure RefreshOrderTotals(OrderUuid: Guid)
-    var
-        Fact: Record "SI Prok Production Fact";
-        TotalProduced: Decimal;
-        OrderedQty: Decimal;
-        RemainingQty: Decimal;
-    begin
-        if IsNullGuid(OrderUuid) then
-            exit;
-        Fact.SetRange("Order UUID", OrderUuid);
-        // Production totals are calculated read-only by GetConfirmedOrderTotal.
-        // Keep the existing simulation scenario in its own scope.
-        Fact.SetRange(Simulation, true);
-        if Fact.FindSet() then begin
-            repeat
-                TotalProduced += Fact."Produced Quantity M3";
-                if OrderedQty = 0 then
-                    OrderedQty := Fact."Ordered Quantity M3";
-            until Fact.Next() = 0;
-
-            RemainingQty := OrderedQty - TotalProduced;
-            if RemainingQty < 0 then
-                RemainingQty := 0;
-
-            Fact.FindSet(true);
-            repeat
-                // Historical records are never rewritten by E1.1.
-                if Fact."Verification Status" = Fact."Verification Status"::NotAssessed then
-                    continue;
-                Fact."Order Produced Total M3" := TotalProduced;
-                Fact."Order Remaining M3" := RemainingQty;
-                if Fact.Status <> Fact.Status::Blocked then begin
-                    if TotalProduced > OrderedQty then
-                        Fact.Status := Fact.Status::Overproduced
-                    else
-                        if TotalProduced = OrderedQty then
-                            Fact.Status := Fact.Status::Complete
-                        else
-                            Fact.Status := Fact.Status::Partial;
-                end;
-                Fact.Modify(true);
-            until Fact.Next() = 0;
-        end;
     end;
 
     local procedure FindFactByProductionUuid(ProductionUuidText: Text; var Fact: Record "SI Prok Production Fact"): Boolean

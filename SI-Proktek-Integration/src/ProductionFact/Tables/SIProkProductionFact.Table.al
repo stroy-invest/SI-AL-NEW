@@ -46,7 +46,14 @@ table 57091 "SI Prok Production Fact"
         field(250; "Validation Message"; Text[250]) { Caption = 'Результат перевірки'; }
         field(260; "Received At"; DateTime) { Caption = 'Отримано'; Editable = false; }
         field(270; "Received By"; Text[100]) { Caption = 'Отримав'; Editable = false; }
-        field(281; "Simulation"; Boolean) { Caption = 'Симуляція'; Editable = false; }
+        field(281; "Simulation"; Boolean)
+        {
+            Caption = 'Історична ознака (не використовується)';
+            Editable = false;
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Тестове походження не впливає на виробничий облік.';
+            ObsoleteTag = '1.0.0.79';
+        }
         field(282; "Truck UUID"; Text[50]) { Caption = 'UUID автоміксера'; Editable = false; }
         field(283; "Truck Code"; Text[100]) { Caption = 'Код автоміксера'; Editable = false; }
         field(284; "Truck Plate"; Text[50]) { Caption = 'Номер автоміксера'; Editable = false; }
@@ -73,13 +80,30 @@ table 57091 "SI Prok Production Fact"
         field(325; "BC Bound At"; DateTime) { Caption = 'Час зв’язування BC'; Editable = false; }
         // PF-02.2A: accounting readiness is independent of BC binding and never posts.
         field(330; "Accounting Readiness"; Enum "SI Prok Accounting Readiness") { Caption = 'Готовність до обліку'; Editable = false; }
-        field(331; "Accounting Prep Mode"; Enum "SI Prok Accounting Prep Mode") { Caption = 'Режим облікової перевірки'; Editable = false; }
+        field(331; "Accounting Prep Mode"; Enum "SI Prok Accounting Prep Mode")
+        {
+            Caption = 'Застарілий режим (не використовується)';
+            Editable = false;
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Готовність визначається перевіркою факту без режимів.';
+            ObsoleteTag = '1.0.0.79';
+        }
         field(332; "Accounting Diagnostics"; Text[2048]) { Caption = 'Діагностика облікової перевірки'; Editable = false; }
         field(333; "Accounting Checked At"; DateTime) { Caption = 'Час облікової перевірки'; Editable = false; }
         field(334; "Accounting Output Qty"; Decimal) { Caption = 'Підготовлений обсяг, м³'; DecimalPlaces = 0 : 5; Editable = false; }
         field(335; "Accounting Material Lines"; Integer) { Caption = 'Перевірено матеріалів'; Editable = false; }
         // TC-01: test fixture only. Real plan must come from a verified MES batch source.
         field(336; "Planned Quantity M3"; Decimal) { Caption = 'План партії, м³'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(337; "Accounting Document No."; Code[20])
+        {
+            Caption = 'Номер облікового документа';
+            Editable = false;
+        }
+        field(338; "Accounting Posting Model"; Enum "SI Prok Posting Model")
+        {
+            Caption = 'Модель проведення';
+            Editable = false;
+        }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 
@@ -183,8 +207,6 @@ table 57091 "SI Prok Production Fact"
 
     procedure GetOrderTotalText(): Text
     begin
-        if Simulation then
-            exit(Format("Order Produced Total M3") + ' (симуляція)');
         if IsNullGuid("Order UUID") or ("Connection Code" = '') then
             exit('Невідомо');
         exit(Format(GetConfirmedOrderTotal()));
@@ -194,8 +216,6 @@ table 57091 "SI Prok Production Fact"
     var
         Remaining: Decimal;
     begin
-        if Simulation then
-            exit(Format("Order Remaining M3") + ' (симуляція)');
         if ("Ordered Quantity M3" <= 0) or IsNullGuid("Order UUID") or ("Connection Code" = '') then
             exit('Невідомо');
         Remaining := "Ordered Quantity M3" - GetConfirmedOrderTotal();
@@ -215,8 +235,6 @@ table 57091 "SI Prok Production Fact"
             exit('Невідомо');
         OtherFact.SetRange("Order UUID", "Order UUID");
         OtherFact.SetRange("Connection Code", "Connection Code");
-        OtherFact.SetRange("Capture Mode", "Capture Mode");
-        OtherFact.SetRange(Simulation, Simulation);
         if OtherFact.FindSet() then
             repeat
                 if OtherFact.TryReadReportedQuantity(Quantity) then
@@ -231,10 +249,6 @@ table 57091 "SI Prok Production Fact"
 
     procedure GetReportedOrderSummaryText(): Text
     begin
-        // The historical truck simulation stores the simulated order total
-        // in Order Produced Total M3; individual MES readings are per batch.
-        if Simulation then
-            exit(Format("Order Produced Total M3") + ' (симуляція)');
         exit(GetReportedOrderTotalText());
     end;
 
@@ -246,29 +260,18 @@ table 57091 "SI Prok Production Fact"
     begin
         if "Ordered Quantity M3" <= 0 then
             exit('Невідомо');
-        if Simulation then
-            Total := "Order Produced Total M3"
-        else begin
-            if IsNullGuid("Order UUID") or ("Connection Code" = '') then
-                exit('Невідомо');
-            OtherFact.SetRange("Order UUID", "Order UUID");
-            OtherFact.SetRange("Connection Code", "Connection Code");
-                    OtherFact.SetRange("Verification Status", OtherFact."Verification Status"::Verified);
-            if OtherFact.IsEmpty() then
-                exit('Невідомо');
-            Total := GetConfirmedOrderTotal();
-        end;
+        if IsNullGuid("Order UUID") or ("Connection Code" = '') then
+            exit('Невідомо');
+        OtherFact.SetRange("Order UUID", "Order UUID");
+        OtherFact.SetRange("Connection Code", "Connection Code");
+        OtherFact.SetRange("Verification Status", OtherFact."Verification Status"::Verified);
+        if OtherFact.IsEmpty() then
+            exit('Невідомо');
+        Total := GetConfirmedOrderTotal();
         Difference := Total - "Ordered Quantity M3";
         if Difference > 0 then
-            exit('+' + Format(Difference) + GetSimulationSuffix());
-        exit(Format(Difference) + GetSimulationSuffix());
-    end;
-
-    local procedure GetSimulationSuffix(): Text
-    begin
-        if Simulation then
-            exit(' (симуляція)');
-        exit('');
+            exit('+' + Format(Difference));
+        exit(Format(Difference));
     end;
 
     procedure SetCanonicalJson(Value: Text)

@@ -24,11 +24,8 @@ codeunit 57104 "SI Prok Fact Content Compare"
             Reason := 'Новий canonical: ' + Reason;
             exit(false);
         end;
-        // Older canonical records discarded field presence and zero-only slots.
-        // Their missing evidence must never be invented during a repeat intake.
-        IgnoreSimulationPresence := ReadBoolean(LeftRoot, 'simulated') and ReadBoolean(RightRoot, 'simulated');
-        if not IgnoreSimulationPresence and
-           (LeftRoot.Contains('quantityM3Present') <> RightRoot.Contains('quantityM3Present')) then begin
+        // Missing source evidence must not be inferred on a repeated intake.
+        if LeftRoot.Contains('quantityM3Present') <> RightRoot.Contains('quantityM3Present') then begin
             Reason := 'Історичний canonical не містить ознак наявності даних E1.1; потрібен окремий розбір без зміни факту.';
             exit(false);
         end;
@@ -372,12 +369,9 @@ codeunit 57104 "SI Prok Fact Content Compare"
 
     local procedure IgnoreKey(Path: Text; PropertyName: Text; LeftObject: JsonObject; RightObject: JsonObject): Boolean
     begin
-        // Existing simulation fixtures predate presence metadata. Their numeric
-        // scenario remains comparable without rewriting stored canonical JSON.
-        if IgnoreSimulationPresence then
-            if ((Path = '') and (PropertyName = 'quantityM3Present')) or
-               ((Path = '/hoppers[]') and (PropertyName in ['actualKgPresent', 'actualKgInvalid'])) then
-                exit(true);
+        // A source origin marker is metadata, not a part of physical production.
+        if (Path = '') and (PropertyName = 'simulated') then
+            exit(true);
         if (Path = '') and (PropertyName = 'materials') then
             // Aggregated material identity depends on mutable Material Config.
             // The independent physical hopper projection is compared instead.
@@ -458,9 +452,7 @@ codeunit 57104 "SI Prok Fact Content Compare"
             Fact."Verification Message" := CopyStr('Дані неповні. ' + Fact."Verification Message", 1, MaxStrLen(Fact."Verification Message"));
         if Fact."Verification Status" = Fact."Verification Status"::"Suspected Failure" then
             Fact."Verification Message" := CopyStr('Підозра не є доказом невдалого замісу. ' + Fact."Verification Message", 1, MaxStrLen(Fact."Verification Message"));
-        // Preserve the existing simulation quantity, without certifying it.
-        if not Fact.Simulation then
-            Fact."Produced Quantity M3" := 0;
+        Fact."Produced Quantity M3" := 0;
         Fact."Ready for Posting" := false;
     end;
 
@@ -485,6 +477,4 @@ codeunit 57104 "SI Prok Fact Content Compare"
         exit(false);
     end;
 
-    var
-        IgnoreSimulationPresence: Boolean;
 }

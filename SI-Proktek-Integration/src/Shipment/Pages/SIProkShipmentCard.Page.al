@@ -18,7 +18,6 @@ page 57143 "SI Prok Shipment Card"
                 field("BC Prod. Order No."; Rec."BC Prod. Order No.") { ApplicationArea = All; }
                 field("Concrete Description"; Rec."Concrete Description") { ApplicationArea = All; }
                 field("Quantity M3"; Rec."Quantity M3") { ApplicationArea = All; }
-                //field("Simulation Quantity"; Rec."Simulation Quantity") { ApplicationArea = All; }
                 field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; }
                 field("Driver Name"; Rec."Driver Name") { ApplicationArea = All; }
                 field("Shipment Date/Time"; Rec."Shipment Date/Time") { ApplicationArea = All; }

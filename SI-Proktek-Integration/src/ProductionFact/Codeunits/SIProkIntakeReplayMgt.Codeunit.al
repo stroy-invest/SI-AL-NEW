@@ -19,8 +19,8 @@ codeunit 57105 "SI Prok Intake Replay Mgt."
         if Source."Production Fact Entry No." = 0 then
             Error('Архівний запис не має пов’язаного виробничого факту.');
         Fact.Get(Source."Production Fact Entry No.");
-        if (Fact."Capture Mode" <> Fact."Capture Mode"::Test) or not Fact.Simulation then
-            Error('Replay дозволено лише для симульованих фактів у режимі Test.');
+        if Fact."Capture Mode" <> Fact."Capture Mode"::Test then
+            Error('Replay дозволено лише для фактів у режимі Test.');
         if Fact."Connection Code" <> Source."Connection Code" then
             Error('Профіль джерела не відповідає профілю факту.');
         if UpperCase(DelChr(Source."Production UUID", '=', '{}')) <>

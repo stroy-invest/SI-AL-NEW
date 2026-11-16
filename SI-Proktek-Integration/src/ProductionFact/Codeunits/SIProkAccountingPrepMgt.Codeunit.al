@@ -1,7 +1,7 @@
 codeunit 57116 "SI Prok Accounting Prep Mgt."
 {
     // PF-02.2A: validate only. Never create Item Journal Line, post or change MES facts.
-    procedure CheckFact(var Fact: Record "SI Prok Production Fact"; Mode: Enum "SI Prok Accounting Prep Mode")
+    procedure CheckFact(var Fact: Record "SI Prok Production Fact")
     var
         Binding: Codeunit "SI Prok Fact BC Binding Mgt.";
         Order: Record "Production Order";
@@ -10,12 +10,16 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
         Component: Record "Prod. Order Component";
         Item: Record Item;
         ItemUoM: Record "Item Unit of Measure";
+        LocationSemantics: Codeunit "SI Prok Location Semantics";
         Issues: Text;
         OutputQty: Decimal;
         MaterialCount: Integer;
         ComponentCount: Integer;
+        PositiveMaterialCount: Integer;
     begin
         Fact.Get(Fact."Entry No.");
+        if Fact."Accounting Posting Model" = Fact."Accounting Posting Model"::"Process Adjustment" then
+            Error('PF-02: факт використовує SI Process Production. Перевірка Production Order не застосовується.');
         // Reconcile standard Firm Planned -> Released transition before checking readiness.
         // BindFact preserves UUID/request/line identity and reports any ambiguity as Blocked.
         Binding.RevalidateBinding(Fact);
@@ -40,7 +44,7 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
             AddIssue(Issues, 'Технічна перевірка не Complete.');
         OutputQty := Fact."Produced Quantity M3";
         if OutputQty <= 0 then
-            AddIssue(Issues, 'Немає додатної кількості випуску для обраного режиму.');
+            AddIssue(Issues, 'Немає додатної підтвердженої кількості випуску.');
 
         if Fact."BC Prod. Order No." <> '' then begin
             if not Order.Get(Fact."BC Prod. Order Status", Fact."BC Prod. Order No.") then
@@ -55,6 +59,20 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
                         AddIssue(Issues, 'Товар/варіант випуску не відповідає виробничому рядку.');
                     if ProdLine."Unit of Measure Code" <> 'M3' then
                         AddIssue(Issues, 'Одиниця випуску не M3: конверсію слід узгодити до PF-02.2B.');
+                    LocationSemantics.AssertFinishedGoods(ProdLine."Location Code");
+                    // Validate ALL components, not only those occurring in
+                    // the MES payload. Automatic flushing of any BOM component
+                    // would duplicate or invent material consumption.
+                    Component.Reset();
+                    Component.SetRange(Status, Order.Status);
+                    Component.SetRange("Prod. Order No.", Order."No.");
+                    Component.SetRange("Prod. Order Line No.", ProdLine."Line No.");
+                    if Component.FindSet() then
+                        repeat
+                            LocationSemantics.AssertMaterial(Component."Location Code");
+                            if Component."Flushing Method" <> Component."Flushing Method"::Manual then
+                                AddIssue(Issues, StrSubstNo('Компонент BC %1: Flushing Method має бути Manual.', Component."Item No."));
+                        until Component.Next() = 0;
                 end;
             end;
         end;
@@ -73,6 +91,8 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
                     AddIssue(Issues, StrSubstNo('Матеріал %1: немає фактичних показників бункерів.', Material."Line No."));
                 if Material."Actual Base Qty" < 0 then
                     AddIssue(Issues, StrSubstNo('Матеріал %1: від’ємна фактична кількість.', Material."Line No."));
+                if Material."Actual Base Qty" > 0 then
+                    PositiveMaterialCount += 1;
                 if (Material."Item No." <> '') and Item.Get(Material."Item No.") then begin
                     if Material."BC Base UoM" <> Item."Base Unit of Measure" then
                         AddIssue(Issues, StrSubstNo('Матеріал %1: базова ОВ не відповідає Item.', Material."Line No."));
@@ -91,6 +111,8 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
                         AddIssue(Issues, StrSubstNo('Матеріал %1: знайдено %2 компонентів BC, потрібен рівно один.', Material."Line No.", ComponentCount))
                     else begin
                         Component.FindFirst();
+                        if Component."Flushing Method" <> Component."Flushing Method"::Manual then
+                            AddIssue(Issues, StrSubstNo('Матеріал %1: Flushing Method компонента BC має бути Manual.', Material."Line No."));
                         if not ItemUoM.Get(Material."Item No.", Component."Unit of Measure Code") then
                             AddIssue(Issues, StrSubstNo('Матеріал %1: відсутня ОВ компонента BC.', Material."Line No."))
                         else
@@ -99,14 +121,15 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
                     end;
                 end;
             until Material.Next() = 0;
+        if PositiveMaterialCount = 0 then
+            AddIssue(Issues, 'Усі фактичні витрати матеріалів нульові; Consumption неможливий.');
 
-        Fact."Accounting Prep Mode" := Fact."Accounting Prep Mode"::Production;
         Fact."Accounting Checked At" := CurrentDateTime();
         Fact."Accounting Output Qty" := OutputQty;
         Fact."Accounting Material Lines" := MaterialCount;
         if Issues = '' then begin
             Fact."Accounting Readiness" := Fact."Accounting Readiness"::Ready;
-            Fact."Accounting Diagnostics" := 'Облікові перевірки пройдено. Журнали ще не створено.';
+            Fact."Accounting Diagnostics" := 'Облікові перевірки пройдено. Стан журналів і проведених записів перевіряється окремо.';
         end else begin
             Fact."Accounting Readiness" := Fact."Accounting Readiness"::Blocked;
             Fact."Accounting Diagnostics" := CopyStr(Issues, 1, MaxStrLen(Fact."Accounting Diagnostics"));

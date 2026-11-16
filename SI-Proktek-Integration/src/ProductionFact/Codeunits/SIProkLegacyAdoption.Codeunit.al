@@ -7,7 +7,6 @@ codeunit 57127 "SI Prok Legacy Adoption"
     var
         Env: Codeunit "Environment Information";
         Link: Record "SI Prok Journal Link";
-        OtherLink: Record "SI Prok Journal Link";
         Jnl: Record "Item Journal Line";
         Ledger: Record "Item Ledger Entry";
         Attempt: Record "SI Prok Posting Attempt";
@@ -26,16 +25,15 @@ codeunit 57127 "SI Prok Legacy Adoption"
         if not Env.IsSandbox() then
             Error('PF-02.3 Legacy: прийняття дозволено лише у Sandbox.');
         Fact.Get(Fact."Entry No.");
-        if Fact."Accounting Prep Mode" <> Fact."Accounting Prep Mode"::Simulation then
-            Error('PF-02.3 Legacy: потрібен режим Simulation.');
         if IsNullGuid(Fact."Production UUID") then
             Error('PF-02.3 Legacy: Production UUID відсутній.');
         if Attempt.Get(Fact."Production UUID") then
             Error('PF-02.3 Legacy: для UUID вже є спроба проведення.');
-        Prep.CheckFact(Fact, Fact."Accounting Prep Mode"::Simulation);
+        Prep.CheckFact(Fact);
         Fact.Get(Fact."Entry No.");
         if Fact."Accounting Readiness" <> Fact."Accounting Readiness"::Ready then
             Error('PF-02.3 Legacy: факт не готовий: %1', Fact."Accounting Diagnostics");
+        Fact.TestField("Accounting Document No.");
         ProdLine.Get(Fact."BC Prod. Order Status", Fact."BC Prod. Order No.", Fact."BC Prod. Order Line No.");
         Link.LockTable();
         Link.SetRange("Fact Entry No.", Fact."Entry No.");
@@ -49,14 +47,14 @@ codeunit 57127 "SI Prok Legacy Adoption"
                 Error('PF-02.3 Legacy: зв’язок %1 уже має знімок; змішане або повторне прийняття заборонено.', Link."Link Line No.");
             if not Jnl.Get(Link."Journal Template", Link."Journal Batch", Link."Journal Line No.") then
                 Error('PF-02.3 Legacy: рядок журналу %1 відсутній.', Link."Link Line No.");
-            if Jnl."Document No." <> CopyStr(StrSubstNo('PRK-%1', Fact."Entry No."), 1, MaxStrLen(Jnl."Document No.")) then
-                Error('PF-02.3 Legacy: невірний номер документа у зв’язку %1.', Link."Link Line No.");
+            if Jnl."Document No." <> Fact."Accounting Document No." then
+                Error('PF-02.3 Legacy: номер документа у зв’язку %1 не відповідає призначеному номеру факту.', Link."Link Line No.");
             if Jnl."Document No." <> Link."Document No." then
                 Error('PF-02.3 Legacy: документ журналу і зв’язку не збігається.');
             if (Jnl."Order Type" <> Jnl."Order Type"::Production) or
                (Jnl."Order No." <> Fact."BC Prod. Order No.") or
                (Jnl."Order Line No." <> Fact."BC Prod. Order Line No.") or
-               (Jnl."Posting Date" <> DT2Date(Fact."Production Date/Time")) then
+               (Jnl."Posting Date" = 0D) then
                 Error('PF-02.3 Legacy: виробничий контекст не збігається у зв’язку %1.', Link."Link Line No.");
             if Jnl."Unit of Measure Code" = '' then
                 Error('PF-02.3 Legacy: ОВ відсутня у зв’язку %1.', Link."Link Line No.");
@@ -66,13 +64,7 @@ codeunit 57127 "SI Prok Legacy Adoption"
             Ledger.SetRange("Order No.", Jnl."Order No.");
             if not Ledger.IsEmpty() then
                 Error('PF-02.3 Legacy: існують Item Ledger Entries для документа %1 та замовлення %2. Потрібна ручна перевірка.', Jnl."Document No.", Jnl."Order No.");
-            OtherLink.Reset();
-            OtherLink.SetRange("Journal Template", Link."Journal Template");
-            OtherLink.SetRange("Journal Batch", Link."Journal Batch");
-            OtherLink.SetRange("Journal Line No.", Link."Journal Line No.");
-            OtherLink.SetFilter("Fact Entry No.", '<>%1', Fact."Entry No.");
-            if not OtherLink.IsEmpty() then
-                Error('PF-02.3 Legacy: рядок журналу %1 пов’язаний з іншим фактом.', Link."Journal Line No.");
+            Recon.AssertExclusiveJournalLineOwner(Fact, Link, Jnl);
             if Link."Material Line No." = 0 then begin
                 OutputCount += 1;
                 if (Jnl."Entry Type" <> Jnl."Entry Type"::Output) or
@@ -149,6 +141,7 @@ codeunit 57127 "SI Prok Legacy Adoption"
                 Link."Expected Order No." := Jnl."Order No.";
                 Link."Expected Order Line No." := Jnl."Order Line No.";
                 Link."Expected Component Line No." := Jnl."Prod. Order Comp. Line No.";
+                Link."Journal Line SystemId" := Jnl.SystemId;
                 Link."Snapshot Available" := true;
                 Link."Reconciliation Details" := 'Legacy baseline прийнято в Sandbox після звіряння з Production Fact і Released Production Order.';
                 Link.Modify(true);

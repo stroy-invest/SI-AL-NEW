@@ -8,12 +8,11 @@ codeunit 57097 "SI Prok Material Audit Mgt"
         NextLineNo: Integer;
     begin
         Buffer.DeleteAll();
-        // Repair previously imported simulation facts from their stored canonical JSON.
-        FactMgt.RepairSimulationTruckFields(OrderUuid);
+        // Restore missing truck context from the immutable canonical JSON.
+        FactMgt.RepairMissingTruckFields(OrderUuid);
         Fact.SetRange("Order UUID", OrderUuid);
-        Fact.SetRange("Simulation", true);
         if not Fact.FindSet() then
-            Error('Для Proktek Order %1 не знайдено симульованих фактів.', OrderUuid);
+            Error('Для Proktek Order %1 не знайдено виробничих фактів.', OrderUuid);
 
         repeat
             ScopeCode := CopyStr(Fact."Truck Code", 1, MaxStrLen(ScopeCode));
@@ -50,7 +49,6 @@ codeunit 57097 "SI Prok Material Audit Mgt"
         RevisionNo: Integer;
     begin
         Fact.SetRange("Order UUID", OrderUuid);
-        Fact.SetRange("Simulation", true);
         if not AllTrucks then
             Fact.SetRange("Truck Code", ScopeCode);
         if not Fact.FindSet() then

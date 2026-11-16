@@ -52,10 +52,6 @@ codeunit 57145 "SI Prok Shipment Mgt."
 
         // Do not mislabel the MES reported quantity as confirmed production.
         Shipment."Quantity M3" := Fact."Produced Quantity M3";
-        if Fact.Simulation and (Shipment."Quantity M3" <= 0) then begin
-            Shipment."Quantity M3" := Fact."Reported Quantity M3";
-            Shipment."Simulation Quantity" := true;
-        end;
 
         if Root.ReadFrom(Fact.GetCanonicalJson()) then
             if Root.Get('transport', Token) and Token.IsObject() then begin

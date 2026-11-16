@@ -259,8 +259,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
         TotalVolumeM3: Decimal;
         ExpectedFound: Boolean;
     begin
-        // Pilot simulator deliberately enters through the same parsers used by the
-        // real GetProductions / GetProductionDetails / GetMaterialsConfig flow.
+        // Reuse the production parser for archived API-response diagnostics.
         CollectProductionIndexResponse(
             ProductionsResponseText,
             ProductionUuids,
@@ -274,7 +273,7 @@ codeunit 57081 "SI Prok Production Export Mgt."
                 ExpectedFound := true;
 
         if not ExpectedFound then
-            Error('GetProductions simulation does not contain expected production uuid %1.', ExpectedProductionUuid);
+            Error('GetProductions response does not contain expected Production UUID %1.', ExpectedProductionUuid);
 
         ParseMaterialConfig(
             MaterialConfigResponseText,
