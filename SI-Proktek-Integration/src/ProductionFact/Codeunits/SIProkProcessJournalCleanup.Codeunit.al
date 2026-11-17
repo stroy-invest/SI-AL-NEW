@@ -1,6 +1,6 @@
 codeunit 57146 "SI Prok Process Jnl Cleanup"
 {
-    // PROC-FIX-001 (draft): remove ONLY provably empty technical journal lines
+    // PROC-FIX-001: remove ONLY provably empty technical journal lines
     // left by standard Item Jnl.-Post Batch for a FULLY posted Process fact.
     // Never touch Item Ledger Entries, Journal Links or any unposted business line.
     // No COMMIT; the caller owns the transaction.
