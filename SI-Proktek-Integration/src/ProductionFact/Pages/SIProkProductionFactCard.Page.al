@@ -154,21 +154,6 @@ page 57093 "SI Prok Production Fact Card"
                             CurrPage.Update(false);
                         end;
                     }
-                    // TEMPORARY Sandbox-only fault-injection action.
-                    // Remove from the PROD-ready package after recovery tests.
-                    action(SimulateProcessCommitFailure)
-                    {
-                        ApplicationArea = All;
-                        Caption = 'TEST: збій після Commit (Sandbox)';
-                        ToolTip = 'ЛИШЕ ТЕСТ: створює Started-спробу, виконує Commit(), потім навмисно завершується помилкою ДО стандартного проведення. Item Ledger Entries не створюються. Тільки Sandbox.';
-                        trigger OnAction()
-                        var
-                            Posting: Codeunit "SI Prok Process Posting";
-                        begin
-                            Posting.SimulateFailureAfterCommitSandbox(Rec);
-                            CurrPage.Update(false);
-                        end;
-                    }
                     action(RecoverProcessControlled)
                     {
                         ApplicationArea = All;

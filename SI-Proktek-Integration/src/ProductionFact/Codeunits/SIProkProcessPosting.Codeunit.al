@@ -6,19 +6,6 @@ codeunit 57144 "SI Prok Process Posting"
     // may commit individual journal lines. Never assume atomicity of 7 lines.
 
     procedure PostSandbox(var Fact: Record "SI Prok Production Fact")
-    begin
-        PostSandboxInternal(Fact, false);
-    end;
-
-    // TEMPORARY FAULT-INJECTION TEST ONLY. Never include in a PROD release.
-    // Uses the same posting path, but intentionally fails AFTER the durable
-    // Started fence is committed and BEFORE the standard Item Journal posts.
-    procedure SimulateFailureAfterCommitSandbox(var Fact: Record "SI Prok Production Fact")
-    begin
-        PostSandboxInternal(Fact, true);
-    end;
-
-    local procedure PostSandboxInternal(var Fact: Record "SI Prok Production Fact"; InjectFailureAfterCommit: Boolean)
     var
         Env: Codeunit "Environment Information";
         Attempt: Record "SI Prok Posting Attempt";
@@ -38,14 +25,9 @@ codeunit 57144 "SI Prok Process Posting"
         CountLines := Control.AssertPrepared(Fact);
         if Control.LedgerStatus(Fact, Posted, Missing) <> 0 then
             Error('SI Process: за документом %1 уже є проведені записи. Повтор заборонено.', Fact."Accounting Document No.");
-        if InjectFailureAfterCommit then begin
-            if not Confirm('SI Process TEST (Sandbox): імітувати аварію для факту %1, документа %2? Буде збережено Started-спробу, але Item Journal НЕ проводитиметься. Відновлення — окремою дією після 10 хвилин.',
-                false, Fact."Entry No.", Fact."Accounting Document No.") then
-                exit;
-        end else
-            if not Confirm('SI Process: провести %1 рядків документа %2 для факту %3 у Sandbox? Будуть змінені реальні залишки Sandbox; повтор автоматично заблоковано.',
-                false, CountLines, Fact."Accounting Document No.", Fact."Entry No.") then
-                exit;
+        if not Confirm('SI Process: провести %1 рядків документа %2 для факту %3 у Sandbox? Будуть змінені реальні залишки Sandbox; повтор автоматично заблоковано.',
+            false, CountLines, Fact."Accounting Document No.", Fact."Entry No.") then
+            exit;
         // Revalidate after confirmation; acquire the one-shot fence only now.
         Attempt.LockTable();
         if Attempt.Get(Fact."Production UUID") then
@@ -65,10 +47,6 @@ codeunit 57144 "SI Prok Process Posting"
         Control.AssertPrepared(Fact);
         if Control.LedgerStatus(Fact, Posted, Missing) <> 0 then
             Error('SI Process: після створення спроби з’явилися проведені записи. Нове проведення заблоковано.');
-        // TEST ONLY: the preceding Commit() makes Started durable even when
-        // this Error rolls back the current transaction. No ILE is created.
-        if InjectFailureAfterCommit then
-            Error('SI Process TEST: збій після Commit() зімітовано. Спроба залишилася Started; журнал НЕ проведено. Виконайте аудит (0 проведено) і дочекайтеся 10 хв перед Recovery.');
         PostPreparedBatch(Fact);
         if Control.LedgerStatus(Fact, Posted, Missing) <> 1 then
             Error('SI Process: стандартне проведення завершилося без повного набору Item Ledger Entries. Спроба залишиться Started; потрібен аудит.');
