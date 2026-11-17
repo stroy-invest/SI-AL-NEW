@@ -6,10 +6,25 @@ codeunit 57144 "SI Prok Process Posting"
     // may commit individual journal lines. Never assume atomicity of 7 lines.
 
     procedure PostSandbox(var Fact: Record "SI Prok Production Fact")
+    begin
+        PostSandboxInternal(Fact, false);
+    end;
+
+    // TEMPORARY FAULT-INJECTION TEST ONLY. Never include in a PROD release.
+    // Uses the same posting path, but intentionally fails AFTER the durable
+    // Started fence is committed and BEFORE the standard Item Journal posts.
+    procedure SimulateFailureAfterCommitSandbox(var Fact: Record "SI Prok Production Fact")
+    begin
+        PostSandboxInternal(Fact, true);
+    end;
+
+    local procedure PostSandboxInternal(var Fact: Record "SI Prok Production Fact"; InjectFailureAfterCommit: Boolean)
     var
         Env: Codeunit "Environment Information";
         Attempt: Record "SI Prok Posting Attempt";
         Control: Codeunit "SI Prok Process Control";
+        Cleanup: Codeunit "SI Prok Process Jnl Cleanup";
+        CleanupResult: Integer;
         CountLines: Integer;
         Posted: Integer;
         Missing: Integer;
@@ -23,9 +38,14 @@ codeunit 57144 "SI Prok Process Posting"
         CountLines := Control.AssertPrepared(Fact);
         if Control.LedgerStatus(Fact, Posted, Missing) <> 0 then
             Error('SI Process: за документом %1 уже є проведені записи. Повтор заборонено.', Fact."Accounting Document No.");
-        if not Confirm('SI Process: провести %1 рядків документа %2 для факту %3 у Sandbox? Будуть змінені реальні залишки Sandbox; повтор автоматично заблоковано.',
-            false, CountLines, Fact."Accounting Document No.", Fact."Entry No.") then
-            exit;
+        if InjectFailureAfterCommit then begin
+            if not Confirm('SI Process TEST (Sandbox): імітувати аварію для факту %1, документа %2? Буде збережено Started-спробу, але Item Journal НЕ проводитиметься. Відновлення — окремою дією після 10 хвилин.',
+                false, Fact."Entry No.", Fact."Accounting Document No.") then
+                exit;
+        end else
+            if not Confirm('SI Process: провести %1 рядків документа %2 для факту %3 у Sandbox? Будуть змінені реальні залишки Sandbox; повтор автоматично заблоковано.',
+                false, CountLines, Fact."Accounting Document No.", Fact."Entry No.") then
+                exit;
         // Revalidate after confirmation; acquire the one-shot fence only now.
         Attempt.LockTable();
         if Attempt.Get(Fact."Production UUID") then
@@ -45,12 +65,21 @@ codeunit 57144 "SI Prok Process Posting"
         Control.AssertPrepared(Fact);
         if Control.LedgerStatus(Fact, Posted, Missing) <> 0 then
             Error('SI Process: після створення спроби з’явилися проведені записи. Нове проведення заблоковано.');
+        // TEST ONLY: the preceding Commit() makes Started durable even when
+        // this Error rolls back the current transaction. No ILE is created.
+        if InjectFailureAfterCommit then
+            Error('SI Process TEST: збій після Commit() зімітовано. Спроба залишилася Started; журнал НЕ проведено. Виконайте аудит (0 проведено) і дочекайтеся 10 хв перед Recovery.');
         PostPreparedBatch(Fact);
         if Control.LedgerStatus(Fact, Posted, Missing) <> 1 then
             Error('SI Process: стандартне проведення завершилося без повного набору Item Ledger Entries. Спроба залишиться Started; потрібен аудит.');
         MarkCompleted(Fact);
-        Message('SI Process: документ %1 проведено стандартним BC. Факт %2; груп записів %3. Перевірте Item Ledger Entries.',
-            Fact."Accounting Document No.", Fact."Entry No.", Posted);
+        CleanupResult := Cleanup.CleanupAfterCompleted(Fact);
+        if CleanupResult < 0 then
+            Message('SI Process: документ %1 проведено (%2 груп), але в пакеті залишилися неідентифіковані рядки. Автоматичне очищення заблоковано; потрібна перевірка.',
+                Fact."Accounting Document No.", Posted)
+        else
+            Message('SI Process: документ %1 проведено стандартним BC. Факт %2; груп записів %3. Очищено технічних рядків: %4.',
+                Fact."Accounting Document No.", Fact."Entry No.", Posted, CleanupResult);
     end;
 
     // Explicit human-authorized recovery. Only two provable states are safe:
@@ -62,6 +91,8 @@ codeunit 57144 "SI Prok Process Posting"
         Env: Codeunit "Environment Information";
         Attempt: Record "SI Prok Posting Attempt";
         Control: Codeunit "SI Prok Process Control";
+        Cleanup: Codeunit "SI Prok Process Jnl Cleanup";
+        CleanupResult: Integer;
         State: Integer;
         Posted: Integer;
         Missing: Integer;
@@ -90,7 +121,11 @@ codeunit 57144 "SI Prok Process Posting"
                     if Control.LedgerStatus(Fact, Posted, Missing) <> 1 then
                         Error('SI Process: проведені записи змінилися; повторіть аудит.');
                     MarkCompleted(Fact);
-                    Message('SI Process: підтверджено вже виконане проведення. Повторного списання або надходження не було.');
+                    CleanupResult := Cleanup.CleanupAfterCompleted(Fact);
+                    if CleanupResult < 0 then
+                        Message('SI Process: проведення підтверджено без повторних операцій, але залишкові рядки пакета потребують ручної перевірки.')
+                    else
+                        Message('SI Process: проведення підтверджено без повторних операцій. Очищено технічних рядків: %1.', CleanupResult);
                 end;
             0:
                 begin
@@ -111,7 +146,12 @@ codeunit 57144 "SI Prok Process Posting"
                     if Control.LedgerStatus(Fact, Posted, Missing) <> 1 then
                         Error('SI Process: після відновлення не всі записи проведені. Виконайте аудит.');
                     MarkCompleted(Fact);
-                    Message('SI Process: відновлене проведення документа %1 завершено.', Fact."Accounting Document No.");
+                    CleanupResult := Cleanup.CleanupAfterCompleted(Fact);
+                    if CleanupResult < 0 then
+                        Message('SI Process: відновлене проведення документа %1 завершено, але залишкові рядки пакета потребують ручної перевірки.', Fact."Accounting Document No.")
+                    else
+                        Message('SI Process: відновлене проведення документа %1 завершено. Очищено технічних рядків: %2.',
+                            Fact."Accounting Document No.", CleanupResult);
                 end;
             2:
                 Error('SI Process: документ %1 проведено ЧАСТКОВО (%2 груп проведено, %3 відсутні). Автоматичне відновлення заборонено; потрібен ручний розбір.',

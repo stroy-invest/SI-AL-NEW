@@ -18,6 +18,7 @@ codeunit 57139 "SI Prok Process Journal Prep"
         Link: Record "SI Prok Journal Link";
         Attempt: Record "SI Prok Posting Attempt";
         Semantics: Codeunit "SI Prok Location Semantics";
+        Cleanup: Codeunit "SI Prok Process Jnl Cleanup";
         DocumentNo: Code[20];
         PostingDate: Date;
         NextLine: Integer;
@@ -58,6 +59,9 @@ codeunit 57139 "SI Prok Process Journal Prep"
             Error('SI Process Production: пакет %1/%2 не знайдено.', Setup."Process Template", Setup."Process Batch");
         if (JournalBatch."No. Series" <> '') or (JournalBatch."Posting No. Series" <> '') then
             Error('SI Process Production: у пакеті очистіть No. Series та Posting No. Series; документ призначає серія Proktek.');
+        // PROC-FIX-001: clear only a verified technical remainder from a
+        // previously COMPLETED Process fact. All other rows still block MVP.
+        Cleanup.CleanupPriorCompletedRemainder(Setup."Process Template", Setup."Process Batch");
         JournalLine.SetRange("Journal Template Name", Setup."Process Template");
         JournalLine.SetRange("Journal Batch Name", Setup."Process Batch");
         if not JournalLine.IsEmpty() then
