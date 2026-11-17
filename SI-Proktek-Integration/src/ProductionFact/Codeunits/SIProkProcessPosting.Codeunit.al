@@ -1,34 +1,52 @@
 codeunit 57144 "SI Prok Process Posting"
 {
-    // SI Process Production Stage 2. Sandbox-only one-shot posting.
+    // SI Process Production Stage 2. One-shot posting (Sandbox test UI + Shipment pipeline).
     // BC Item Jnl.-Post Batch performs standard Negative/Positive Adjustment.
     // Durable Started attempt is committed BEFORE standard posting because BC
     // may commit individual journal lines. Never assume atomicity of 7 lines.
 
+    // Historical explicit Sandbox action. Production pipeline calls Post(),
+    // which contains no UI and is usable from a controlled worker.
     procedure PostSandbox(var Fact: Record "SI Prok Production Fact")
     var
         Env: Codeunit "Environment Information";
+        Control: Codeunit "SI Prok Process Control";
+        CountLines: Integer;
+    begin
+        if not Env.IsSandbox() then
+            Error('SI Process: тестова дія доступна лише в Sandbox.');
+        Fact.Get(Fact."Entry No.");
+        CountLines := Control.AssertPrepared(Fact);
+        if not Confirm('SI Process: провести %1 рядків документа %2 для факту %3 у Sandbox? Проведення змінює залишки BC.',
+            false, CountLines, Fact."Accounting Document No.", Fact."Entry No.") then
+            exit;
+        Post(Fact);
+        Message('SI Process: факт %1, документ %2 — проведення завершено.', Fact."Entry No.", Fact."Accounting Document No.");
+    end;
+
+    procedure Post(var Fact: Record "SI Prok Production Fact")
+    var
         Attempt: Record "SI Prok Posting Attempt";
+        Shipment: Record "SI Prok Shipment";
         Control: Codeunit "SI Prok Process Control";
         Cleanup: Codeunit "SI Prok Process Jnl Cleanup";
         CleanupResult: Integer;
-        CountLines: Integer;
         Posted: Integer;
         Missing: Integer;
     begin
-        if not Env.IsSandbox() then
-            Error('SI Process: проведення Stage 2 дозволено лише в Sandbox.');
         Fact.Get(Fact."Entry No.");
+        Shipment.SetRange("Production UUID", Fact."Production UUID");
+        if not Shipment.FindFirst() then
+            Error('SI Process: для факту %1 немає Shipment. Проведення дозволено лише після першого «Надрукувати».', Fact."Entry No.");
+        if (Shipment."Production Fact Entry No." <> Fact."Entry No.") or (Shipment.Status <> Shipment.Status::Closed) then
+            Error('SI Process: Shipment не закрито або його зв’язок із фактом некоректний.');
         if Attempt.Get(Fact."Production UUID") then
-            Error('SI Process: для UUID %1 вже була спроба (%2). Повтор заборонено; використайте аудит/відновлення.',
+            Error('SI Process: для UUID %1 вже існує спроба проведення (%2). Автоматичний повтор заборонено.',
                 Fact."Production UUID", Attempt.Status);
-        CountLines := Control.AssertPrepared(Fact);
+        Control.AssertPrepared(Fact);
         if Control.LedgerStatus(Fact, Posted, Missing) <> 0 then
-            Error('SI Process: за документом %1 уже є проведені записи. Повтор заборонено.', Fact."Accounting Document No.");
-        if not Confirm('SI Process: провести %1 рядків документа %2 для факту %3 у Sandbox? Будуть змінені реальні залишки Sandbox; повтор автоматично заблоковано.',
-            false, CountLines, Fact."Accounting Document No.", Fact."Entry No.") then
-            exit;
-        // Revalidate after confirmation; acquire the one-shot fence only now.
+            Error('SI Process: за документом %1 вже існують проведені записи. Повтор заборонено.', Fact."Accounting Document No.");
+        // Acquire durable one-shot fence immediately before standard posting.
         Attempt.LockTable();
         if Attempt.Get(Fact."Production UUID") then
             Error('SI Process: спробу вже створено іншим сеансом.');
@@ -52,12 +70,13 @@ codeunit 57144 "SI Prok Process Posting"
             Error('SI Process: стандартне проведення завершилося без повного набору Item Ledger Entries. Спроба залишиться Started; потрібен аудит.');
         MarkCompleted(Fact);
         CleanupResult := Cleanup.CleanupAfterCompleted(Fact);
-        if CleanupResult < 0 then
-            Message('SI Process: документ %1 проведено (%2 груп), але в пакеті залишилися неідентифіковані рядки. Автоматичне очищення заблоковано; потрібна перевірка.',
-                Fact."Accounting Document No.", Posted)
-        else
-            Message('SI Process: документ %1 проведено стандартним BC. Факт %2; груп записів %3. Очищено технічних рядків: %4.',
-                Fact."Accounting Document No.", Fact."Entry No.", Posted, CleanupResult);
+        // A negative cleanup result means manual review is required; posting
+        // remains Completed because ILE reconciliation already succeeded.
+        if CleanupResult < 0 then begin
+            Fact.Get(Fact."Entry No.");
+            Fact."Accounting Diagnostics" := 'SI Process: проведено й звірено ILE; технічний залишок журналу потребує ручної перевірки.';
+            Fact.Modify(true);
+        end;
     end;
 
     // Explicit human-authorized recovery. Only two provable states are safe:
@@ -67,6 +86,15 @@ codeunit 57144 "SI Prok Process Posting"
     procedure RecoverSandbox(var Fact: Record "SI Prok Production Fact")
     var
         Env: Codeunit "Environment Information";
+    begin
+        if not Env.IsSandbox() then
+            Error('SI Process: тестова дія відновлення доступна лише в Sandbox.');
+        RecoverControlled(Fact);
+    end;
+
+    // Recovery is explicit, interactive and never invoked by Automatic worker.
+    procedure RecoverControlled(var Fact: Record "SI Prok Production Fact")
+    var
         Attempt: Record "SI Prok Posting Attempt";
         Control: Codeunit "SI Prok Process Control";
         Cleanup: Codeunit "SI Prok Process Jnl Cleanup";
@@ -75,8 +103,6 @@ codeunit 57144 "SI Prok Process Posting"
         Posted: Integer;
         Missing: Integer;
     begin
-        if not Env.IsSandbox() then
-            Error('SI Process: відновлення Stage 2 дозволено лише в Sandbox.');
         Fact.Get(Fact."Entry No.");
         if not Attempt.Get(Fact."Production UUID") then
             Error('SI Process: немає спроби проведення. Використайте звичайне контрольоване проведення.');
@@ -108,7 +134,7 @@ codeunit 57144 "SI Prok Process Posting"
             0:
                 begin
                     Control.AssertPrepared(Fact);
-                    if not Confirm('SI Process: у документі %1 немає проведених записів, усі рядки журналу цілі. Повторити проведення в Sandbox?',
+                    if not Confirm('SI Process: у документі %1 немає проведених записів, усі рядки журналу цілі. Повторити проведення під контролем оператора?',
                         false, Fact."Accounting Document No.") then
                         exit;
                     // Do not create a new Attempt. Existing Started is the fence.

@@ -21,6 +21,14 @@ page 57143 "SI Prok Shipment Card"
                 field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; }
                 field("Driver Name"; Rec."Driver Name") { ApplicationArea = All; }
                 field("Shipment Date/Time"; Rec."Shipment Date/Time") { ApplicationArea = All; }
+                field(ShippedAt; Rec."Closed At") { ApplicationArea = All; Caption = 'Відвантажено (Shipped At)'; }
+            }
+            group(Accounting)
+            {
+                Caption = 'Виробничий облік';
+                field(AccountingStatus; AccountingStatusView) { ApplicationArea = All; Caption = 'Стан проведення'; }
+                field(PostedAt; PostedAtView) { ApplicationArea = All; Caption = 'Проведено (Posted At)'; }
+                field(AccountingDocument; AccountingDocumentView) { ApplicationArea = All; Caption = 'Обліковий документ'; }
             }
             group(Delivery)
             {
@@ -139,12 +147,44 @@ page 57143 "SI Prok Shipment Card"
                 ApplicationArea = All;
                 Image = Print;
                 Enabled = IsOpen;
+                ToolTip = 'R2.1: підтвердити відвантаження й запустити Manual/Automatic облік. Фізичний друк RDL ще не реалізовано.';
                 trigger OnAction()
+                var
+                    Processing: Codeunit "SI Prok Shipment Processing";
                 begin
-                    // PF-03.1 demo stub: no real printer invocation.
-                    Rec.CloseAfterPrint();
+                    Processing.AcceptFirstPrint(Rec."Entry No.");
+                    Rec.Get(Rec."Entry No.");
                     CurrPage.Update(false);
-                    Message('Заглушка друку виконана. Документ закрито; фізичний друк не виконувався.');
+                end;
+            }
+            action(ContinueAccounting)
+            {
+                Caption = 'Продовжити облік';
+                ApplicationArea = All;
+                Image = Post;
+                Enabled = IsClosed;
+                ToolTip = 'Продовжити підготовку/проведення після закриття, якщо Posting Attempt ще не створено.';
+                trigger OnAction()
+                var
+                    Processing: Codeunit "SI Prok Shipment Processing";
+                begin
+                    Processing.ContinueAccounting(Rec."Entry No.");
+                    CurrPage.Update(false);
+                end;
+            }
+            action(RecoverAccounting)
+            {
+                Caption = 'Контрольоване відновлення проведення';
+                ApplicationArea = All;
+                Image = Refresh;
+                Enabled = HasStartedAttempt;
+                ToolTip = 'Тільки за явним підтвердженням оператора та після аудиту ILE; ніколи автоматично.';
+                trigger OnAction()
+                var
+                    Processing: Codeunit "SI Prok Shipment Processing";
+                begin
+                    Processing.RecoverAccounting(Rec."Entry No.");
+                    CurrPage.Update(false);
                 end;
             }
             action(Reprint)
@@ -188,12 +228,36 @@ page 57143 "SI Prok Shipment Card"
     end;
 
     trigger OnAfterGetCurrRecord()
+    var
+        Fact: Record "SI Prok Production Fact";
+        Attempt: Record "SI Prok Posting Attempt";
     begin
         IsOpen := Rec.Status = Rec.Status::Open;
         IsClosed := Rec.Status = Rec.Status::Closed;
+        HasStartedAttempt := false;
+        PostedAtView := 0DT;
+        AccountingDocumentView := '';
+        AccountingStatusView := 'Не проведено';
+        if not Fact.Get(Rec."Production Fact Entry No.") then
+            exit;
+        AccountingDocumentView := Fact."Accounting Document No.";
+        if Fact."Accounting Document No." <> '' then
+            AccountingStatusView := 'Підготовлено';
+        if Attempt.Get(Fact."Production UUID") then
+            if Attempt.Status = Attempt.Status::Completed then begin
+                AccountingStatusView := 'Проведено';
+                PostedAtView := Attempt."Finished At";
+            end else begin
+                AccountingStatusView := 'Розпочато / потрібен аудит';
+                HasStartedAttempt := IsClosed;
+            end;
     end;
 
     var
         IsOpen: Boolean;
         IsClosed: Boolean;
+        HasStartedAttempt: Boolean;
+        AccountingStatusView: Text[50];
+        AccountingDocumentView: Code[20];
+        PostedAtView: DateTime;
 }

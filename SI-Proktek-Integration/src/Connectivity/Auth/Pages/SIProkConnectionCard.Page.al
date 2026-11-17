@@ -168,6 +168,21 @@ page 57001 "SI Prok Connection Card"
     {
         area(Processing)
         {
+            action(OpenOperationsSetup)
+            {
+                ApplicationArea = All;
+                Caption = 'Операційні налаштування';
+                Image = Setup;
+                trigger OnAction()
+                var
+                    Config: Codeunit "SI Prok Operations Config";
+                    Setup: Record "SI Prok Operations Setup";
+                begin
+                    CurrPage.SaveRecord();
+                    Config.EnsureForConnection(Rec.Code, Setup);
+                    Page.Run(Page::"SI Prok Operations Setup", Setup);
+                end;
+            }
             action(SetActive)
             {
                 ApplicationArea = All;

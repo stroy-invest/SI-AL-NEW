@@ -1,4 +1,4 @@
-codeunit 57056 "SI Prok Productions"
+﻿codeunit 57056 "SI Prok Productions"
 {
     procedure GetPage(
         var Connection: Record "SI Prok Connection";
@@ -69,7 +69,7 @@ codeunit 57056 "SI Prok Productions"
             Clear(ResponseBuffer);
 
             RequestBody :=
-                BuildRequestBody(
+                BuildGetProductionsRequestBody(
                     Session,
                     StartDate,
                     EndDate,
@@ -260,7 +260,7 @@ codeunit 57056 "SI Prok Productions"
             Session);
 
         RequestBody :=
-            BuildRequestBody(
+            BuildGetProductionsRequestBody(
                 Session,
                 Today,
                 Today,
@@ -299,7 +299,9 @@ codeunit 57056 "SI Prok Productions"
         Connection.TestField("EDS Prod. Operation");
     end;
 
-    local procedure BuildRequestBody(
+    // Single canonical request builder for both production capture and the
+    // Connection Card GET-PRODUCTIONS test. Matches the Postman-verified payload.
+    procedure BuildGetProductionsRequestBody(
         Session: Record "SI Prok Session";
         StartDate: Date;
         EndDate: Date;
@@ -309,36 +311,45 @@ codeunit 57056 "SI Prok Productions"
         TotalStatistic: Boolean): Text
     var
         RequestJson: JsonObject;
+        PlantArray: JsonArray;
         RequestBody: Text;
     begin
         if IsNullGuid(Session."Session GUID") then
             Error('Неможливо виконати GetProductions: GUID сеансу відсутній.');
+        if Session."Plant IDs" = '' then
+            Error('Неможливо виконати GetProductions: santral_id відсутній у сеансі Proktek.');
 
-        // Keep the GetProductions request intentionally minimal.
-        // santral_id is not sent: Proktek resolves the available/default plant itself.
-        // hide_details and total_statistic are also omitted because the API defaults
-        // already return the payload and statistics required by the exporter.
-        RequestJson.Add(
-            'guid',
-            Format(
-                Session."Session GUID",
-                0,
-                4));
-        RequestJson.Add(
-            'startDate',
-            FormatDateTime(StartDate, false));
-        RequestJson.Add(
-            'endDate',
-            FormatDateTime(EndDate, true));
-        RequestJson.Add(
-            'perpage',
-            PerPage);
-        RequestJson.Add(
-            'page',
-            PageNo);
+        BuildPlantArray(Session."Plant IDs", PlantArray);
+
+        RequestJson.Add('guid', Format(Session."Session GUID", 0, 4));
+        RequestJson.Add('startDate', FormatDateTime(StartDate, false));
+        RequestJson.Add('endDate', FormatDateTime(EndDate, true));
+        RequestJson.Add('santral_id', PlantArray);
+        RequestJson.Add('perpage', PerPage);
+        RequestJson.Add('page', PageNo);
+        RequestJson.Add('hide_details', HideDetails);
+        RequestJson.Add('total_statistic', TotalStatistic);
 
         RequestJson.WriteTo(RequestBody);
         exit(RequestBody);
+    end;
+
+    local procedure BuildPlantArray(PlantIdsText: Text; var PlantArray: JsonArray)
+    var
+        PlantIds: List of [Text];
+        PlantIdText: Text;
+        PlantId: Integer;
+    begin
+        Clear(PlantArray);
+        PlantIds := PlantIdsText.Split(',');
+        foreach PlantIdText in PlantIds do begin
+            PlantIdText := DelChr(PlantIdText, '<>', ' ');
+            if not Evaluate(PlantId, PlantIdText) then
+                Error('Некоректний santral_id у сеансі Proktek: %1.', PlantIdText);
+            PlantArray.Add(PlantId);
+        end;
+        if PlantArray.Count() = 0 then
+            Error('Не вдалося сформувати список santral_id для Proktek GetProductions.');
     end;
 
     local procedure FormatDateTime(

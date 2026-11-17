@@ -63,8 +63,14 @@ table 57142 "SI Prok Shipment"
     }
     procedure CloseAfterPrint()
     begin
+        // First accepted print intent is a one-time shipment event.
+        // Lock + reread protects the Open -> Closed transition across sessions.
+        LockTable();
+        Get("Entry No.");
         if Status <> Status::Open then
-            Error('Документ уже закрито. Скористайтеся дією «Повторити друк».');
+            Error('Документ уже закрито. Повторна фіксація відвантаження заборонена.');
+        if "Closed At" <> 0DT then
+            Error('Для документа вже зафіксовано час відвантаження. Потрібна перевірка.');
         Status := Status::Closed;
         "Closed At" := CurrentDateTime();
         Modify(true);

@@ -1,11 +1,20 @@
 codeunit 57139 "SI Prok Process Journal Prep"
 {
-    // SI Process Production, step 1: prepare standard UNPOSTED item adjustments.
-    // No Production Order, Production BOM, Consumption/Output or WIP posting.
-    // One BC transaction; no COMMIT. Existing PF-02 artifacts are never altered.
+    // Reuse the verified Stage 1 backend in the Shipment pipeline.
+    // The old Sandbox entry point is retained for historical test actions.
     procedure PrepareSandbox(var Fact: Record "SI Prok Production Fact")
     var
         Env: Codeunit "Environment Information";
+    begin
+        if not Env.IsSandbox() then
+            Error('SI Process Production: тестова дія доступна лише в Sandbox.');
+        Prepare(Fact);
+        Message('SI Process Production: факт %1, документ %2. Підготовлено %3 списань і 1 надходження; проведення не виконано.',
+            Fact."Entry No.", Fact."Accounting Document No.", Fact."Accounting Material Lines");
+    end;
+
+    procedure Prepare(var Fact: Record "SI Prok Production Fact")
+    var
         Setup: Record "SI Prok Journal Setup";
         JournalTemplate: Record "Item Journal Template";
         JournalBatch: Record "Item Journal Batch";
@@ -26,8 +35,6 @@ codeunit 57139 "SI Prok Process Journal Prep"
         MaterialCount: Integer;
         MaterialQty: Decimal;
     begin
-        if not Env.IsSandbox() then
-            Error('SI Process Production: підготовка на першому етапі дозволена лише в Sandbox.');
         Fact.Get(Fact."Entry No.");
         AssertFactReady(Fact);
         if Fact."Accounting Document No." <> '' then
@@ -62,6 +69,8 @@ codeunit 57139 "SI Prok Process Journal Prep"
         // PROC-FIX-001: clear only a verified technical remainder from a
         // previously COMPLETED Process fact. All other rows still block MVP.
         Cleanup.CleanupPriorCompletedRemainder(Setup."Process Template", Setup."Process Batch");
+        // Fail closed if another fact is already using the shared MVP batch.
+        JournalLine.LockTable();
         JournalLine.SetRange("Journal Template Name", Setup."Process Template");
         JournalLine.SetRange("Journal Batch Name", Setup."Process Batch");
         if not JournalLine.IsEmpty() then
@@ -113,8 +122,6 @@ codeunit 57139 "SI Prok Process Journal Prep"
         Fact."Accounting Checked At" := CurrentDateTime();
         Fact."Accounting Diagnostics" := 'SI Process Production: підготовлено непроведені Negative/Positive Adjustment. Потрібна звірка перед проведенням.';
         Fact.Modify(true);
-        Message('SI Process Production: факт %1, документ %2. Підготовлено %3 рядків витрат і 1 надходження. Жодного проведення не виконано.',
-            Fact."Entry No.", DocumentNo, MaterialCount);
     end;
 
     local procedure AssertFactReady(Fact: Record "SI Prok Production Fact")

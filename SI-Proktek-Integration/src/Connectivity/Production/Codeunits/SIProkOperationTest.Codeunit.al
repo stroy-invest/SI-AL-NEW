@@ -1,4 +1,4 @@
-codeunit 57057 "SI Prok Operation Test"
+﻿codeunit 57057 "SI Prok Operation Test"
 {
     procedure ExecuteCurrent(
         var Connection: Record "SI Prok Connection";
@@ -188,45 +188,11 @@ codeunit 57057 "SI Prok Operation Test"
     local procedure BuildProductionsRequest(
         Session: Record "SI Prok Session"): Text
     var
-        RequestJson: JsonObject;
-        PlantArray: JsonArray;
-        RequestBody: Text;
+        Productions: Codeunit "SI Prok Productions";
     begin
-        if Session."Plant IDs" = '' then
-            Error('Неможливо виконати GET-PRODUCTIONS: Proktek не повернув santral_id для поточного сеансу.');
-
-        AddGuid(
-            RequestJson,
-            Session."Session GUID");
-
-        BuildPlantArray(
-            Session."Plant IDs",
-            PlantArray);
-
-        RequestJson.Add(
-            'startDate',
-            FormatDateTime(Today, false));
-        RequestJson.Add(
-            'endDate',
-            FormatDateTime(Today, true));
-        RequestJson.Add(
-            'santral_id',
-            PlantArray);
-        RequestJson.Add(
-            'perpage',
-            100);
-        RequestJson.Add(
-            'page',
-            1);
-        RequestJson.Add(
-            'hide_details',
-            false);
-        RequestJson.Add(
-            'total_statistic',
-            true);
-
-        RequestJson.WriteTo(RequestBody);
-        exit(RequestBody);
+        // Use the same payload builder as manual Capture and Job Queue.
+        exit(Productions.BuildGetProductionsRequestBody(
+            Session, Today, Today, 100, 1, false, true));
     end;
 
     local procedure AddGuid(

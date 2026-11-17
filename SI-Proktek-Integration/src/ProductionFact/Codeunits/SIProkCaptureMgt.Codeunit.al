@@ -1,4 +1,4 @@
-codeunit 57094 "SI Prok Capture Mgt."
+﻿codeunit 57094 "SI Prok Capture Mgt."
 {
     procedure Capture(DateFrom: Date; DateTo: Date; ConnectionCode: Code[50]; var Imported: Integer; var Existing: Integer; var Failed: Integer)
     var
@@ -188,7 +188,7 @@ codeunit 57094 "SI Prok Capture Mgt."
     var
         Productions: Codeunit "SI Prok Productions";
     begin
-        Productions.GetPage(Connection, DateFrom, DateTo, 100, PageNo, false, false, Payload);
+        Productions.GetPage(Connection, DateFrom, DateTo, 100, PageNo, false, true, Payload);
     end;
 
     local procedure ArchiveResponse(ConnectionCode: Code[50]; Operation: Code[50]; Uuid: Text; Payload: Text; Mode: Enum "SI Prok Capture Mode"; var Archive: Record "SI Prok Raw API Response")

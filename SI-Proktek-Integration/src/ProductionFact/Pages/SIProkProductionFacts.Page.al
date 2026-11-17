@@ -66,6 +66,34 @@ page 57091 "SI Prok Production Facts"
                 end;
             }
 
+            action(CreateMissingShipments)
+            {
+                Caption = 'Створити відсутні Shipment';
+                ApplicationArea = All;
+                Image = Create;
+                ToolTip = 'Створює відсутні відкриті Shipment для вибраних/відфільтрованих фактів з Production UUID. Без повторного створення і без проведення.';
+                trigger OnAction()
+                var
+                    SelectedFact: Record "SI Prok Production Fact";
+                    ShipmentMgt: Codeunit "SI Prok Shipment Mgt.";
+                    Created: Integer;
+                    Skipped: Integer;
+                begin
+                    CurrPage.SetSelectionFilter(SelectedFact);
+                    if not Confirm('Створити відсутні Shipment для вибраних/відфільтрованих фактів (%1 записів)? Проведення не виконується.',
+                        false, SelectedFact.Count()) then
+                        exit;
+                    if SelectedFact.FindSet() then
+                        repeat
+                            if ShipmentMgt.TryCreateForFact(SelectedFact."Entry No.") then
+                                Created += 1
+                            else
+                                Skipped += 1;
+                        until SelectedFact.Next() = 0;
+                    Message('Створено Shipment: %1; пропущено (наявні або без UUID): %2.', Created, Skipped);
+                end;
+            }
+
             action(ClearTestFacts)
             {
                 Caption = 'Очистити факти';

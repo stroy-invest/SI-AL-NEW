@@ -2,7 +2,7 @@ codeunit 57145 "SI Prok Shipment Mgt."
 {
     // PF-03.1: one immutable MES Production UUID -> one simple shipment document.
     // A shipment is operational only: no standard Sales Shipment, inventory or G/L posting.
-    procedure TryCreateForFact(FactEntryNo: Integer)
+    procedure TryCreateForFact(FactEntryNo: Integer): Boolean
     var
         Fact: Record "SI Prok Production Fact";
         Shipment: Record "SI Prok Shipment";
@@ -21,16 +21,14 @@ codeunit 57145 "SI Prok Shipment Mgt."
         Snapshot: Codeunit "SI Prok Shipment Snapshot";
     begin
         if not Fact.Get(FactEntryNo) then
-            exit;
-        if (Fact."BC Prod. Order No." = '') or
-           (Fact."BC Prod. Order Status" <> Fact."BC Prod. Order Status"::Released) or
-           not (Fact."BC Binding Status" in [Fact."BC Binding Status"::Bound, Fact."BC Binding Status"::Warning]) then
-            exit;
+            exit(false);
+        // A Production Order / BC binding is optional. The imported MES fact
+        // is sufficient to create an OPEN shipment; posting has separate checks.
         if IsNullGuid(Fact."Production UUID") then
-            exit;
+            exit(false);
         Shipment.SetRange("Production UUID", Fact."Production UUID");
         if not Shipment.IsEmpty() then
-            exit;
+            exit(false);
 
         Shipment.Init();
         Shipment."Production UUID" := Fact."Production UUID";
@@ -82,6 +80,39 @@ codeunit 57145 "SI Prok Shipment Mgt."
         AllocationBinder.Bind(Shipment);
         Snapshot.InitializeOpen(Shipment, false);
         Shipment.Insert(true);
+        exit(true);
+    end;
+
+    // A Shipment may have been created before the MES fact was verified.
+    // Refresh only the quantity of an OPEN document; closed snapshots are immutable.
+    procedure TryRefreshOpenQuantityFromFact(ShipmentEntryNo: Integer): Boolean
+    var
+        Shipment: Record "SI Prok Shipment";
+        Fact: Record "SI Prok Production Fact";
+    begin
+        Shipment.LockTable();
+        if not Shipment.Get(ShipmentEntryNo) then
+            exit(false);
+        if (Shipment.Status <> Shipment.Status::Open) or (Shipment."Closed At" <> 0DT) then
+            exit(false);
+        if (Shipment."Production Fact Entry No." = 0) or IsNullGuid(Shipment."Production UUID") then
+            exit(false);
+        if not Fact.Get(Shipment."Production Fact Entry No.") then
+            exit(false);
+        if (Fact."Production UUID" <> Shipment."Production UUID") or
+           (Fact."Connection Code" <> Shipment."Connection Code") or
+           (Fact."Item No." = '') or (Fact."Item No." <> Shipment."Item No.") or
+           (Fact."Variant Code" <> Shipment."Variant Code") then
+            exit(false);
+        if (Fact."Verification Status" <> Fact."Verification Status"::Verified) or
+           (Fact."Technical Validation" <> Fact."Technical Validation"::Complete) or
+           (Fact."Produced Quantity M3" <= 0) then
+            exit(false);
+        if Shipment."Quantity M3" = Fact."Produced Quantity M3" then
+            exit(false);
+        Shipment."Quantity M3" := Fact."Produced Quantity M3";
+        Shipment.Modify(true);
+        exit(true);
     end;
 
     procedure CreateForReleasedOrder(OrderNo: Code[20])

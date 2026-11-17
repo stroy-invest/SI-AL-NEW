@@ -4,6 +4,13 @@ permissionset 57950 "SI PROK ADMIN"
     Caption = 'SI Proktek Integration Admin';
 
     Permissions =
+        tabledata "SI Prok Operations Setup" = RIMD,
+        table "SI Prok Operations Setup" = X,
+        page "SI Prok Operations Setup" = X,
+        page "SI Prok Raw API Response Card" = X,
+        codeunit "SI Prok Operations Config" = X,
+        codeunit "SI Prok Sync Job" = X,
+        codeunit "SI Prok Sync Schedule" = X,
         codeunit "SI Prok Allocation Binder" = X,
         codeunit "SI Prok Shipment Snapshot" = X,
         page "SI Prok Shipment Links FB" = X,
@@ -15,6 +22,9 @@ permissionset 57950 "SI PROK ADMIN"
         page "SI Prok Shipment Card" = X,
         page "SI Prok Shipments" = X,
         codeunit "SI Prok Shipment Mgt." = X,
+        codeunit "SI Prok Shipment Processing" = X,
+        codeunit "SI Prok Shipment Post Worker" = X,
+        codeunit "SI Prok Shipment Prep Worker" = X,
         codeunit "SI Prok Driver Sync Manager" = X,
         tabledata "SI Prok Journal Setup" = RIMD,
         table "SI Prok Journal Setup" = X,
