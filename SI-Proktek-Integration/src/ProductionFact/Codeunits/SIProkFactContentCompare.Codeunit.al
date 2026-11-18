@@ -452,7 +452,12 @@ codeunit 57104 "SI Prok Fact Content Compare"
             Fact."Verification Message" := CopyStr('Дані неповні. ' + Fact."Verification Message", 1, MaxStrLen(Fact."Verification Message"));
         if Fact."Verification Status" = Fact."Verification Status"::"Suspected Failure" then
             Fact."Verification Message" := CopyStr('Підозра не є доказом невдалого замісу. ' + Fact."Verification Message", 1, MaxStrLen(Fact."Verification Message"));
-        Fact."Produced Quantity M3" := 0;
+        // Preserve the positive MES-reported volume for the batch and shipment.
+        // Verification and posting readiness remain independent safeguards.
+        if Fact."Reported Quantity Present" and (Fact."Reported Quantity M3" > 0) then
+            Fact."Produced Quantity M3" := Fact."Reported Quantity M3"
+        else
+            Fact."Produced Quantity M3" := 0;
         Fact."Ready for Posting" := false;
     end;
 

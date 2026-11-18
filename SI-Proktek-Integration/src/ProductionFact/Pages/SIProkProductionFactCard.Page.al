@@ -168,6 +168,51 @@ page 57093 "SI Prok Production Fact Card"
                             CurrPage.Update(false);
                         end;
                     }
+                    action(TestPartialPostingFourOfSeven)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'UAT: створити часткове проведення 4/7';
+                        Image = TestReport;
+                        Visible = SandboxSuper;
+                        ToolTip = 'Лише Sandbox+SUPER: фізично проводить 4 із 7 рядків стандартним BC, залишає Started для перевірки відмови Recovery. ТИМЧАСОВА дія.';
+                        trigger OnAction()
+                        var
+                            Probe: Codeunit "SI Prok Posting Fault Probe";
+                        begin
+                            Probe.PostFourOfSeven(Rec."Entry No.");
+                            CurrPage.Update(false);
+                        end;
+                    }
+                    action(TestStartedAllPosted)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'UAT: залишити Started після 7/7';
+                        Image = TestReport;
+                        Visible = SandboxSuper;
+                        ToolTip = 'Лише Sandbox+SUPER: проводить усі 7 рядків стандартним BC, навмисно залишає Started для безпечного Recovery без повторного проведення. ТИМЧАСОВА дія.';
+                        trigger OnAction()
+                        var
+                            Probe: Codeunit "SI Prok Posting Fault Probe";
+                        begin
+                            Probe.PostAllLeaveStarted(Rec."Entry No.");
+                            CurrPage.Update(false);
+                        end;
+                    }
+                    action(ClearPartialProbeRemainder)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'UAT: прибрати 3 непроведені рядки тесту';
+                        Image = Delete;
+                        Visible = SandboxSuper;
+                        ToolTip = 'Лише Sandbox+SUPER, тільки після підтвердженого 4/7: видаляє три непроведені рядки конкретного тестового документа. ILE та Started не чіпає.';
+                        trigger OnAction()
+                        var
+                            Probe: Codeunit "SI Prok Posting Fault Probe";
+                        begin
+                            Probe.ClearPartialProbeRemainder(Rec."Entry No.");
+                            CurrPage.Update(false);
+                        end;
+                    }
                 }
                 action(RenumberPreparedAccountingJournals)
                 {
@@ -345,6 +390,14 @@ page 57093 "SI Prok Production Fact Card"
             }
         }
     }
+    trigger OnOpenPage()
+    var
+        EnvironmentInfo: Codeunit "Environment Information";
+        UserPermissions: Codeunit "User Permissions";
+    begin
+        SandboxSuper := EnvironmentInfo.IsSandbox() and UserPermissions.IsSuper(UserSecurityId());
+    end;
+
     trigger OnAfterGetRecord()
     begin
         LoadBusinessContext();
@@ -429,6 +482,7 @@ page 57093 "SI Prok Production Fact Card"
     end;
 
     var
+        SandboxSuper: Boolean;
         RequestNoView: Code[30];
         RequestTypeView: Text[100];
         ProjectView: Text[150];

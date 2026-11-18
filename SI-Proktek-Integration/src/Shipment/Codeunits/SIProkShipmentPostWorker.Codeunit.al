@@ -11,6 +11,7 @@ codeunit 57148 "SI Prok Shipment Post Worker"
         Prep: Codeunit "SI Prok Process Journal Prep";
         Control: Codeunit "SI Prok Process Control";
         Posting: Codeunit "SI Prok Process Posting";
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         Posted: Integer;
         Missing: Integer;
     begin
@@ -21,6 +22,7 @@ codeunit 57148 "SI Prok Shipment Post Worker"
             Error('SI Process: факт виробництва для Shipment %1 не знайдено.', Rec."Entry No.");
         if Fact."Production UUID" <> Rec."Production UUID" then
             Error('SI Process: UUID факту і Shipment не збігаються.');
+        ConcreteGuard.AssertShipment(Rec, Fact);
         Connection.Get(Rec."Connection Code");
         if (not Env.IsSandbox()) and (Connection.Environment <> Connection.Environment::Production) then
             Error('SI Process: DEMO/інший профіль не можна проводити в продуктивному BC.');

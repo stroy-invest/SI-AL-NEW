@@ -8,6 +8,7 @@ codeunit 57150 "SI Prok Shipment Prep Worker"
         Attempt: Record "SI Prok Posting Attempt";
         Prep: Codeunit "SI Prok Process Journal Prep";
         Control: Codeunit "SI Prok Process Control";
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
     begin
         Rec.Get(Rec."Entry No.");
         if Rec.Status <> Rec.Status::Closed then
@@ -15,6 +16,7 @@ codeunit 57150 "SI Prok Shipment Prep Worker"
         Fact.Get(Rec."Production Fact Entry No.");
         if Fact."Production UUID" <> Rec."Production UUID" then
             Error('SI Process: UUID Shipment і факту не збігаються.');
+        ConcreteGuard.AssertShipment(Rec, Fact);
         if Attempt.Get(Fact."Production UUID") then
             Error('SI Process: для факту вже є спроба проведення (%1).', Attempt.Status);
         if Fact."Accounting Document No." = '' then

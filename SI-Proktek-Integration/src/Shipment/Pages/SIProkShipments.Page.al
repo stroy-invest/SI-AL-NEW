@@ -31,6 +31,55 @@ page 57144 "SI Prok Shipments"
     {
         area(Processing)
         {
+            action(DeleteZeroShipmentsSandbox)
+            {
+                Caption = 'Видалити нульові Shipment (Sandbox)';
+                ApplicationArea = All;
+                Image = Delete;
+                ToolTip = 'Видаляє лише вибрані відкриті Shipment з нульовим обсягом без облікових операцій. Лише Sandbox. Факти виробництва не змінюються.';
+
+                trigger OnAction()
+                var
+                    SelectedShipment: Record "SI Prok Shipment";
+                    Shipment: Record "SI Prok Shipment";
+                    EnvironmentInfo: Codeunit "Environment Information";
+                    SelectedNos: List of [Integer];
+                    ShipmentNo: Integer;
+                    DeletedCount: Integer;
+                begin
+                    if not EnvironmentInfo.IsSandbox() then
+                        Error('Видалення нульових Shipment дозволено лише в Sandbox.');
+
+                    CurrPage.SetSelectionFilter(SelectedShipment);
+                    if SelectedShipment.IsEmpty() then
+                        Error('Виберіть документи для видалення.');
+
+                    // Validate the entire selection before confirmation.
+                    if SelectedShipment.FindSet() then
+                        repeat
+                            AssertZeroShipmentCanBeDeleted(SelectedShipment);
+                            SelectedNos.Add(SelectedShipment."Entry No.");
+                        until SelectedShipment.Next() = 0;
+
+                    if not Confirm(
+                        'Видалити %1 вибраних нульових Shipment у Sandbox? Факти виробництва залишаться без змін.',
+                        false, SelectedNos.Count()) then
+                        exit;
+
+                    // Revalidate under a lock. Any error rolls back all deletions.
+                    Shipment.LockTable();
+                    foreach ShipmentNo in SelectedNos do begin
+                        if not Shipment.Get(ShipmentNo) then
+                            Error('Shipment №%1 уже відсутній. Операцію скасовано.', ShipmentNo);
+                        AssertZeroShipmentCanBeDeleted(Shipment);
+                        Shipment.Delete(true);
+                        DeletedCount += 1;
+                    end;
+
+                    CurrPage.Update(false);
+                    Message('Видалено нульових Shipment: %1. Факти виробництва не змінено.', DeletedCount);
+                end;
+            }
             action(RefreshOpenQuantities)
             {
                 Caption = 'Оновити обсяги з фактів';
@@ -61,4 +110,30 @@ page 57144 "SI Prok Shipments"
             }
         }
     }
+
+    local procedure AssertZeroShipmentCanBeDeleted(Shipment: Record "SI Prok Shipment")
+    var
+        Attempt: Record "SI Prok Posting Attempt";
+        JournalLink: Record "SI Prok Journal Link";
+        Fact: Record "SI Prok Production Fact";
+    begin
+        if Shipment.Status <> Shipment.Status::Open then
+            Error('Shipment №%1 не відкритий. Видалення заборонено.', Shipment."Entry No.");
+        if Shipment."Quantity M3" <> 0 then
+            Error('Shipment №%1 має ненульовий обсяг. Видалення заборонено.', Shipment."Entry No.");
+        if Shipment."Closed At" <> 0DT then
+            Error('Shipment №%1 має зафіксоване відвантаження. Видалення заборонено.', Shipment."Entry No.");
+
+        if Attempt.Get(Shipment."Production UUID") then
+            Error('Для Shipment №%1 існує спроба проведення. Видалення заборонено.', Shipment."Entry No.");
+
+        JournalLink.SetRange("Production UUID", Shipment."Production UUID");
+        if not JournalLink.IsEmpty() then
+            Error('Для Shipment №%1 існують зв’язки з журналами. Видалення заборонено.', Shipment."Entry No.");
+
+        Fact.SetRange("Production UUID", Shipment."Production UUID");
+        if Fact.FindFirst() then
+            if Fact."Accounting Document No." <> '' then
+                Error('Для Shipment №%1 вже підготовлено обліковий документ. Видалення заборонено.', Shipment."Entry No.");
+    end;
 }

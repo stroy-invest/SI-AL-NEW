@@ -135,6 +135,19 @@ page 57091 "SI Prok Production Facts"
                 Image = Archive;
                 RunObject = page "SI Prok Raw API Responses";
             }
+            action(AuditConcreteIdentity)
+            {
+                Caption = 'Аудит бетону в історичних фактах';
+                ApplicationArea = All;
+                Image = ViewDetails;
+                ToolTip = 'Тільки читання: знаходить факти без Item/назви/M3 і Shipment із порожнім або невідповідним бетоном. Проведені дані не змінює.';
+                trigger OnAction()
+                var
+                    ConcreteGuard: Codeunit "SI Prok Concrete Identity";
+                begin
+                    ConcreteGuard.AuditExisting();
+                end;
+            }
         }
     }
 

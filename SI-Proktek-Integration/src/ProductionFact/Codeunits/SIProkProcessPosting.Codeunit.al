@@ -29,6 +29,7 @@ codeunit 57144 "SI Prok Process Posting"
         Attempt: Record "SI Prok Posting Attempt";
         Shipment: Record "SI Prok Shipment";
         Control: Codeunit "SI Prok Process Control";
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         Cleanup: Codeunit "SI Prok Process Jnl Cleanup";
         CleanupResult: Integer;
         Posted: Integer;
@@ -40,6 +41,7 @@ codeunit 57144 "SI Prok Process Posting"
             Error('SI Process: для факту %1 немає Shipment. Проведення дозволено лише після першого «Надрукувати».', Fact."Entry No.");
         if (Shipment."Production Fact Entry No." <> Fact."Entry No.") or (Shipment.Status <> Shipment.Status::Closed) then
             Error('SI Process: Shipment не закрито або його зв’язок із фактом некоректний.');
+        ConcreteGuard.AssertShipment(Shipment, Fact);
         if Attempt.Get(Fact."Production UUID") then
             Error('SI Process: для UUID %1 вже існує спроба проведення (%2). Автоматичний повтор заборонено.',
                 Fact."Production UUID", Attempt.Status);

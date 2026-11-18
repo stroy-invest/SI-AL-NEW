@@ -92,6 +92,8 @@ codeunit 57149 "SI Prok Shipment Processing"
     end;
 
     local procedure AssertShipmentReady(Shipment: Record "SI Prok Shipment"; var Fact: Record "SI Prok Production Fact")
+    var
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
     begin
         if Shipment.Status <> Shipment.Status::Open then
             Error('Shipment %1 вже закрито.', Shipment."Entry No.");
@@ -104,6 +106,7 @@ codeunit 57149 "SI Prok Shipment Processing"
             Error('UUID Shipment і факту виробництва не збігаються.');
         if Fact."Connection Code" <> Shipment."Connection Code" then
             Error('Профіль Proktek Shipment і факту не збігається.');
+        ConcreteGuard.AssertShipment(Shipment, Fact);
         if Fact."Verification Status" <> Fact."Verification Status"::Verified then
             Error('Фактичний обсяг виробництва ще не підтверджено.');
         if Fact."Technical Validation" <> Fact."Technical Validation"::Complete then

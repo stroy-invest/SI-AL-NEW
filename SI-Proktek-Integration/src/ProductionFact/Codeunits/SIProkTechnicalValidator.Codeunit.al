@@ -41,6 +41,12 @@ codeunit 57131 "SI Prok Technical Validator"
             end;
         if (Fact."Item No." = '') or (not Item.Get(Fact."Item No.")) then
             AddIssue('V06', 'Товар готової продукції не визначено', Incomplete, Diagnostics);
+        if (Fact."Item No." <> '') and Item.Get(Fact."Item No.") then
+            if DelChr(Item.Description, '=', ' ') = '' then
+                if (Fact."Variant Code" = '') or
+                   (Variant.Get(Fact."Item No.", Fact."Variant Code") and
+                    (DelChr(Variant.Description, '=', ' ') = '')) then
+                    AddIssue('V13', 'Немає назви готового бетону в картці товару/варіанта', Incomplete, Diagnostics);
         if Fact."Variant Code" <> '' then
             if not Variant.Get(Fact."Item No.", Fact."Variant Code") then
                 AddIssue('V07', 'Варіант готової продукції не знайдено', Incomplete, Diagnostics);
@@ -124,7 +130,7 @@ codeunit 57131 "SI Prok Technical Validator"
             'V03': exit('Proktek Formula');
             'V04': exit('BOM Version');
             'V05', 'V11': exit('Recipe / Item');
-            'V06', 'V07': exit('Finished Product');
+            'V06', 'V07', 'V13': exit('Finished Product');
             'V08', 'V09', 'V10', 'V12': exit('Materials / UoM');
             'W03': exit('Truck');
         end;

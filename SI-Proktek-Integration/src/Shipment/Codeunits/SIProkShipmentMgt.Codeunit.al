@@ -19,12 +19,21 @@ codeunit 57145 "SI Prok Shipment Mgt."
         DriverUuid: Guid;
         AllocationBinder: Codeunit "SI Prok Allocation Binder";
         Snapshot: Codeunit "SI Prok Shipment Snapshot";
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
+        ConcreteReason: Text;
     begin
         if not Fact.Get(FactEntryNo) then
             exit(false);
         // A Production Order / BC binding is optional. The imported MES fact
         // is sufficient to create an OPEN shipment; posting has separate checks.
         if IsNullGuid(Fact."Production UUID") then
+            exit(false);
+        // Also protects the backfill action from old malformed facts.
+        if not ConcreteGuard.IsValidFact(Fact, ConcreteReason) then
+            exit(false);
+        // An unverified MES fact can be stored, but a zero-volume Shipment
+        // must never be created. Posting verification remains unchanged.
+        if Fact."Produced Quantity M3" <= 0 then
             exit(false);
         Shipment.SetRange("Production UUID", Fact."Production UUID");
         if not Shipment.IsEmpty() then
@@ -79,6 +88,8 @@ codeunit 57145 "SI Prok Shipment Mgt."
         end;
         AllocationBinder.Bind(Shipment);
         Snapshot.InitializeOpen(Shipment, false);
+        if DelChr(Shipment."Concrete Description", '=', ' ') = '' then
+            exit(false);
         Shipment.Insert(true);
         exit(true);
     end;

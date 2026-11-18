@@ -84,7 +84,7 @@
                 Connection."EDS Provider Code",
                 RuntimeParam,
                 RequestBody,
-                'application/json-patch+json',
+                'application/json',
                 'text/plain',
                 ResponseBuffer);
 
@@ -275,7 +275,7 @@
             Connection."EDS Provider Code",
             RuntimeParam,
             RequestBody,
-            'application/json-patch+json',
+            'application/json',
             'text/plain',
             ResponseBuffer);
 
@@ -325,10 +325,8 @@
         RequestJson.Add('startDate', FormatDateTime(StartDate, false));
         RequestJson.Add('endDate', FormatDateTime(EndDate, true));
         RequestJson.Add('santral_id', PlantArray);
-        RequestJson.Add('perpage', PerPage);
-        RequestJson.Add('page', PageNo);
-        RequestJson.Add('hide_details', HideDetails);
-        RequestJson.Add('total_statistic', TotalStatistic);
+        // Verified PROD contract: only five JSON fields; always request details.
+        RequestJson.Add('hide_details', false);
 
         RequestJson.WriteTo(RequestBody);
         exit(RequestBody);
@@ -361,9 +359,9 @@
         DateText := Format(Value, 0, '<Year4>-<Month,2>-<Day,2>');
 
         if EndOfDay then
-            exit(DateText + 'T23:59:59');
+            exit(DateText + 'T23:59:59Z');
 
-        exit(DateText + 'T00:00:00');
+        exit(DateText + 'T00:00:00Z');
     end;
 
     local procedure ValidateTransportResponse(

@@ -39,6 +39,8 @@ permissionset 57950 "SI PROK ADMIN"
         codeunit "SI Prok Process Journal Prep" = X,
         codeunit "SI Prok Process Control" = X,
         codeunit "SI Prok Process Posting" = X,
+        codeunit "SI Prok Posting Fault Probe" = X,
+        codeunit "SI Prok Concrete Identity" = X,
         codeunit "SI Prok Process Jnl Cleanup" = X,
         tabledata "SI Prok Connection" = RIMD,
         table "SI Prok Connection" = X,

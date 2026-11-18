@@ -126,6 +126,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
     procedure PersistCanonicalWithConnection(ProdRequest: Record "SI Concrete Prod Request"; CanonicalText: Text; ConnectionCode: Code[50]; var Fact: Record "SI Prok Production Fact")
     var
         Root: JsonObject;
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         MaterialsToken: JsonToken;
         Materials: JsonArray;
         MaterialToken: JsonToken;
@@ -182,6 +183,8 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if Fact."Production BOM No." = '' then
             ResolveLegacyFormulaBom(Fact);
         EnrichRecipeContext(Fact);
+        // Intake must never persist a batch without resolved concrete.
+        ConcreteGuard.AssertFact(Fact);
         AssessNewFact(Fact, Root);
         ReadTruckFromCanonical(Root, Fact);
         Fact."Ordered Quantity M3" := ProdRequest.Quantity;
@@ -225,6 +228,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
     var
         Root: JsonObject;
         Compare: Codeunit "SI Prok Fact Content Compare";
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         Result: Enum "SI Prok Intake Result";
         ProductionUuidText: Text;
     begin
@@ -245,6 +249,9 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             end;
             if not Compare.SameContent(Fact.GetCanonicalJson(), CanonicalText, Reason) then
                 exit(Result::Conflict);
+            // Historical incomplete facts must not be reported as valid Existing.
+            if not ConcreteGuard.IsValidFact(Fact, Reason) then
+                exit(Result::Conflict);
             exit(Result::Existing);
         end;
         if not Compare.ValidateMaterials(Root, Reason) then
@@ -258,6 +265,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         MaterialsToken: JsonToken;
         MaterialToken: JsonToken;
         Materials: JsonArray;
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         UuidText: Text;
         I: Integer;
     begin
@@ -293,6 +301,9 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             ResolveLegacyFormulaBom(Fact);
         end;
         EnrichRecipeContext(Fact);
+        // Reject before Fact.Insert. Raw API evidence remains in the archive
+        // (the intake worker records the failure and allows a controlled retry).
+        ConcreteGuard.AssertFact(Fact);
         ReadTruckFromCanonical(Root, Fact);
         AssessNewFact(Fact, Root);
         Fact.Status := Fact.Status::Received;

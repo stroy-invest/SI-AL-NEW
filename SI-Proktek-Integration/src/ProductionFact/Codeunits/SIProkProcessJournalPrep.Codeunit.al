@@ -129,8 +129,10 @@ codeunit 57139 "SI Prok Process Journal Prep"
         Material: Record "SI Prok Prod Fact Material";
         Item: Record Item;
         ItemUoM: Record "Item Unit of Measure";
+        ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         PositiveCount: Integer;
     begin
+        ConcreteGuard.AssertFact(Fact);
         if IsNullGuid(Fact."Production UUID") then
             Error('SI Process Production: Production UUID відсутній.');
         if Fact."Verification Status" <> Fact."Verification Status"::Verified then
