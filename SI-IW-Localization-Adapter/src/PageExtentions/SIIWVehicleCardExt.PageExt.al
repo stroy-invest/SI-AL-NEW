@@ -130,35 +130,35 @@ pageextension 65001 "SI IW IWSVehicle Card Ext"
                 {
                     ApplicationArea = All;
                     Caption = 'Місце зберігання';
-                    Editable = false;
+                    //Editable = false;
                 }
 
                 field(IWLength; Rec.Length)
                 {
                     ApplicationArea = All;
                     Caption = 'Довжина, м';
-                    Editable = false;
+                    //Editable = false;
                 }
 
                 field(IWWidth; Rec.Width)
                 {
                     ApplicationArea = All;
                     Caption = 'Ширина, м';
-                    Editable = false;
+                    //Editable = false;
                 }
 
                 field(IWHeight; Rec.Height)
                 {
                     ApplicationArea = All;
                     Caption = 'Висота, м';
-                    Editable = false;
+                    //Editable = false;
                 }
 
                 field(IWGrossWeight; Rec."Gross Weight")
                 {
                     ApplicationArea = All;
                     Caption = 'Маса брутто, т';
-                    Editable = false;
+                    //Editable = false;
                 }
             }
         }
