@@ -116,6 +116,14 @@ pageextension 65001 "SI IW IWSVehicle Card Ext"
                     ToolTip = 'Ідентифікатор транспортного засобу в SI Vehicle Management.';
                     Editable = false;
                 }
+
+                field(SIVehicleBlocked; Rec."SI Vehicle Blocked")
+                {
+                    ApplicationArea = All;
+                    Caption = 'Заблоковано в SI VM';
+                    ToolTip = 'Інформаційна ознака блокування транспортного засобу в SI Vehicle Management.';
+                    Editable = false;
+                }
             }
         }
 

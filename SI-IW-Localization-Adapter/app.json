@@ -2,7 +2,7 @@
   "id": "6c1daff9-7dd1-4566-ac9c-74868de040b3",
   "name": "SI IW Localization Adapter",
   "publisher": "STROYINVEST",
-  "version": "1.0.1.0",
+  "version": "1.0.1.1",
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
   "idRanges": [
@@ -41,7 +41,7 @@
       "name": "SI Vehicle Management",
       "publisher": "STROYINVEST",
       "version": "1.0.0.6"
-    }    
+    }
   ],
   "resourceExposurePolicy": {
     "allowDebugging": true,

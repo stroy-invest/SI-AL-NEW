@@ -1,4 +1,3 @@
-
 tableextension 65000 "SI IW Vehicle Ext" extends IWSVehicle
 {
     fields
@@ -8,6 +7,12 @@ tableextension 65000 "SI IW Vehicle Ext" extends IWSVehicle
             Caption = 'SI Vehicle No.';
             DataClassification = CustomerContent;
             TableRelation = "SI Vehicle Profile"."No.";
+            Editable = false;
+        }
+        field(65001; "SI Vehicle Blocked"; Boolean)
+        {
+            Caption = 'Заблоковано в SI VM';
+            DataClassification = CustomerContent;
             Editable = false;
         }
     }
