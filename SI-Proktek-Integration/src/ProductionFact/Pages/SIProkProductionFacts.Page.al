@@ -1,10 +1,10 @@
-page 57091 "SI Prok Production Facts"
+﻿page 57091 "SI Prok Production Facts"
 {
     PageType = List;
     SourceTable = "SI Prok Production Fact";
-    Caption = 'Факти виробництва Proktek';
+    Caption = 'Факти виробництва Proktek (технічний список)';
     ApplicationArea = All;
-    UsageCategory = Tasks;
+    UsageCategory = None;
     CardPageId = "SI Prok Production Fact Card";
     Editable = false;
     SourceTableView = sorting("Entry No.") order(descending);
@@ -21,7 +21,6 @@ page 57091 "SI Prok Production Facts"
                 field("Project No."; Rec."Project No.") { ApplicationArea = All; }
                 field("Recipe No."; Rec."Recipe No.") { ApplicationArea = All; }
                 field("Recipe Revision No."; Rec."Recipe Revision No.") { ApplicationArea = All; }
-                field("Capture Mode"; Rec."Capture Mode") { ApplicationArea = All; }
                 field("Truck Code"; Rec."Truck Code") { ApplicationArea = All; }
                 field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; }
                 field(ReportedQuantity; Rec.GetReportedQuantityText()) { ApplicationArea = All; Caption = 'Заявлено MES, м³'; Editable = false; ToolTip = 'Переданий MES обсяг; не є підтвердженням виробництва. Для історії читається canonical без зміни запису.'; }
@@ -44,25 +43,22 @@ page 57091 "SI Prok Production Facts"
     {
         area(Processing)
         {
-            action(CaptureTest)
+            action(OpenFactHierarchy)
             {
-                Caption = 'Отримати факти (Тест)';
+                Caption = 'Факти за заявками (ієрархія)';
                 ApplicationArea = All;
-                Image = Import;
-                trigger OnAction()
-                begin
-                    RunCapture(Enum::"SI Prok Capture Mode"::Test);
-                end;
+                Image = List;
+                RunObject = page "SI Prok Fact Hierarchy";
             }
             action(CaptureNormal)
             {
-                Caption = 'Отримати факти (Normal)';
+                Caption = 'Отримати факти';
                 ApplicationArea = All;
                 Image = Import;
                 ToolTip = 'Зберегти реальні факти без обов’язкової заявки, підтвердження обсягу чи готовності до проведення.';
                 trigger OnAction()
                 begin
-                    RunCapture(Enum::"SI Prok Capture Mode"::Normal);
+                    RunCapture();
                 end;
             }
 
@@ -151,7 +147,7 @@ page 57091 "SI Prok Production Facts"
         }
     }
 
-    local procedure RunCapture(Mode: Enum "SI Prok Capture Mode")
+    local procedure RunCapture()
     var
         Params: Page "SI Prok Prod Export Params";
         ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
@@ -168,11 +164,11 @@ page 57091 "SI Prok Production Facts"
         Params.SetDefaults(Today, Today, Profile);
         if Params.RunModal() <> Action::OK then
             exit;
-        if not Confirm('Отримати факти з профілю %1 у режимі %2? Capture не підтверджує м³ і не виконує проведення.',
-            false, Params.GetConnectionCode(), Format(Mode)) then
+        if not Confirm('Отримати факти з профілю %1? Приймання не підтверджує м³ і не виконує проведення.',
+            false, Params.GetConnectionCode()) then
             exit;
         CaptureMgt.CaptureWithMode(Params.GetDateFrom(), Params.GetDateTo(),
-            Params.GetConnectionCode(), Mode, Imported, Existing, Conflicts, Failed);
+            Params.GetConnectionCode(), Enum::"SI Prok Capture Mode"::Normal, Imported, Existing, Conflicts, Failed);
         CurrPage.Update(false);
         Message('Нові: %1; незмінені: %2; конфлікти: %3; помилки: %4.',
             Imported, Existing, Conflicts, Failed);
