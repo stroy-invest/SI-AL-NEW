@@ -70,6 +70,7 @@ page 57093 "SI Prok Production Fact Card"
             group(ProductionAccounting)
             {
                 Caption = 'Виробничий облік';
+                Visible = false; // PROD-safe: no accounting actions in this release.
                 action(CheckAccounting)
                 {
                     ApplicationArea = All;
@@ -469,7 +470,10 @@ page 57093 "SI Prok Production Fact Card"
         Shipment.SetRange("Production UUID", Rec."Production UUID");
         if Shipment.FindFirst() then begin
             DriverView := Shipment."Driver Name";
-            if Shipment."Recipe Name" <> '' then
+            UnloadingView := Shipment."Delivery Site Name";
+            // Business recipe from the request takes precedence over the
+            // technical BOM/version stored in historical shipments.
+            if (RecipeView = '') and (Shipment."Recipe Name" <> '') then
                 RecipeView := Shipment."Recipe Name";
         end;
         // Batch planned quantity and unloading point require a verified source mapping.

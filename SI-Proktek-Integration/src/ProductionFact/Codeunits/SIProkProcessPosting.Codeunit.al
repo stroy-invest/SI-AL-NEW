@@ -12,7 +12,9 @@ codeunit 57144 "SI Prok Process Posting"
         Env: Codeunit "Environment Information";
         Control: Codeunit "SI Prok Process Control";
         CountLines: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Проведення Process Journal (Sandbox)');
         if not Env.IsSandbox() then
             Error('SI Process: тестова дія доступна лише в Sandbox.');
         Fact.Get(Fact."Entry No.");
@@ -34,7 +36,9 @@ codeunit 57144 "SI Prok Process Posting"
         CleanupResult: Integer;
         Posted: Integer;
         Missing: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Проведення Process Journal');
         Fact.Get(Fact."Entry No.");
         Shipment.SetRange("Production UUID", Fact."Production UUID");
         if not Shipment.FindFirst() then
@@ -88,7 +92,9 @@ codeunit 57144 "SI Prok Process Posting"
     procedure RecoverSandbox(var Fact: Record "SI Prok Production Fact")
     var
         Env: Codeunit "Environment Information";
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Відновлення Process Journal (Sandbox)');
         if not Env.IsSandbox() then
             Error('SI Process: тестова дія відновлення доступна лише в Sandbox.');
         RecoverControlled(Fact);
@@ -104,7 +110,9 @@ codeunit 57144 "SI Prok Process Posting"
         State: Integer;
         Posted: Integer;
         Missing: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Відновлення Process Journal');
         Fact.Get(Fact."Entry No.");
         if not Attempt.Get(Fact."Production UUID") then
             Error('SI Process: немає спроби проведення. Використайте звичайне контрольоване проведення.');

@@ -19,7 +19,9 @@ codeunit 57138 "SI Prok Accounting Reset"
         DeletedJournalLines: Integer;
         DeletedAttempts: Integer;
         ResetFacts: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Очищення облікової підготовки');
         if not Env.IsSandbox() then
             Error('PF-02 RESET: очищення облікової підготовки дозволене лише в Sandbox.');
         SelectedFact.Get(SelectedFact."Entry No.");

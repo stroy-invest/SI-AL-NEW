@@ -21,7 +21,9 @@ codeunit 57127 "SI Prok Legacy Adoption"
         LinkCount: Integer;
         OutputCount: Integer;
         MaterialCount: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Legacy adoption журналів');
         if not Env.IsSandbox() then
             Error('PF-02.3 Legacy: прийняття дозволено лише у Sandbox.');
         Fact.Get(Fact."Entry No.");

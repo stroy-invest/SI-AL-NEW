@@ -9,7 +9,9 @@ codeunit 57150 "SI Prok Shipment Prep Worker"
         Prep: Codeunit "SI Prok Process Journal Prep";
         Control: Codeunit "SI Prok Process Control";
         ConcreteGuard: Codeunit "SI Prok Concrete Identity";
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Підготовка журналів Shipment');
         Rec.Get(Rec."Entry No.");
         if Rec.Status <> Rec.Status::Closed then
             Error('SI Process: відвантаження не зафіксовано.');

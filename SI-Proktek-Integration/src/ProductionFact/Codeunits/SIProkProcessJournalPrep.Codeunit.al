@@ -5,7 +5,9 @@ codeunit 57139 "SI Prok Process Journal Prep"
     procedure PrepareSandbox(var Fact: Record "SI Prok Production Fact")
     var
         Env: Codeunit "Environment Information";
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Підготовка Process Journal (Sandbox)');
         if not Env.IsSandbox() then
             Error('SI Process Production: тестова дія доступна лише в Sandbox.');
         Prepare(Fact);
@@ -34,7 +36,9 @@ codeunit 57139 "SI Prok Process Journal Prep"
         LinkLine: Integer;
         MaterialCount: Integer;
         MaterialQty: Decimal;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Підготовка Process Journal');
         Fact.Get(Fact."Entry No.");
         AssertFactReady(Fact);
         if Fact."Accounting Document No." <> '' then

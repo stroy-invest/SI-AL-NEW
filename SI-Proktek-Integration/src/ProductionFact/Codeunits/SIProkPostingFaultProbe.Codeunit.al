@@ -14,7 +14,9 @@ codeunit 57151 "SI Prok Posting Fault Probe"
         Posted: Integer;
         Missing: Integer;
         CountPosted: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('UAT часткове проведення');
         AssertTestReady(FactEntryNo, Fact, Link);
         if not Confirm(
             'УВАГА — SANDBOX. Реально провести стандартним BC рівно 4 із 7 рядків документа %1?\Створимо Posting Attempt = Started; решта 3 залишаться непроведеними. Recovery ОБОВ''ЯЗКОВО має відмовити. Продовжити?',
@@ -62,7 +64,9 @@ codeunit 57151 "SI Prok Posting Fault Probe"
         Control: Codeunit "SI Prok Process Control";
         Posted: Integer;
         Missing: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('UAT повне проведення');
         AssertTestReady(FactEntryNo, Fact, Link);
         if not Confirm(
             'УВАГА — SANDBOX. Провести ВСІ 7 рядків стандартним BC, але навмисно залишити Posting Attempt = Started для документа %1?\Після 10 хв Recovery має лише завершити спробу без повторного проведення. Продовжити?',
@@ -94,7 +98,9 @@ codeunit 57151 "SI Prok Posting Fault Probe"
         Missing: Integer;
         Removed: Integer;
         LineIndex: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('UAT очищення журналів');
         if not EnvironmentInfo.IsSandbox() or not UserPermissions.IsSuper(UserSecurityId()) then
             Error('UAT: очистити залишок може тільки SUPER у Sandbox.');
         Fact.Get(FactEntryNo);

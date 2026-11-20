@@ -18,6 +18,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         PageUuids: List of [Text];
         CandidateUuid: Text;
         Fact: Record "SI Prok Production Fact";
+        Lifecycle: Codeunit "SI Prok Fact Lifecycle";
     begin
         Allocation.TestField("Supply Method", Allocation."Supply Method"::Production);
         if IsNullGuid(Allocation."Execution System ID") then
@@ -54,6 +55,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
                 if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
                     AssertSameConnection(Fact, Connection.Code);
                     AssertSameContent(Fact, CanonicalText);
+                    Lifecycle.AfterExisting(Fact."Entry No.");
                     ExistingCount += 1;
                 end
                 else begin
@@ -74,6 +76,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
     var
         Root: JsonObject;
         ProductionUuidText: Text;
+        Lifecycle: Codeunit "SI Prok Fact Lifecycle";
     begin
         if CanonicalText = '' then
             Error('Canonical Production JSON порожній.');
@@ -83,6 +86,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
             AssertSameConnection(Fact, ConnectionCode);
             AssertSameContent(Fact, CanonicalText);
+            Lifecycle.AfterExisting(Fact."Entry No.");
             Fact.Get(Fact."Entry No.");
             exit(false);
         end;
@@ -98,6 +102,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
     var
         Root: JsonObject;
         ProductionUuidText: Text;
+        Lifecycle: Codeunit "SI Prok Fact Lifecycle";
     begin
         if CanonicalText = '' then
             Error('Canonical Production JSON порожній.');
@@ -108,6 +113,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
             AssertSameConnection(Fact, '');
             AssertSameContent(Fact, CanonicalText);
+            Lifecycle.AfterExisting(Fact."Entry No.");
             Fact.Get(Fact."Entry No.");
             exit(false);
         end;
@@ -134,6 +140,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         OrderUuidText: Text;
         FormulaUuidText: Text;
         I: Integer;
+        Lifecycle: Codeunit "SI Prok Fact Lifecycle";
     begin
         if CanonicalText = '' then
             Error('Canonical Production JSON порожній.');
@@ -144,6 +151,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         if FindFactByProductionUuid(ProductionUuidText, Fact) then begin
             AssertSameConnection(Fact, ConnectionCode);
             AssertSameContent(Fact, CanonicalText);
+            Lifecycle.AfterExisting(Fact."Entry No.");
             exit;
         end;
 
@@ -206,6 +214,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         NormalizeFactMaterials(Fact);
         RunTechnicalValidation(Fact);
         ValidateFact(Fact);
+        Lifecycle.AfterImported(Fact."Entry No.");
     end;
 
     procedure PersistCaptureOnly(CanonicalText: Text; var Fact: Record "SI Prok Production Fact"): Boolean
@@ -217,10 +226,17 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
     var
         Result: Enum "SI Prok Intake Result";
         Reason: Text;
+        Lifecycle: Codeunit "SI Prok Fact Lifecycle";
     begin
         Result := PersistIntake(CanonicalText, ConnectionCode, Enum::"SI Prok Capture Mode"::Test, Fact, Reason);
         if Result = Result::Conflict then
             Error('%1', Reason);
+        case Result of
+            Result::Imported:
+                Lifecycle.AfterImported(Fact."Entry No.");
+            Result::Existing:
+                Lifecycle.AfterExisting(Fact."Entry No.");
+        end;
         exit(Result = Result::Imported);
     end;
 
@@ -456,38 +472,18 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
         Fact."Truck Plate" := CopyStr(GetText(TruckJson, 'plate'), 1, MaxStrLen(Fact."Truck Plate"));
     end;
 
+    // Legacy order-bound capture uses the same material parser as the normal
+    // intake; only its additional BOM membership check is legacy-specific.
     local procedure InsertMaterial(Fact: Record "SI Prok Production Fact"; SequenceNo: Integer; MaterialJson: JsonObject)
     var
         Line: Record "SI Prok Prod Fact Material";
-        Item: Record Item;
-        ItemVariant: Record "Item Variant";
         BOMLine: Record "Production BOM Line";
-        MaterialUuidText: Text;
     begin
-        Line.Init();
-        Line."Production Fact Entry No." := Fact."Entry No.";
-        Line."Line No." := SequenceNo * 10000;
-        MaterialUuidText := GetText(MaterialJson, 'uuid');
-        if MaterialUuidText <> '' then
-            Evaluate(Line."Material UUID", MaterialUuidText);
-        Line."External Material Code" := CopyStr(GetText(MaterialJson, 'entCode'), 1, MaxStrLen(Line."External Material Code"));
-        Line."Material Name" := CopyStr(GetText(MaterialJson, 'name'), 1, MaxStrLen(Line."Material Name"));
-        Line."Item No." := CopyStr(GetText(MaterialJson, 'itemNo'), 1, MaxStrLen(Line."Item No."));
-        Line."Variant Code" := CopyStr(GetText(MaterialJson, 'variantCode'), 1, MaxStrLen(Line."Variant Code"));
-        Line."Requested Kg" := GetDecimal(MaterialJson, 'requestedKg');
-        Line."Adjusted Kg" := GetDecimal(MaterialJson, 'adjustedKg');
-        Line."Actual Kg" := GetDecimal(MaterialJson, 'actualKg');
-        Line."Variance Kg" := Line."Actual Kg" - Line."Requested Kg";
-        if Line."Requested Kg" <> 0 then
-            Line."Variance %" := (Line."Variance Kg" / Line."Requested Kg") * 100;
-
-        Line."BC Material Resolved" := (Line."Item No." <> '') and Item.Get(Line."Item No.");
-        if Line."BC Material Resolved" and (Line."Variant Code" <> '') then
-            Line."BC Material Resolved" := ItemVariant.Get(Line."Item No.", Line."Variant Code");
-
-        // Standard BOM Version is the canonical material identity.
+        InsertMaterialCapture(Fact, SequenceNo, MaterialJson);
+        Line.Get(Fact."Entry No.", SequenceNo * 10000);
         Line."Recipe Material" := false;
-        if (Fact."Production BOM No." <> '') and (Fact."Production BOM Version Code" <> '') and
+        if (Fact."Production BOM No." <> '') and
+           (Fact."Production BOM Version Code" <> '') and
            Line."BC Material Resolved" then begin
             BOMLine.SetRange("Production BOM No.", Fact."Production BOM No.");
             BOMLine.SetRange("Version Code", Fact."Production BOM Version Code");
@@ -495,7 +491,7 @@ codeunit 57091 "SI Prok Prod Fact Mgt."
             BOMLine.SetRange("No.", Line."Item No.");
             Line."Recipe Material" := not BOMLine.IsEmpty();
         end;
-        Line.Insert(true);
+        Line.Modify(true);
     end;
 
     // Legacy order-bound intake validation. Never promote to posting-ready here:

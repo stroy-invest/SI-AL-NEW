@@ -17,7 +17,9 @@ codeunit 57125 "SI Prok Controlled Posting"
         ConsTemplate: Code[10];
         ConsBatch: Code[10];
         TotalLinks: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Проведення Output/Consumption');
         if not Env.IsSandbox() then
             Error('PF-02.3: ця дія доступна лише в Sandbox.');
         Fact.Get(Fact."Entry No.");
@@ -98,7 +100,9 @@ codeunit 57125 "SI Prok Controlled Posting"
         Link: Record "SI Prok Journal Link";
         OutputTemplate: Code[10];
         OutputBatch: Code[10];
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Відновлення Output');
         if not Env.IsSandbox() then
             Error('PF-02.4: відновлення наразі дозволено лише в Sandbox.');
         Fact.Get(Fact."Entry No.");
@@ -149,7 +153,9 @@ codeunit 57125 "SI Prok Controlled Posting"
         OutputBatch: Code[10];
         ConsumptionTemplate: Code[10];
         ConsumptionBatch: Code[10];
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Повторне проведення Output/Consumption');
         if not Env.IsSandbox() then
             Error('PF-02.4: відновлення наразі дозволено лише в Sandbox.');
         Fact.Get(Fact."Entry No.");

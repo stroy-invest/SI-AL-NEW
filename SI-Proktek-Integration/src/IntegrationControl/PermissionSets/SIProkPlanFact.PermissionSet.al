@@ -1,4 +1,4 @@
-permissionset 57952 "SI PROK PLANFACT"
+﻿permissionset 57952 "SI PROK PLANFACT"
 {
     Assignable = true;
     Caption = 'SI Proktek: звіт план/факт (читання)';
@@ -19,5 +19,10 @@ permissionset 57952 "SI PROK PLANFACT"
         codeunit "SI Prok PF Link Resolver" = X,
         codeunit "SI Prok Plan Fact Excel" = X,
         codeunit "SI Prok PF Template Writer" = X,
+        table "SI Prok PF Concrete Group" = X,
+        table "SI Prok PF Sum Fact Index" = X,
+        page "SI Prok PF Sum Period" = X,
+        codeunit "SI Prok PF Period Summary" = X,
+        codeunit "SI Prok PF Sum Writer" = X,
         codeunit "SI Item UoM Conversion" = X;
 }

@@ -62,7 +62,10 @@ table 57142 "SI Prok Shipment"
         key(Production; "Production UUID") { Unique = true; }
     }
     procedure CloseAfterPrint()
+    var
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Закриття Shipment');
         // First accepted print intent is a one-time shipment event.
         // Lock + reread protects the Open -> Closed transition across sessions.
         LockTable();

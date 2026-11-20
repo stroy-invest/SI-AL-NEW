@@ -50,6 +50,24 @@
                 Image = List;
                 RunObject = page "SI Prok Fact Hierarchy";
             }
+            action(ExportPeriodPlanFact)
+            {
+                Caption = 'Підсумковий план/факт за період';
+                ApplicationArea = All;
+                Image = ExportToExcel;
+                ToolTip = 'Звіт по всіх виробничих фактах за вибраний період, незалежно від виділення рядків.';
+                trigger OnAction()
+                var
+                    Params: Page "SI Prok PF Sum Period";
+                    Exporter: Codeunit "SI Prok PF Period Summary";
+                begin
+                    Params.SetDefaults(Today, Today);
+                    Params.RunModal();
+                    if Params.WasAccepted() then
+                        Exporter.Export(Params.GetFromDate(), Params.GetToDate());
+                end;
+            }
+
             action(CaptureNormal)
             {
                 Caption = 'Отримати факти';
@@ -59,6 +77,20 @@
                 trigger OnAction()
                 begin
                     RunCapture();
+                end;
+            }
+
+            action(AuditFactShipmentIntegrity)
+            {
+                Caption = 'Аудит фактів і відвантажень (лише читання)';
+                ApplicationArea = All;
+                Image = Check;
+                ToolTip = 'Перевіряє відсутні Shipment, ідентичність, кількості, будмайданчики й адреси. Не змінює даних.';
+                trigger OnAction()
+                var
+                    Audit: Codeunit "SI Prok Fact Shipment Audit";
+                begin
+                    Audit.RunReadOnly();
                 end;
             }
 
@@ -72,6 +104,7 @@
                 var
                     SelectedFact: Record "SI Prok Production Fact";
                     ShipmentMgt: Codeunit "SI Prok Shipment Mgt.";
+                    Shipment: Record "SI Prok Shipment";
                     Created: Integer;
                     Skipped: Integer;
                 begin
@@ -81,18 +114,25 @@
                         exit;
                     if SelectedFact.FindSet() then
                         repeat
-                            if ShipmentMgt.TryCreateForFact(SelectedFact."Entry No.") then
-                                Created += 1
-                            else
-                                Skipped += 1;
+                            Shipment.Reset();
+                            Shipment.SetRange("Production UUID", SelectedFact."Production UUID");
+                            if (SelectedFact."Produced Quantity M3" <= 0) or not Shipment.IsEmpty() then
+                                Skipped += 1
+                            else begin
+                                // An invalid nonzero fact must raise a diagnostic,
+                                // not disappear into the skipped counter.
+                                ShipmentMgt.EnsureForFact(SelectedFact."Entry No.");
+                                Created += 1;
+                            end;
                         until SelectedFact.Next() = 0;
-                    Message('Створено Shipment: %1; пропущено (наявні або без UUID): %2.', Created, Skipped);
+                    Message('Створено Shipment: %1; пропущено (наявні або нульовий випуск): %2.', Created, Skipped);
                 end;
             }
 
             action(ClearTestFacts)
             {
                 Caption = 'Очистити факти';
+                Visible = false; // PROD-safe: live production facts must not be deleted.
                 ApplicationArea = All;
                 Image = Delete;
                 ToolTip = 'Адміністративне очищення фактів за періодом, режимом і Production ID. Архів JSON зберігається.';

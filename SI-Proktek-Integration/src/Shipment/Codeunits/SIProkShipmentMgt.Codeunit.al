@@ -35,6 +35,7 @@ codeunit 57145 "SI Prok Shipment Mgt."
         // must never be created. Posting verification remains unchanged.
         if Fact."Produced Quantity M3" <= 0 then
             exit(false);
+        Shipment.LockTable();
         Shipment.SetRange("Production UUID", Fact."Production UUID");
         if not Shipment.IsEmpty() then
             exit(false);
@@ -50,10 +51,14 @@ codeunit 57145 "SI Prok Shipment Mgt."
         Shipment."Truck Plate" := Fact."Truck Plate";
         Shipment."Shipment Date/Time" := Fact."Production Date/Time";
         Shipment."Created At" := CurrentDateTime();
-        if Request.Get(Fact."Prod. Request Entry No.") then
-            Shipment."Source Order No." := Request."Source No.";
         Shipment."Recipe Name" := Fact."Formula Name";
-        if (Fact."Production BOM No." <> '') and (Fact."Production BOM Version Code" <> '') then
+        if Request.Get(Fact."Prod. Request Entry No.") then begin
+            Shipment."Source Order No." := Request."Source No.";
+            if Request."Formula Description" <> '' then
+                Shipment."Recipe Name" := CopyStr(Request."Formula Description", 1, MaxStrLen(Shipment."Recipe Name"));
+        end;
+        if (Shipment."Recipe Name" = '') and
+           (Fact."Production BOM No." <> '') and (Fact."Production BOM Version Code" <> '') then
             if BOMVersion.Get(Fact."Production BOM No.", Fact."Production BOM Version Code") then
                 Shipment."Recipe Name" := CopyStr(BOMVersion."Version Code" + ' - ' + BOMVersion.Description, 1, MaxStrLen(Shipment."Recipe Name"));
 
@@ -92,6 +97,41 @@ codeunit 57145 "SI Prok Shipment Mgt."
             exit(false);
         Shipment.Insert(true);
         exit(true);
+    end;
+
+    // Mandatory post-import invariant for nonzero, identified facts.
+    // Existing shipments are never recreated or changed here.
+    procedure EnsureForFact(FactEntryNo: Integer)
+    var
+        Fact: Record "SI Prok Production Fact";
+        Shipment: Record "SI Prok Shipment";
+        Guard: Codeunit "SI Prok Concrete Identity";
+    begin
+        Fact.Get(FactEntryNo);
+        if Fact."Produced Quantity M3" <= 0 then
+            exit; // A genuine zero-volume fact must not create a Shipment.
+        if IsNullGuid(Fact."Production UUID") then
+            Error('Факт %1: Production UUID порожній; Shipment не створено.', FactEntryNo);
+        Shipment.SetRange("Production UUID", Fact."Production UUID");
+        if Shipment.FindFirst() then begin
+            if (Shipment."Production Fact Entry No." <> FactEntryNo) or
+               (Shipment."Connection Code" <> Fact."Connection Code") then
+                Error('Факт %1: існуючий Shipment %2 має інше джерело. Потрібен аудит.', FactEntryNo, Shipment."Entry No.");
+            exit;
+        end;
+        Guard.AssertFact(Fact);
+        if not TryCreateForFact(FactEntryNo) then begin
+            // Another session may have created the same UUID between the
+            // initial read and the locked insert attempt. Recheck identity.
+            Shipment.Reset();
+            Shipment.SetRange("Production UUID", Fact."Production UUID");
+            if Shipment.FindFirst() then
+                if (Shipment."Production Fact Entry No." = FactEntryNo) and
+                   (Shipment."Connection Code" = Fact."Connection Code") then
+                    exit;
+            Error('Факт %1: Shipment не створено, хоча випуск становить %2 м³. Перевірте ідентичність бетону та зв’язки.',
+                FactEntryNo, Fact."Produced Quantity M3");
+        end;
     end;
 
     // A Shipment may have been created before the MES fact was verified.

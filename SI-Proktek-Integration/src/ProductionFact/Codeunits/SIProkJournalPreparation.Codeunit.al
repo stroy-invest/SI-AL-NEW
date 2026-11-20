@@ -26,7 +26,9 @@ codeunit 57122 "SI Prok Journal Preparation"
         LinkNo: Integer;
         ConsumptionQty: Decimal;
         PostingDate: Date;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Підготовка Output/Consumption');
         Fact.Get(Fact."Entry No.");
         if Fact."Accounting Posting Model" = Fact."Accounting Posting Model"::"Process Adjustment" then
             Error('PF-02: факт використовує SI Process Production. Стару Production Order підготовку заборонено.');
@@ -210,7 +212,9 @@ codeunit 57122 "SI Prok Journal Preparation"
         DocumentNo: Code[20];
         Changed: Integer;
         StartedAttempt: Boolean;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Зміна дати журналу');
         if not Env.IsSandbox() then
             Error('PF-02: зміна дати підготовлених журналів дозволена лише в Sandbox.');
         Fact.Get(Fact."Entry No.");
@@ -328,7 +332,9 @@ codeunit 57122 "SI Prok Journal Preparation"
         NewDocumentNo: Code[20];
         UsageDate: Date;
         LinkCount: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Перенумерація журналу');
         if not Env.IsSandbox() then
             Error('PF-02.2B: перенумерація підготовлених журналів дозволена лише в Sandbox.');
         Fact.Get(Fact."Entry No.");

@@ -8,7 +8,9 @@ codeunit 57146 "SI Prok Process Jnl Cleanup"
     procedure CleanupAfterCompleted(Fact: Record "SI Prok Production Fact"): Integer
     var
         Link: Record "SI Prok Journal Link";
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Очищення проведеного журналу');
         Link.SetRange("Fact Entry No.", Fact."Entry No.");
         if not Link.FindFirst() then
             exit(-1);
@@ -23,7 +25,9 @@ codeunit 57146 "SI Prok Process Jnl Cleanup"
         JournalLine: Record "Item Journal Line";
         Link: Record "SI Prok Journal Link";
         Fact: Record "SI Prok Production Fact";
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Очищення залишків журналу');
         JournalLine.SetRange("Journal Template Name", TemplateName);
         JournalLine.SetRange("Journal Batch Name", BatchName);
         if not JournalLine.FindFirst() then

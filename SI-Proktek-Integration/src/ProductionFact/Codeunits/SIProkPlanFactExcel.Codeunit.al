@@ -1,4 +1,4 @@
-codeunit 57222 "SI Prok Plan Fact Excel"
+﻿codeunit 57222 "SI Prok Plan Fact Excel"
 {
     // Report structure and styles are defined by Resources/PlanFactTemplate.xlsx.
     // One sheet; header, consecutive concrete parties and one material summary.
@@ -41,6 +41,24 @@ codeunit 57222 "SI Prok Plan Fact Excel"
         if FactEntryNo = 0 then
             Error('Не задано виробничий факт.');
         ExportStandalone(FactEntryNo);
+    end;
+
+    // Reuses exactly the same material plan/fact semantics as the approved party report.
+    // Read-only: no journal preparation, posting or shipment state changes.
+    procedure AccumulateFactMaterials(Fact: Record "SI Prok Production Fact"; var Summary: Record "SI Prok PF Material Buffer" temporary)
+    var
+        Request: Record "SI Concrete Prod Request";
+        Plan: Record "SI Prok Production Plan";
+        Resolver: Codeunit "SI Prok PF Link Resolver";
+        Writer: Codeunit "SI Prok PF Template Writer";
+    begin
+        if (Resolver.Resolve(Fact, Request) = Enum::"SI Prok PF Link State"::Linked) and
+            Plan.Get(Request."Entry No.") then begin
+            AssertPlanComplete(Plan);
+            WriteLinkedMaterials(Writer, Fact, Plan, GetPlanOutputM3(Plan),
+                Fact."Produced Quantity M3", Summary, false);
+        end else
+            WriteUnlinkedMaterials(Writer, Fact, Summary, false);
     end;
 
     local procedure ExportFilteredRequests(var Request: Record "SI Concrete Prod Request"; ReportNo: Text)
@@ -128,7 +146,7 @@ codeunit 57222 "SI Prok Plan Fact Excel"
                             Writer.AddPartyHeader(PartyNo, Fact."Truck Plate", DriverName,
                                 FormatDateTime(Fact."Production Date/Time"), Fact."Planned Quantity M3" > 0,
                                 Fact."Planned Quantity M3", PartyM3);
-                            WriteLinkedMaterials(Writer, Fact, Plan, PlanM3, PartyM3, Summary);
+                            WriteLinkedMaterials(Writer, Fact, Plan, PlanM3, PartyM3, Summary, true);
                             Writer.BlankRow();
                         end;
                     until Fact.Next() = 0;
@@ -227,9 +245,9 @@ codeunit 57222 "SI Prok Plan Fact Excel"
                 FormatDateTime(FirstFact."Production Date/Time"), FirstFact."Planned Quantity M3" > 0,
                 FirstFact."Planned Quantity M3", TotalM3);
             if IsLinked then
-                WriteLinkedMaterials(Writer, FirstFact, Plan, PlannedM3, TotalM3, Summary)
+                WriteLinkedMaterials(Writer, FirstFact, Plan, PlannedM3, TotalM3, Summary, true)
             else
-                WriteUnlinkedMaterials(Writer, FirstFact, Summary);
+                WriteUnlinkedMaterials(Writer, FirstFact, Summary, true);
         end else begin
             Fact.Reset();
             if Fact.FindSet() then
@@ -241,7 +259,7 @@ codeunit 57222 "SI Prok Plan Fact Excel"
                         Writer.AddPartyHeader(PartyNo, Fact."Truck Plate", DriverName,
                             FormatDateTime(Fact."Production Date/Time"), Fact."Planned Quantity M3" > 0,
                             Fact."Planned Quantity M3", PartyM3);
-                        WriteUnlinkedMaterials(Writer, Fact, Summary);
+                        WriteUnlinkedMaterials(Writer, Fact, Summary, true);
                         Writer.BlankRow();
                     end;
                 until Fact.Next() = 0;
@@ -256,7 +274,7 @@ codeunit 57222 "SI Prok Plan Fact Excel"
         Writer.Download(FileName);
     end;
 
-    local procedure WriteLinkedMaterials(var Writer: Codeunit "SI Prok PF Template Writer"; Fact: Record "SI Prok Production Fact"; Plan: Record "SI Prok Production Plan"; PlanM3: Decimal; PartyM3: Decimal; var Summary: Record "SI Prok PF Material Buffer" temporary)
+    local procedure WriteLinkedMaterials(var Writer: Codeunit "SI Prok PF Template Writer"; Fact: Record "SI Prok Production Fact"; Plan: Record "SI Prok Production Plan"; PlanM3: Decimal; PartyM3: Decimal; var Summary: Record "SI Prok PF Material Buffer" temporary; EmitRows: Boolean)
     var
         Batch: Record "SI Prok PF Material Buffer" temporary;
         PlanLine: Record "SI Prok Production Plan Line";
@@ -299,7 +317,8 @@ codeunit 57222 "SI Prok Plan Fact Excel"
                 Accumulate(Batch, MaterialKey, Material."Item No.", Material."Variant Code",
                     MaterialName, 0, Material."Requested Kg", Material."Actual Kg", false, true, not IsMapped);
             until Material.Next() = 0;
-        WriteMaterialRows(Writer, Batch, false);
+        if EmitRows then
+            WriteMaterialRows(Writer, Batch, false);
         if Batch.FindSet() then
             repeat
                 // The summary must sum the exact values displayed in the party blocks.
@@ -309,7 +328,7 @@ codeunit 57222 "SI Prok Plan Fact Excel"
             until Batch.Next() = 0;
     end;
 
-    local procedure WriteUnlinkedMaterials(var Writer: Codeunit "SI Prok PF Template Writer"; Fact: Record "SI Prok Production Fact"; var Summary: Record "SI Prok PF Material Buffer" temporary)
+    local procedure WriteUnlinkedMaterials(var Writer: Codeunit "SI Prok PF Template Writer"; Fact: Record "SI Prok Production Fact"; var Summary: Record "SI Prok PF Material Buffer" temporary; EmitRows: Boolean)
     var
         Batch: Record "SI Prok PF Material Buffer" temporary;
         Material: Record "SI Prok Prod Fact Material";
@@ -329,7 +348,8 @@ codeunit 57222 "SI Prok Plan Fact Excel"
                 Accumulate(Batch, MaterialKey, Material."Item No.", Material."Variant Code",
                     MaterialName, 0, Material."Requested Kg", Material."Actual Kg", false, true, not IsMapped);
             until Material.Next() = 0;
-        WriteMaterialRows(Writer, Batch, true);
+        if EmitRows then
+            WriteMaterialRows(Writer, Batch, true);
         if Batch.FindSet() then
             repeat
                 Accumulate(Summary, Batch."Material Key", Batch."Item No.", Batch."Variant Code",
@@ -420,7 +440,7 @@ codeunit 57222 "SI Prok Plan Fact Excel"
             Error('Виробнича заявка #%1 не має рядків плану матеріалів.', Plan."Prod. Request Entry No.");
     end;
 
-    local procedure GetPlanOutputM3(Plan: Record "SI Prok Production Plan"): Decimal
+    procedure GetPlanOutputM3(Plan: Record "SI Prok Production Plan"): Decimal
     var
         Converter: Codeunit "SI Item UoM Conversion";
     begin

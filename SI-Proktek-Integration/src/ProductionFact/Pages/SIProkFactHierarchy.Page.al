@@ -75,6 +75,23 @@
                     end;
                 end;
             }
+            action(ExportPeriodPlanFact)
+            {
+                ApplicationArea = All;
+                Caption = 'Підсумковий план/факт за період';
+                Image = ExportToExcel;
+                ToolTip = 'Усі факти Proktek за датою виробництва, окремо по бетонах і загальний підсумок матеріалів.';
+                trigger OnAction()
+                var
+                    Params: Page "SI Prok PF Sum Period";
+                    Exporter: Codeunit "SI Prok PF Period Summary";
+                begin
+                    Params.SetDefaults(Today, Today);
+                    Params.RunModal();
+                    if Params.WasAccepted() then
+                        Exporter.Export(Params.GetFromDate(), Params.GetToDate());
+                end;
+            }
             action(RefreshHierarchy)
             {
                 ApplicationArea = All;
@@ -97,6 +114,7 @@
         area(Promoted)
         {
             actionref(ExportPlanFactPromoted; ExportPlanFact) { }
+            actionref(ExportPeriodPlanFactPromoted; ExportPeriodPlanFact) { }
             actionref(RefreshHierarchyPromoted; RefreshHierarchy) { }
         }
     }

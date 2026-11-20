@@ -1,4 +1,4 @@
-permissionset 57950 "SI PROK ADMIN"
+﻿permissionset 57950 "SI PROK ADMIN"
 {
     Assignable = true;
     Caption = 'SI Proktek Integration Admin';
@@ -22,6 +22,9 @@ permissionset 57950 "SI PROK ADMIN"
         page "SI Prok Shipment Card" = X,
         page "SI Prok Shipments" = X,
         codeunit "SI Prok Shipment Mgt." = X,
+        codeunit "SI Prok Fact Lifecycle" = X,
+        codeunit "SI Prok Fact Shipment Audit" = X,
+        codeunit "SI Prok Prod Safe Guard" = X,
         codeunit "SI Prok Shipment Processing" = X,
         codeunit "SI Prok Shipment Post Worker" = X,
         codeunit "SI Prok Shipment Prep Worker" = X,
@@ -88,6 +91,11 @@ permissionset 57950 "SI PROK ADMIN"
         page "SI Prok Fact Hierarchy" = X,
         codeunit "SI Prok Plan Fact Excel" = X,
         codeunit "SI Prok PF Template Writer" = X,
+        table "SI Prok PF Concrete Group" = X,
+        table "SI Prok PF Sum Fact Index" = X,
+        page "SI Prok PF Sum Period" = X,
+        codeunit "SI Prok PF Period Summary" = X,
+        codeunit "SI Prok PF Sum Writer" = X,
         codeunit "SI Prok PF Link Resolver" = X,
         page "SI Prok Test Fact Clear Params" = X,
         codeunit "SI Prok Test Fact Clear Mgt." = X,
@@ -134,5 +142,16 @@ permissionset 57950 "SI PROK ADMIN"
         codeunit "SI Prok Fact Intake Worker" = X,
         codeunit "SI Prok Fact Content Compare" = X,
         codeunit "SI Prok Formula Projector" = X,
-        page "SI Prok Formula Sync Status" = X;
+        page "SI Prok Formula Sync Status" = X,
+
+        page "SI Prok Vehicle Mappings" = X,
+        page "SI Prok Mixer Adopt Params" = X,
+        codeunit "SI Prok Vehicle Sync" = X,
+        codeunit "SI Prok Mixer Sync Manager" = X,
+
+        tabledata "SI Prok Sim Truck Batch" = RIMD,
+        table "SI Prok Sim Truck Batch" = X,
+
+        tabledata "SI Prok Vehicle Mapping" = RIMD,
+        table "SI Prok Vehicle Mapping" = X;
 }

@@ -16,7 +16,9 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
         MaterialCount: Integer;
         ComponentCount: Integer;
         PositiveMaterialCount: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Перевірка облікової готовності');
         Fact.Get(Fact."Entry No.");
         if Fact."Accounting Posting Model" = Fact."Accounting Posting Model"::"Process Adjustment" then
             Error('PF-02: факт використовує SI Process Production. Перевірка Production Order не застосовується.');

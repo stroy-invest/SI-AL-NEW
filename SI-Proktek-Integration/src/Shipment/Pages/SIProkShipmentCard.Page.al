@@ -147,20 +147,17 @@ page 57143 "SI Prok Shipment Card"
                 ApplicationArea = All;
                 Image = Print;
                 Enabled = IsOpen;
-                ToolTip = 'R2.1: підтвердити відвантаження й запустити Manual/Automatic облік. Фізичний друк RDL ще не реалізовано.';
+                ToolTip = 'PROD-safe: друк пакета документів тимчасово недоступний. Статус Shipment не змінюється.';
                 trigger OnAction()
-                var
-                    Processing: Codeunit "SI Prok Shipment Processing";
                 begin
-                    Processing.AcceptFirstPrint(Rec."Entry No.");
-                    Rec.Get(Rec."Entry No.");
-                    CurrPage.Update(false);
+                    Message('PROD-safe: друк пакета документів ще не підключено. Shipment залишається відкритим; жодних журналів або проведень не створено.');
                 end;
             }
             action(ContinueAccounting)
             {
                 Caption = 'Продовжити облік';
                 ApplicationArea = All;
+                Visible = false;
                 Image = Post;
                 Enabled = IsClosed;
                 ToolTip = 'Продовжити підготовку/проведення після закриття, якщо Posting Attempt ще не створено.';
@@ -176,6 +173,7 @@ page 57143 "SI Prok Shipment Card"
             {
                 Caption = 'Контрольоване відновлення проведення';
                 ApplicationArea = All;
+                Visible = false;
                 Image = Refresh;
                 Enabled = HasStartedAttempt;
                 ToolTip = 'Тільки за явним підтвердженням оператора та після аудиту ILE; ніколи автоматично.';
@@ -214,17 +212,6 @@ page 57143 "SI Prok Shipment Card"
         Snapshot.OverrideSignatory(Rec."Entry No.", IsShipper, Employee."No.");
         Rec.Get(Rec."Entry No.");
         CurrPage.Update(false);
-    end;
-
-    trigger OnOpenPage()
-    var
-        Snapshot: Codeunit "SI Prok Shipment Snapshot";
-    begin
-        if (Rec.Status = Rec.Status::Open) and (Rec."Shipped By Employee No." = '') and
-           (not Rec."Shipped By Manual") then begin
-            Snapshot.InitializeExistingOpen(Rec."Entry No.");
-            Rec.Get(Rec."Entry No.");
-        end;
     end;
 
     trigger OnAfterGetCurrRecord()

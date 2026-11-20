@@ -29,7 +29,9 @@ codeunit 57181 "SI Prok Test Fact Clear Mgt."
         EnvironmentInfo: Codeunit "Environment Information";
         MatchCount: Integer;
         DeletedCount: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Видалення виробничих фактів');
         if (DateFrom = 0D) or (DateTo = 0D) then
             Error('Заповніть обидві дати періоду.');
 

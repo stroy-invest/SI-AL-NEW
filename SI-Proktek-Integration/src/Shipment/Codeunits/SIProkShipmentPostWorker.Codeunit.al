@@ -14,7 +14,9 @@ codeunit 57148 "SI Prok Shipment Post Worker"
         ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         Posted: Integer;
         Missing: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Автоматичне проведення Shipment');
         Rec.Get(Rec."Entry No.");
         if Rec.Status <> Rec.Status::Closed then
             Error('SI Process: спочатку потрібно зафіксувати відвантаження.');

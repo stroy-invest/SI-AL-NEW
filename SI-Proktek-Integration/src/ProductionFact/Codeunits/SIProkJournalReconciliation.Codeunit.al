@@ -11,7 +11,9 @@ codeunit 57124 "SI Prok Journal Reconciliation"
         MissingCount: Integer;
         MismatchCount: Integer;
         LegacyCount: Integer;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Зміна стану звірки журналів');
         AssertRowsComplete(Fact, true);
         Link.SetRange("Fact Entry No.", Fact."Entry No.");
         if not Link.FindSet(true) then

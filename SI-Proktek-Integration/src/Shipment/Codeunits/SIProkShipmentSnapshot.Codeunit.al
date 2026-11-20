@@ -3,17 +3,16 @@ codeunit 57197 "SI Prok Shipment Snapshot"
     // Populate only open documents. Never silently refresh snapshots on viewing.
     procedure InitializeOpen(var Shipment: Record "SI Prok Shipment"; ResolveOperator: Boolean)
     var
-        Allocation: Record "SI Supply Allocation";
-        Decision: Record "SI Supply Decision Header";
         Site: Record "SI Construction Site";
-        ShipTo: Record "Ship-to Address";
-        Project: Record Job;
         ItemRec: Record Item;
         Variant: Record "Item Variant";
         Employee: Record Employee;
         EmployeeNo: Code[20];
         AsOfDate: Date;
         SiteReady: Boolean;
+        SiteIssue: Text;
+        AddressIssue: Text;
+        AddressText: Text[250];
     begin
         if Shipment.Status <> Shipment.Status::Open then
             exit;
@@ -29,26 +28,25 @@ codeunit 57197 "SI Prok Shipment Snapshot"
                     Shipment."Concrete Description" := CopyStr(ItemRec.Description, 1, MaxStrLen(Shipment."Concrete Description"));
         end;
 
-        // Exact binding only. No inference from product, date or default site.
-        SiteReady := false;
-        if (Shipment."Allocation Binding Status" = 'BOUND') and
-           (Shipment."Supply Decision No." <> '') and
-           Allocation.Get(Shipment."Supply Decision No.", Shipment."Supply Decision Line No.", Shipment."Supply Allocation Line No.") then
-            if (Allocation.SystemId = Shipment."Supply Allocation System ID") and
-               Decision.Get(Allocation."Decision No.") then
-                if (Allocation."Construction Site Code" <> '') and
-                   Site.Get(Decision."Project No.", Allocation."Construction Site Code") then begin
-                    SiteReady := true;
-                    if Shipment."Delivery Site Code" = '' then begin
-                        Shipment."Delivery Project No." := Site."Project No.";
-                        Shipment."Delivery Site Code" := Site."Site Code";
-                        Shipment."Delivery Site Name" := Site.Name;
-                        if Project.Get(Site."Project No.") and (Site."Ship-to Code" <> '') then
-                            if (Project."SI Internal Customer No." <> '') and
-                               ShipTo.Get(Project."SI Internal Customer No.", Site."Ship-to Code") then
-                                Shipment."Delivery Address" := MakeAddress(ShipTo.City, ShipTo.Address, ShipTo."Address 2");
-                    end;
-                end;
+        // The outbound Proktek Order uses the Supply Decision Line's site.
+        // Reuse that exact authority here; allocation is an integrity check,
+        // not an alternative source of the delivery site.
+        SiteReady := TryResolveShipmentSite(Shipment, Site, SiteIssue);
+        if SiteReady then begin
+            if (Shipment."Delivery Site Code" <> '') and
+               ((Shipment."Delivery Site Code" <> Site."Site Code") or
+                (Shipment."Delivery Project No." <> Site."Project No.")) then begin
+                SiteReady := false;
+                SiteIssue := 'Збережений майданчик Shipment суперечить підтвердженому рядку рішення.';
+            end else begin
+                Shipment."Delivery Project No." := Site."Project No.";
+                Shipment."Delivery Site Code" := Site."Site Code";
+                Shipment."Delivery Site Name" := Site.Name;
+                if Shipment."Delivery Address" = '' then
+                    if TryGetSiteAddress(Site, AddressText, AddressIssue) then
+                        Shipment."Delivery Address" := AddressText;
+            end;
+        end;
 
         if Shipment."Shipment Date/Time" <> 0DT then
             AsOfDate := DT2Date(Shipment."Shipment Date/Time")
@@ -92,45 +90,23 @@ codeunit 57197 "SI Prok Shipment Snapshot"
     procedure RefreshDeliveryExistingOpen(ShipmentEntryNo: Integer)
     var
         Shipment: Record "SI Prok Shipment";
-        Allocation: Record "SI Supply Allocation";
-        Decision: Record "SI Supply Decision Header";
         Site: Record "SI Construction Site";
-        Project: Record Job;
-        ShipTo: Record "Ship-to Address";
+        Issue: Text;
+        AddressText: Text[250];
     begin
         Shipment.Get(ShipmentEntryNo);
         if Shipment.Status <> Shipment.Status::Open then
             Error('Оновлювати реквізити можна лише у відкритому документі.');
-
-        // Fail closed: do not refresh from an unverified or unrelated allocation.
-        if (Shipment."Allocation Binding Status" <> 'BOUND') or
-           (Shipment."Supply Decision No." = '') then
-            Error('Немає підтвердженого зв’язку з розподілом.');
-        if not Allocation.Get(Shipment."Supply Decision No.", Shipment."Supply Decision Line No.", Shipment."Supply Allocation Line No.") then
-            Error('Рядок розподілу не знайдено.');
-        if Allocation.SystemId <> Shipment."Supply Allocation System ID" then
-            Error('Зв’язок із розподілом не відповідає збереженому ідентифікатору.');
-        if not Decision.Get(Allocation."Decision No.") then
-            Error('Рішення про розподіл не знайдено.');
-        if (Allocation."Construction Site Code" = '') or
-           (not Site.Get(Decision."Project No.", Allocation."Construction Site Code")) then
-            Error('Будівельний майданчик із розподілу не знайдено.');
+        if not TryResolveShipmentSite(Shipment, Site, Issue) then
+            Error('Не вдалося визначити майданчик: %1', Issue);
+        if not TryGetSiteAddress(Site, AddressText, Issue) then
+            Error('Не вдалося визначити адресу доставки: %1', Issue);
 
         Shipment."Delivery Project No." := Site."Project No.";
         Shipment."Delivery Site Code" := Site."Site Code";
         Shipment."Delivery Site Name" := Site.Name;
-
-        // Refresh the address only from the site-specific standard Ship-to Address.
-        // If missing, leave the existing snapshot intact and report the issue.
-        if not Project.Get(Site."Project No.") then
-            Error('Проєкт будівельного майданчика не знайдено.');
-        if (Site."Ship-to Code" = '') or (Project."SI Internal Customer No." = '') then
-            Error('Не налаштовано адресу доставки для будівельного майданчика.');
-        if not ShipTo.Get(Project."SI Internal Customer No.", Site."Ship-to Code") then
-            Error('Адресу доставки Ship-to Address не знайдено.');
-        Shipment."Delivery Address" := MakeAddress(ShipTo.City, ShipTo.Address, ShipTo."Address 2");
-
-        // Existing signatories remain unchanged; only empty ones are resolved.
+        Shipment."Delivery Address" := AddressText;
+        // Do not replace manual signatories or modify closed documents.
         InitializeOpen(Shipment, true);
         Shipment.Modify(true);
     end;
@@ -167,6 +143,92 @@ codeunit 57197 "SI Prok Shipment Snapshot"
         end;
         InitializeOpen(Shipment, true);
         Shipment.Modify(true);
+    end;
+
+    // A shipment may have an incomplete allocation link, but the exact
+    // decision line used to create its Proktek Order is still authoritative.
+    // Reject contradictory identities rather than selecting a default site.
+    procedure TryResolveShipmentSite(Shipment: Record "SI Prok Shipment"; var Site: Record "SI Construction Site"; var Reason: Text): Boolean
+    var
+        Fact: Record "SI Prok Production Fact";
+        ProdRequest: Record "SI Concrete Prod Request";
+        Allocation: Record "SI Supply Allocation";
+        SiteIdentity: Codeunit "SI Prok Site Identity";
+    begin
+        Clear(Reason);
+        Clear(Site);
+        if Shipment."Prod. Request Entry No." = 0 then begin
+            Reason := 'Відсутня прив’язка до виробничої заявки.';
+            exit(false);
+        end;
+        if not ProdRequest.Get(Shipment."Prod. Request Entry No.") then begin
+            Reason := 'Пов’язану виробничу заявку не знайдено.';
+            exit(false);
+        end;
+        if not Fact.Get(Shipment."Production Fact Entry No.") then begin
+            Reason := 'Пов’язаний виробничий факт не знайдено.';
+            exit(false);
+        end;
+        if (Fact."Production UUID" <> Shipment."Production UUID") or
+           (Fact."Prod. Request Entry No." <> ProdRequest."Entry No.") or
+           (Fact."Order UUID" <> ProdRequest."Proktek Order UUID") then begin
+            Reason := 'Ідентифікатори факту, Shipment і виробничої заявки суперечать один одному.';
+            exit(false);
+        end;
+        if not SiteIdentity.TryResolveForOrder(ProdRequest, Site, Reason) then
+            exit(false);
+        if Shipment."Allocation Binding Status" = 'BOUND' then begin
+            if not Allocation.Get(Shipment."Supply Decision No.", Shipment."Supply Decision Line No.", Shipment."Supply Allocation Line No.") then begin
+                Reason := 'Підтверджений рядок розподілу більше не існує.';
+                exit(false);
+            end;
+            if (Allocation.SystemId <> Shipment."Supply Allocation System ID") or
+               (Allocation."Decision No." <> ProdRequest."Supply Decision No.") or
+               (Allocation."Decision Line No." <> ProdRequest."Supply Decision Line No.") or
+               (Allocation."Line No." <> ProdRequest."Supply Allocation Line No.") then begin
+                Reason := 'Ідентичність рядка розподілу не підтверджена.';
+                exit(false);
+            end;
+            if (Allocation."Construction Site Code" <> '') and
+               (Allocation."Construction Site Code" <> Site."Site Code") then begin
+                Reason := 'Майданчик у розподілі суперечить майданчику рішення забезпечення.';
+                exit(false);
+            end;
+        end else
+            if (Shipment."Allocation Binding Status" = 'ALLOCATION_NOT_FOUND') or
+               (Shipment."Allocation Binding Status" = 'EXECUTION_MISMATCH') or
+               (Shipment."Allocation Binding Status" = 'REQUEST_NOT_FOUND') then begin
+                Reason := StrSubstNo('Помилка зв’язку з розподілом: %1.', Shipment."Allocation Binding Status");
+                exit(false);
+            end;
+        exit(true);
+    end;
+
+    local procedure TryGetSiteAddress(Site: Record "SI Construction Site"; var AddressText: Text[250]; var Reason: Text): Boolean
+    var
+        Project: Record Job;
+        ShipTo: Record "Ship-to Address";
+    begin
+        Clear(AddressText);
+        Clear(Reason);
+        if not Project.Get(Site."Project No.") then begin
+            Reason := 'Проєкт будмайданчика не знайдено.';
+            exit(false);
+        end;
+        if (Project."SI Internal Customer No." = '') or (Site."Ship-to Code" = '') then begin
+            Reason := 'У проєкті або будмайданчику не задано посилання на Ship-to Address.';
+            exit(false);
+        end;
+        if not ShipTo.Get(Project."SI Internal Customer No.", Site."Ship-to Code") then begin
+            Reason := 'Адресу Ship-to Address не знайдено.';
+            exit(false);
+        end;
+        AddressText := MakeAddress(ShipTo.City, ShipTo.Address, ShipTo."Address 2");
+        if AddressText = '' then begin
+            Reason := 'Адреса Ship-to Address порожня.';
+            exit(false);
+        end;
+        exit(true);
     end;
 
     local procedure FindUserEmployee(AsOfDate: Date): Code[20]
@@ -278,8 +340,7 @@ codeunit 57197 "SI Prok Shipment Snapshot"
         end;
 
         // No InitializeOpen here: it would immediately refill the cleared field.
-        if (Shipment."Allocation Binding Status" <> 'BOUND') or
-           (Shipment."Delivery Site Code" = '') then
+        if Shipment."Delivery Site Code" = '' then
             Shipment."Document Snapshot Status" := 'SITE_UNRESOLVED'
         else
             if Shipment."Delivery Address" = '' then

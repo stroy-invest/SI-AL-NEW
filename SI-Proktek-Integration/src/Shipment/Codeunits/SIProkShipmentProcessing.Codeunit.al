@@ -8,7 +8,9 @@ codeunit 57149 "SI Prok Shipment Processing"
         Attempt: Record "SI Prok Posting Attempt";
         ShipmentMgt: Codeunit "SI Prok Shipment Mgt.";
         ConfirmedQuantity: Decimal;
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Перший друк / закриття Shipment');
         // A previously created Open Shipment can contain an outdated quantity.
         // Persist the verified MES quantity and release locks before Confirm.
         ShipmentMgt.TryRefreshOpenQuantityFromFact(ShipmentEntryNo);
@@ -58,7 +60,9 @@ codeunit 57149 "SI Prok Shipment Processing"
         Setup: Record "SI Prok Operations Setup";
         Fact: Record "SI Prok Production Fact";
         Attempt: Record "SI Prok Posting Attempt";
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Продовження обліку Shipment');
         Shipment.Get(ShipmentEntryNo);
         if Shipment.Status <> Shipment.Status::Closed then
             Error('Продовжити облік можна лише після фіксації відвантаження.');
@@ -83,7 +87,9 @@ codeunit 57149 "SI Prok Shipment Processing"
         Shipment: Record "SI Prok Shipment";
         Fact: Record "SI Prok Production Fact";
         Posting: Codeunit "SI Prok Process Posting";
+        Safety: Codeunit "SI Prok Prod Safe Guard";
     begin
+        Safety.AssertDisabled('Відновлення обліку Shipment');
         Shipment.Get(ShipmentEntryNo);
         if Shipment.Status <> Shipment.Status::Closed then
             Error('Відновлення можливе лише для закритого Shipment.');

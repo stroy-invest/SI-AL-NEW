@@ -27,6 +27,7 @@ page 57210 "SI Prok Operations Setup"
             group(Processing)
             {
                 Caption = 'Облік після фіксації відвантаження';
+                Visible = false; // PROD-safe: Processing Mode is ignored while accounting is fenced.
                 field("Processing Mode"; Rec."Processing Mode") { ApplicationArea = All; Editable = true; }
             }
         }
