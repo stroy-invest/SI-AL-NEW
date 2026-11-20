@@ -412,6 +412,24 @@ page 54004 "SI Business Partner Card"
 
         area(Navigation)
         {
+            action(OpenERPProjections)
+            {
+                Caption = 'ERP-проєкції';
+                ApplicationArea = All;
+                Image = List;
+                ToolTip = 'Переглянути всі ERP-проєкції ролей поточного контрагента, їхні стани та помилки.';
+
+                trigger OnAction()
+                var
+                    Projection: Record "SI BP ERP Projection";
+                begin
+                    CurrPage.SaveRecord();
+                    Rec.TestField("No.");
+                    Projection.SetRange("Business Partner No.", Rec."No.");
+                    Page.Run(Page::"SI BP ERP Projections", Projection);
+                end;
+            }
+
             action(CountryLegalForms)
             {
                 ApplicationArea = All;
@@ -449,6 +467,10 @@ page 54004 "SI Business Partner Card"
                 actionref(CreateVendorRolePromoted; CreateVendorRole)
                 {
                 }
+            }
+
+            actionref(OpenERPProjectionsPromoted; OpenERPProjections)
+            {
             }
 
             actionref(CountryLegalFormsPromoted; CountryLegalForms)

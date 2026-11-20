@@ -203,4 +203,55 @@ page 54060 "SI BP Projection Card"
             }
         }
     }
+
+    actions
+    {
+        area(Processing)
+        {
+            action(AdminSetProjectionReady)
+            {
+                ApplicationArea = All;
+                Caption = 'Адміністратор: установити Готова';
+                ToolTip = 'Аварійне встановлення стану Готова. Лише SUPER. Не замінює перевірку під час матеріалізації.';
+                Image = Approve;
+                Enabled = IsSuperUser;
+                Visible = IsSuperUser;
+
+                trigger OnAction()
+                var
+                    AccessControl: Record "Access Control";
+                begin
+                    AccessControl.SetRange("User Security ID", UserSecurityId());
+                    AccessControl.SetRange("Role ID", 'SUPER');
+                    if AccessControl.IsEmpty() then
+                        Error('Ця дія доступна лише користувачу з набором прав SUPER.');
+
+                    Rec.Get(Rec."Role Code");
+                    if Rec.Status = Rec.Status::Materialized then
+                        Error('Стан матеріалізованої проєкції змінювати не можна.');
+
+                    if not Confirm(
+                        'Примусово встановити стан Готова для проєкції %1? Перевірка під час матеріалізації все одно буде виконана.',
+                        false, Rec."Role Code") then
+                        exit;
+
+                    Rec.Validate(Status, Rec.Status::Ready);
+                    Rec.Modify(true);
+                    CurrPage.Update(false);
+                end;
+            }
+        }
+    }
+
+    trigger OnOpenPage()
+    var
+        AccessControl: Record "Access Control";
+    begin
+        AccessControl.SetRange("User Security ID", UserSecurityId());
+        AccessControl.SetRange("Role ID", 'SUPER');
+        IsSuperUser := not AccessControl.IsEmpty();
+    end;
+
+    var
+        IsSuperUser: Boolean;
 }

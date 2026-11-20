@@ -196,11 +196,13 @@ codeunit 54060 "SI BP Projection Mgt."
             Error(
                 'ERP-проєкція вже матеріалізована.');
 
-        if Projection.Status <>
-           Projection.Status::Ready
-        then
+        // Revalidate the current projection instead of trusting a stale status.
+        // This also provides actionable diagnostics for missing source data.
+        ValidateProjection(Projection);
+        if Projection.Status <> Projection.Status::Ready then
             Error(
-                'Матеріалізувати можна лише проєкцію зі станом Готова.');
+                'ERP-проєкція ролі %1 не пройшла перевірку: %2',
+                Projection."Role Code", Projection."Error Message");
 
         case Projection."Role Type" of
             Projection."Role Type"::Vendor:

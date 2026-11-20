@@ -123,6 +123,26 @@ page 54031 "SI BP Role Card"
 
     actions
     {
+        area(Navigation)
+        {
+            action(OpenRoleProjection)
+            {
+                Caption = 'ERP-проєкція ролі';
+                ApplicationArea = All;
+                Image = View;
+                ToolTip = 'Відкрити ERP-проєкцію цієї ролі, її стан і діагностику.';
+
+                trigger OnAction()
+                var
+                    Projection: Record "SI BP ERP Projection";
+                begin
+                    Rec.TestField(Code);
+                    if not Projection.Get(Rec.Code) then
+                        Error('Для ролі %1 ERP-проєкцію ще не створено.', Rec.Code);
+                    Page.Run(Page::"SI BP Projection Card", Projection);
+                end;
+            }
+        }
         area(Processing)
         {
             action(AddBankAccount)
