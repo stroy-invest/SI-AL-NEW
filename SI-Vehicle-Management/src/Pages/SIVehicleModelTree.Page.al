@@ -27,12 +27,12 @@ page 63259 "SI Vehicle Model Tree"
 
                 trigger ModelSelected(BrandCode: Text; ModelCode: Text)
                 begin
-                    CurrPage.ModelCharacteristics.Page.SetModelContext(CopyStr(BrandCode, 1, 20), CopyStr(ModelCode, 1, 20));
+                    CurrPage.VehicleTree.RenderCharacteristics(BuildCharacteristicsJson(CopyStr(BrandCode, 1, 20), CopyStr(ModelCode, 1, 20)));
                 end;
 
                 trigger SelectionCleared()
                 begin
-                    CurrPage.ModelCharacteristics.Page.SetModelContext('', '');
+                    CurrPage.VehicleTree.RenderCharacteristics('[]');
                 end;
 
                 trigger AddRequested(Kind: Text; TypeCode: Text; BrandCode: Text; ModelCode: Text)
@@ -44,20 +44,36 @@ page 63259 "SI Vehicle Model Tree"
                 trigger DeleteRequested(Kind: Text; TypeCode: Text; BrandCode: Text; ModelCode: Text)
                 begin
                     DeleteNode(Kind, BrandCode, ModelCode);
-                    CurrPage.ModelCharacteristics.Page.SetModelContext('', '');
+                    CurrPage.VehicleTree.RenderCharacteristics('[]');
                     CurrPage.VehicleTree.RenderTree(BuildTreeJson());
                 end;
             }
         }
-        area(FactBoxes)
-        {
-            part(ModelCharacteristics; "SI Vehicle Model Char FactBox")
-            {
-                ApplicationArea = All;
-                Caption = 'Характеристики моделі';
-            }
-        }
     }
+
+    local procedure BuildCharacteristicsJson(BrandCode: Code[20]; ModelCode: Code[20]): Text
+    var
+        ModelCapacity: Record "SI Vehicle Model Capacity";
+        CapacityRows: JsonArray;
+        CapacityRow: JsonObject;
+        ResultJson: Text;
+    begin
+        if (BrandCode <> '') and (ModelCode <> '') then begin
+            ModelCapacity.SetRange("Brand Code", BrandCode);
+            ModelCapacity.SetRange("Model Code", ModelCode);
+            if ModelCapacity.FindSet() then
+                repeat
+                    Clear(CapacityRow);
+                    CapacityRow.Add('code', ModelCapacity."Capacity Type Code");
+                    CapacityRow.Add('quantity', Format(ModelCapacity.Quantity));
+                    CapacityRow.Add('uom', ModelCapacity."Unit of Measure Code");
+                    CapacityRows.Add(CapacityRow);
+                until ModelCapacity.Next() = 0;
+        end;
+        CapacityRows.WriteTo(ResultJson);
+        exit(ResultJson);
+    end;
+
     local procedure AddNode(Kind: Text; TypeCode: Text; BrandCode: Text)
     var
         Brand: Record "SI Vehicle Brand";

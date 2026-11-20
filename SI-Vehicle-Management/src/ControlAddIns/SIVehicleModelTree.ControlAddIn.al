@@ -1,9 +1,9 @@
 controladdin "SI Vehicle Model Tree"
 {
-    RequestedHeight = 650;
+    RequestedHeight = 700;
     RequestedWidth = 900;
     MinimumHeight = 320;
-    MinimumWidth = 500;
+    MinimumWidth = 400;
     VerticalStretch = true;
     HorizontalStretch = true;
     Scripts = 'src/ControlAddIns/SIVehicleModelTree.js';
@@ -15,4 +15,5 @@ controladdin "SI Vehicle Model Tree"
     event AddRequested(Kind: Text; TypeCode: Text; BrandCode: Text; ModelCode: Text);
     event DeleteRequested(Kind: Text; TypeCode: Text; BrandCode: Text; ModelCode: Text);
     procedure RenderTree(TreeJson: Text);
+    procedure RenderCharacteristics(CharacteristicsJson: Text);
 }
