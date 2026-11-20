@@ -91,6 +91,7 @@ page 50290 "SI Item Hierarchy V2"
 
             // Compatibility providers. They remain hidden deliberately: dependent apps
             // can continue using the same Item / Variant context as before the UI refactor.
+
             part(GroupItems; "SI Group Items Part")
             {
                 ApplicationArea = All;
@@ -104,6 +105,7 @@ page 50290 "SI Item Hierarchy V2"
                 Visible = false;
                 UpdatePropagation = Both;
             }
+
         }
 
         area(FactBoxes)

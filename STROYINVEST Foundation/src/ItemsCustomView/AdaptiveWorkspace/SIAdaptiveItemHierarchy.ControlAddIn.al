@@ -1,10 +1,11 @@
 controladdin "SI Adaptive Item Hierarchy"
 {
-    RequestedHeight = 650;
+    RequestedHeight = 700;
     RequestedWidth = 900;
     MinimumHeight = 300;
     MinimumWidth = 360;
     VerticalStretch = true;
+    VerticalShrink = true;
     HorizontalStretch = true;
 
     Scripts =
