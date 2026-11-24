@@ -268,7 +268,7 @@ page 60011 "SI Construction Project Card"
 
     trigger OnAfterGetCurrRecord()
     begin
-        EnsureInitializedProject();
+        // Read-only: initialization must occur in explicit creation/repair flows.
         RefreshDisplayValues();
         RefreshResponsibilityGrid();
         RefreshSitesGrid();
@@ -276,7 +276,7 @@ page 60011 "SI Construction Project Card"
 
     trigger OnQueryClosePage(CloseAction: Action): Boolean
     begin
-        EnsureInitializedProject();
+        // Closing a page must not initialize or repair project data.
         exit(true);
     end;
 

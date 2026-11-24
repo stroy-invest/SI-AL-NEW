@@ -7,9 +7,6 @@ codeunit 60001 "SI Construction Project Mgt."
         tabledata "SI Location Setup" = r;
 
     procedure InitializeProject(var Project: Record Job)
-    var
-        InternalCustomer: Record Customer;
-        DefaultSite: Record "SI Construction Site";
     begin
         Project.TestField("No.");
 
@@ -19,10 +16,7 @@ codeunit 60001 "SI Construction Project Mgt."
             Project.Modify(true);
         end;
 
-        InternalCustomerMgt.EnsureInternalSICustomer(Project, InternalCustomer);
-        EnsureProjectLocation(Project);
-        ConstructionSiteMgt.EnsureDefaultSite(Project, DefaultSite);
-        JobTaskMgt.EnsureProjectTasksSite(Project);
+        EnsureProjectInfrastructure(Project);
     end;
 
     procedure ValidateProject(Project: Record Job)
@@ -46,15 +40,22 @@ codeunit 60001 "SI Construction Project Mgt."
     end;
 
     procedure RepairProject(var Project: Record Job)
-    var
-        InternalCustomer: Record Customer;
-        DefaultSite: Record "SI Construction Site";
     begin
         Project.TestField("No.");
 
         if not Project."SI Construction Project" then
             Error('Проєкт %1 не є будівельним проєктом SI.', Project."No.");
 
+        EnsureProjectInfrastructure(Project);
+    end;
+
+    // Mutating infrastructure provisioning is invoked only by explicit
+    // initialization or repair, never by ValidateProject or page reads.
+    local procedure EnsureProjectInfrastructure(var Project: Record Job)
+    var
+        InternalCustomer: Record Customer;
+        DefaultSite: Record "SI Construction Site";
+    begin
         InternalCustomerMgt.EnsureInternalSICustomer(Project, InternalCustomer);
         EnsureProjectLocation(Project);
         ConstructionSiteMgt.EnsureDefaultSite(Project, DefaultSite);

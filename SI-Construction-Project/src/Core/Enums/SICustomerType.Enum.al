@@ -8,6 +8,11 @@ enum 60000 "SI Customer Type"
         Caption = 'Зовнішній клієнт';
     }
 
+    value(2; "Internal Operations")
+    {
+        Caption = 'Внутрішні операції';
+    }
+
     value(1; "Internal Project")
     {
         Caption = 'Внутрішній проєкт';

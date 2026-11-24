@@ -95,6 +95,9 @@ codeunit 60026 "SI Project Wizard Orch"
                 Site.Description := WizardSite.Description;
                 Site.Modify(true);
                 ApplySiteAddress(Project, Site, WizardSite);
+                // Verify that the wizard populated the canonical delivery address
+                // under this project's internal customer, without cross-site reuse.
+                VerifyWizardSiteAddress(Project, Site, WizardSite);
                 if WizardSite."Foreman No." <> '' then
                     InsertForeman(Project."No.", Site."Site Code", WizardSite."Foreman No.", ForemanRole.Code, Input."Starting Date");
             until Sites.Next() = 0;
@@ -145,6 +148,35 @@ codeunit 60026 "SI Project Wizard Orch"
         ShipTo."SI District" := Source.District;
         ShipTo.Validate("Location Code", Project."Location Code");
         ShipTo.Modify(true);
+    end;
+
+    local procedure VerifyWizardSiteAddress(Project: Record Job; Site: Record "SI Construction Site"; Source: Record "SI Project Wizard Site" temporary)
+    var
+        ShipTo: Record "Ship-to Address";
+        OtherSite: Record "SI Construction Site";
+    begin
+        Project.TestField("SI Internal Customer No.");
+        Project.TestField("Location Code");
+        Site.TestField("Ship-to Code");
+        if not ShipTo.Get(Project."SI Internal Customer No.", Site."Ship-to Code") then
+            Error('Адресу доставки %1 майданчика %2 не знайдено.', Site."Ship-to Code", Site."Site Code");
+
+        if ShipTo."Location Code" <> Project."Location Code" then
+            Error('Адреса доставки %1 не належить складу проєкту %2.', Site."Ship-to Code", Project."No.");
+        if (ShipTo.Address <> Source.Address) or
+           (ShipTo.City <> Source.City) or
+           (ShipTo."Post Code" <> Source."Post Code") or
+           (ShipTo.County <> Source.County) or
+           (ShipTo."Country/Region Code" <> Source."Country/Region Code") or
+           (ShipTo."SI District" <> Source.District) then
+            Error('Адреса доставки майданчика %1 не відповідає даним майстра створення.', Site."Site Code");
+
+        OtherSite.SetRange("Project No.", Project."No.");
+        OtherSite.SetRange("Ship-to Code", Site."Ship-to Code");
+        OtherSite.SetFilter("Site Code", '<>%1', Site."Site Code");
+        if OtherSite.FindFirst() then
+            Error('Майданчики %1 та %2 посилаються на ту саму адресу доставки %3.',
+                Site."Site Code", OtherSite."Site Code", Site."Ship-to Code");
     end;
 
     local procedure InsertProjectManager(ProjectNo: Code[20]; EmployeeNo: Code[20]; RoleCode: Code[20]; FromDate: Date)

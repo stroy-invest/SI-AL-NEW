@@ -75,11 +75,11 @@ codeunit 60003 "SI Construction Site Mgt."
         if Site."Ship-to Code" <> '' then begin
             if not ShipTo.Get(InternalCustomer."No.", Site."Ship-to Code") then
                 Error('Адресу доставки %1 майданчика %2 не знайдено.', Site."Ship-to Code", Site."Site Code");
-            if ShipTo."Location Code" <> Project."Location Code" then begin
-                Project.TestField("Location Code");
-                ShipTo.Validate("Location Code", Project."Location Code");
-                ShipTo.Modify(true);
-            end;
+            // Existing delivery addresses must not be silently rewritten.
+            Project.TestField("Location Code");
+            if ShipTo."Location Code" <> Project."Location Code" then
+                Error('Адреса доставки %1 майданчика %2 має склад %3 замість складу проєкту %4.',
+                    Site."Ship-to Code", Site."Site Code", ShipTo."Location Code", Project."Location Code");
             exit;
         end;
 
@@ -179,17 +179,43 @@ codeunit 60003 "SI Construction Site Mgt."
         if not Project."SI Construction Project" then
             exit;
 
+        // CP-03: validation must be read-only and must inspect every site,
+        // not only the default site. An existing Ship-to Code alone is not
+        // evidence that the delivery address belongs to this project.
         Site.SetRange("Project No.", Project."No.");
-        Site.SetRange("Default", true);
         if Site.FindSet() then
             repeat
-                DefaultCount += 1;
-                if Site.Status <> Site.Status::Active then
-                    Error('Основний будівельний майданчик %1 проєкту %2 не є активним.', Site."Site Code", Project."No.");
+                ValidateSiteShipTo(Project, Site);
+                if Site."Default" then begin
+                    DefaultCount += 1;
+                    if Site.Status <> Site.Status::Active then
+                        Error('Основний будівельний майданчик %1 проєкту %2 не є активним.', Site."Site Code", Project."No.");
+                end;
             until Site.Next() = 0;
 
         if DefaultCount <> 1 then
             Error('Проєкт %1 повинен мати рівно один активний основний будівельний майданчик. Знайдено: %2.', Project."No.", DefaultCount);
+    end;
+
+    local procedure ValidateSiteShipTo(Project: Record Job; Site: Record "SI Construction Site")
+    var
+        InternalCustomer: Record Customer;
+        InternalCustomerMgt: Codeunit "SI Internal Customer Mgt.";
+        ShipTo: Record "Ship-to Address";
+    begin
+        InternalCustomerMgt.ValidateInternalSICustomer(Project, InternalCustomer);
+
+        if Site."Ship-to Code" = '' then
+            Error('Для майданчика %1 проєкту %2 не вказано адресу доставки (Ship-to Code).', Site."Site Code", Project."No.");
+
+        if not ShipTo.Get(InternalCustomer."No.", Site."Ship-to Code") then
+            Error('Адресу доставки %1 майданчика %2 не знайдено у внутрішнього клієнта %3.',
+                Site."Ship-to Code", Site."Site Code", InternalCustomer."No.");
+
+        Project.TestField("Location Code");
+        if ShipTo."Location Code" <> Project."Location Code" then
+            Error('Адреса доставки %1 майданчика %2 має склад %3 замість складу проєкту %4.',
+                Site."Ship-to Code", Site."Site Code", ShipTo."Location Code", Project."Location Code");
     end;
 
     procedure GetNextSiteCode(ProjectNo: Code[20]): Code[20]

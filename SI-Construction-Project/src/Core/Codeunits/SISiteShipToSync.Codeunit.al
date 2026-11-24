@@ -17,10 +17,11 @@ codeunit 60028 "SI Site ShipTo Sync"
         CustomerMgt.ValidateInternalSICustomer(Project, InternalCustomer);
         SiteMgt.EnsureSiteShipTo(Site);
         ShipTo.Get(InternalCustomer."No.", Site."Ship-to Code");
-        if ShipTo."Location Code" <> Project."Location Code" then begin
-            ShipTo.Validate("Location Code", Project."Location Code");
-            Changed := true;
-        end;
+        // Location is an ownership invariant, not a field to overwrite during sync.
+        // Repairing an inconsistent Ship-to must be an explicit administrative action.
+        if ShipTo."Location Code" <> Project."Location Code" then
+            Error('Адреса доставки %1 майданчика %2 має склад %3 замість складу проєкту %4.',
+                Site."Ship-to Code", Site."Site Code", ShipTo."Location Code", Project."Location Code");
         // Never overwrite a manually selected employee. Only initialize empty contact.
         if (ShipTo."SI Contact Employee No." = '') and (ShipTo.Contact = '') then begin
             EmployeeNo := FindSupervisor(Site);

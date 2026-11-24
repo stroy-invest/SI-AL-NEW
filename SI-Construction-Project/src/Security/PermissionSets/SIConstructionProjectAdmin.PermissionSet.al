@@ -5,9 +5,19 @@ permissionset 60000 "SI CP ADMIN"
     Caption = 'SI Construction Project Admin';
 
     Permissions =
+        page "SI Internal Customers" = X,
+        page "SI Internal Customer Card" = X,
+        page "SI Internal Customer Create" = X,
+        codeunit "SI Internal Operations Create" = X,
+        tabledata "SI Internal Operation Purpose" = RIMD,
+        table "SI Internal Operation Purpose" = X,
+        page "SI Internal Operations Setup" = X,
+        codeunit "SI Internal Customer Resolver" = X,
         tabledata "SI Project Reconcile Log" = RIMD,
         table "SI Project Reconcile Log" = X,
         codeunit "SI Site ShipTo Sync" = X,
+        codeunit "SI Site Delivery Readiness" = X,
+        codeunit "SI Project Integrity Audit" = X,
         codeunit "SI Site Reconcile Runner" = X,
         codeunit "SI Project Reconcile" = X,
         page "SI Site Delivery Address" = X,

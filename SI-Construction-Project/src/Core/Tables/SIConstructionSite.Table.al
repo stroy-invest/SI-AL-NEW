@@ -82,12 +82,19 @@ table 60013 "SI Construction Site"
                     Error('Основний майданчик не можна заморозити або анулювати. Спочатку призначте інший активний майданчик основним.');
             end;
         }
+        // CP-05: canonical delivery address is the standard Ship-to Address
+        // belonging to the project's internal Customer. This field is its link.
+        // The legacy address fields below are retained for backward compatibility
+        // and one-time initial transfer only; they must not be used as a second
+        // authoritative delivery address or kept in bidirectional sync.
         field(20; "Ship-to Code"; Code[10])
         {
             Caption = 'Код адреси доставки';
             Editable = false;
             TableRelation = "Ship-to Address".Code;
         }
+        // Legacy/informational fields: preserve existing data until an explicitly
+        // approved migration. New delivery-address edits belong in Ship-to Address.
         field(10; Address; Text[100])
         {
             Caption = 'Адреса';
