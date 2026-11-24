@@ -8,6 +8,7 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         tabledata "SI Country Currency" = RIMD,
         tabledata "SI Category Attribute Buffer" = RIMD,
         tabledata "SI Location Type" = RIMD,
+        tabledata "SI Location Specialization" = RIMD,
         tabledata "SI Location Setup" = RIMD,
 
         tabledata "SI Legal Form Group" = RIMD,
@@ -19,6 +20,9 @@ permissionset 50199 "SI FOUNDATION ADMIN"
         table "SI Country Currency" = X,
         table "SI Category Attribute Buffer" = X,
         table "SI Location Type" = X,
+        table "SI Location Specialization" = X,
+        page "SI Location Specializations" = X,
+        codeunit "SI Location Resolver" = X,
         table "SI Location Setup" = X,
         page "SI Location Types" = X,
         page "SI Location Setup" = X,

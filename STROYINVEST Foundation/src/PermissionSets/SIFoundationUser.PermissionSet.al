@@ -12,6 +12,7 @@ permissionset 50198 "SI FOUNDATION USER"
         tabledata "SI Country Legal Form" = R,
         tabledata "SI Bank Directory" = R,
         tabledata "SI Location Type" = R,
+        tabledata "SI Location Specialization" = R,
         tabledata "SI Location Setup" = R,
 
         table "SI Country Currency" = X,
@@ -21,6 +22,9 @@ permissionset 50198 "SI FOUNDATION USER"
         table "SI Country Legal Form" = X,
         table "SI Bank Directory" = X,
         table "SI Location Type" = X,
+        table "SI Location Specialization" = X,
+        page "SI Location Specializations" = X,
+        codeunit "SI Location Resolver" = X,
         table "SI Location Setup" = X,
         page "SI Location Types" = X,
 
