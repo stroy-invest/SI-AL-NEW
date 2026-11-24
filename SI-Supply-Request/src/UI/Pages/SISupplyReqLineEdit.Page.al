@@ -17,7 +17,7 @@ page 61031 "SI Supply Req Line Edit"
 
                 trigger OnLookup(var Text: Text): Boolean
                 begin
-                    exit(LookupRequestSite());
+                    exit(LookupRequestSite(Text));
                 end;
             }
             field("Line Type"; Rec."Line Type") { ApplicationArea = All; }
@@ -25,7 +25,6 @@ page 61031 "SI Supply Req Line Edit"
             field("Variant Code"; Rec."Variant Code") { ApplicationArea = All; }
             field(Description; Rec.Description) { ApplicationArea = All; }
             field("Requested Quantity"; Rec."Requested Quantity") { ApplicationArea = All; }
-            field("Approved Quantity"; Rec."Approved Quantity") { ApplicationArea = All; Editable = false; }
             field("Unit of Measure Code"; Rec."Unit of Measure Code") { ApplicationArea = All; }
             field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; ShowMandatory = true; }
             field(Comment; Rec.Comment) { ApplicationArea = All; }
@@ -49,7 +48,7 @@ page 61031 "SI Supply Req Line Edit"
         Rec.Init();
         Rec."Request No." := RequestNo;
         Rec."Line Type" := Rec."Line Type"::Item;
-        Rec."Required on Site At" := Header."Required on Site At";
+        // Required date/time is entered for each demand line.
 
         Line.SetRange("Request No.", RequestNo);
         if Line.FindLast() then
@@ -60,6 +59,7 @@ page 61031 "SI Supply Req Line Edit"
         // The request-site junction is the authoritative allowed set for a line.
         // If exactly one site was selected for the request, use it immediately.
         RequestSite.SetRange("Request No.", RequestNo);
+        // Default site is a convenience only; all active sites remain selectable.
         RequestSite.SetRange(Selected, true);
         if RequestSite.Count() = 1 then begin
             RequestSite.FindFirst();
@@ -87,7 +87,7 @@ page 61031 "SI Supply Req Line Edit"
         SetSiteName();
     end;
 
-    local procedure LookupRequestSite(): Boolean
+    local procedure LookupRequestSite(var Text: Text): Boolean
     var
         RequestSite: Record "SI Supply Request Site";
         RequestSiteList: Page "SI Supply Request Sites";
@@ -100,9 +100,8 @@ page 61031 "SI Supply Req Line Edit"
         // Fail explicitly on a broken request invariant instead of opening an empty lookup.
         RequestSite.Reset();
         RequestSite.SetRange("Request No.", RequestNo);
-        RequestSite.SetRange(Selected, true);
         if RequestSite.IsEmpty() then
-            Error('Для заявки %1 не знайдено вибраних будівельних майданчиків.', RequestNo);
+            Error('Для заявки %1 не знайдено будівельних майданчиків.', RequestNo);
 
         // Do not rely on SetTableView propagation. The lookup page owns and applies
         // the Request No. filter itself in OnOpenPage.
@@ -117,6 +116,7 @@ page 61031 "SI Supply Req Line Edit"
         Rec."Construction Site Code" := RequestSite."Site Code";
         SiteName := RequestSite."Site Name";
         Rec.Modify(false);
+        Text := SiteName; // Return selected value to the lookup field.
 
         exit(true);
     end;
@@ -126,7 +126,7 @@ page 61031 "SI Supply Req Line Edit"
         RequestSite: Record "SI Supply Request Site";
     begin
         Clear(SiteName);
-        if RequestSite.Get(Rec."Request No.", Rec."Construction Site Code") and RequestSite.Selected then
+        if RequestSite.Get(Rec."Request No.", Rec."Construction Site Code") then
             SiteName := RequestSite."Site Name";
     end;
 

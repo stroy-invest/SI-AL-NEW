@@ -2,7 +2,7 @@
   "id": "bca54530-bd7f-45ec-b290-81531873ad33",
   "name": "SI Supply Request Engine",
   "publisher": "STROYINVEST",
-  "version": "1.0.0.58",
+  "version": "1.0.0.67",
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
   "idRanges": [
@@ -16,37 +16,37 @@
       "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
       "name": "STROYINVEST Foundation",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.86"
+      "version": "1.0.0.91"
     },
     {
       "id": "e7e9d6bb-52d8-4f68-93ad-d8c390cbbf73",
       "name": "SI Construction Project",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.21"
+      "version": "1.0.0.25"
     },
     {
       "id": "a483f66a-7af7-4f98-bbac-7abd480ef70e",
       "name": "SI Concrete Recipe Engine",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.23"
+      "version": "1.0.0.27"
     },
     {
       "id": "45971d06-dc61-4835-b650-7d5c297d2bf0",
       "name": "SI Manufacturer Management",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.14"
+      "version": "1.0.0.15"
     },
     {
       "id": "f53b19c4-75c9-4351-b2bb-ac84112997da",
       "name": "SI Business Partner",
       "publisher": "STROYINVEST",
-      "version": "1.1.2.28"
+      "version": "1.1.2.31"
     },
     {
       "id": "23461143-2512-4e6f-9d8c-39ad62f17407",
       "name": "SI Geo Service",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.8"
+      "version": "1.0.0.9"
     }
   ],
   "resourceExposurePolicy": {

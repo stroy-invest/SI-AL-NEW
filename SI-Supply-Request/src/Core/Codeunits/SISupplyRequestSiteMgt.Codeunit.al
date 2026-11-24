@@ -9,9 +9,7 @@ codeunit 61030 "SI Supply Request Site Mgt."
         if RequestNo = '' then
             Error('Не визначено номер заявки.');
 
-        RequestSite.SetRange("Request No.", RequestNo);
-        RequestSite.DeleteAll(true);
-
+        // Reconcile instead of deleting user selections and referenced sites.
         if ProjectNo = '' then
             exit;
 
@@ -21,12 +19,19 @@ codeunit 61030 "SI Supply Request Site Mgt."
             Error('Для проєкту %1 немає активних будівельних майданчиків.', ProjectNo);
 
         repeat
-            RequestSite.Init();
-            RequestSite."Request No." := RequestNo;
-            RequestSite."Site Code" := Site."Site Code";
-            RequestSite."Site Name" := Site.Name;
-            RequestSite.Selected := Site.Default;
-            RequestSite.Insert(true);
+            if RequestSite.Get(RequestNo, Site."Site Code") then begin
+                if RequestSite."Site Name" <> Site.Name then begin
+                    RequestSite."Site Name" := Site.Name;
+                    RequestSite.Modify(true);
+                end;
+            end else begin
+                RequestSite.Init();
+                RequestSite."Request No." := RequestNo;
+                RequestSite."Site Code" := Site."Site Code";
+                RequestSite."Site Name" := Site.Name;
+                RequestSite.Selected := Site.Default;
+                RequestSite.Insert(true);
+            end;
 
             if Site.Default then
                 HasDefault := true;

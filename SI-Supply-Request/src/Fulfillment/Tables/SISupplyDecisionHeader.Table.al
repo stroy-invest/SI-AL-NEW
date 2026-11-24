@@ -19,6 +19,9 @@ table 61010 "SI Supply Decision Header"
         field(20; Status; Enum "SI Supply Decision Status")
         {
             Caption = 'Статус';
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Approval lifecycle is not implemented; field retained for schema compatibility.';
+            ObsoleteTag = '1.0.0.62';
             Editable = false;
         }
         field(30; "Project No."; Code[20])
@@ -91,16 +94,11 @@ table 61010 "SI Supply Decision Header"
 
     procedure MarkReady()
     begin
-        TestField(Status, Status::Draft);
-        Status := Status::Ready;
-        // Controlled lifecycle transition. Do not run OnModify, which intentionally
-        // protects every subsequent edit once the plan is frozen.
-        Modify(false);
+        // Legacy compatibility: no approval transition.
     end;
 
     procedure TestEditable()
     begin
-        if Status <> Status::Draft then
-            Error('Рішення %1 не можна редагувати у статусі %2.', "No.", Format(Status));
+        // Decision editing is not governed by approval status.
     end;
 }

@@ -18,13 +18,12 @@ page 61003 "SI Supply Req List"
                 field("Request Profile"; Rec."Request Profile") { ApplicationArea = All; }
                 field("Project No."; Rec."Project No.") { ApplicationArea = All; }
                 field("Project Location Code"; Rec."Project Location Code") { ApplicationArea = All; }
-                field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; }
+                // Header required date/time retired; each request line owns its own date/time.
                 field("Is Overdue"; Rec."Is Overdue")
                 {
                     ApplicationArea = All;
                     Editable = false;
                 }
-                field(Status; Rec.Status) { ApplicationArea = All; }
                 field("Requested By User ID"; Rec."Requested By User ID") { ApplicationArea = All; }
             }
         }
@@ -35,25 +34,7 @@ page 61003 "SI Supply Req List"
     {
         area(Processing)
         {
-            action(AdminForceDraft)
-            {
-                ApplicationArea = All;
-                Caption = 'Примусово перевести в драфт';
-                ToolTip = 'Адміністративне переведення заявки в чернетку без пов’язаних рішень щодо забезпечення або записів планування. Лише SUPER.';
-                Image = ReOpen;
-                Visible = IsSuperUser;
-                Enabled = Rec.Status <> Rec.Status::Draft;
-                trigger OnAction()
-                var
-                    AdminMgt: Codeunit "SI Supply Req Admin Delete";
-                begin
-                    AdminMgt.CheckSuperPermission();
-                    if not Confirm('Примусово перевести заявку %1 у статус Чернетка?', false, Rec."No.") then
-                        exit;
-                    AdminMgt.ForceDraft(Rec);
-                    CurrPage.Update(false);
-                end;
-            }
+
 
             action(AdminForceDelete)
             {

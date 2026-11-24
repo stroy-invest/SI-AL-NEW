@@ -1,4 +1,4 @@
-table 61012 "SI Supply Allocation"
+﻿table 61012 "SI Supply Allocation"
 {
     Caption = 'Розподіл забезпечення';
     DataClassification = CustomerContent;
@@ -90,11 +90,10 @@ table 61012 "SI Supply Allocation"
 
             trigger OnValidate()
             var
-                ReceivingLocationMgt: Codeunit "SI Purchase Receiving Loc.";
+                DestinationResolver: Codeunit "SI Supply Destination Resolver";
             begin
                 TestEditable();
-                if ("Supply Method" = "Supply Method"::Purchase) and ("Target Location Code" <> '') then
-                    ReceivingLocationMgt.ValidateReceivingLocation("Target Location Code");
+                DestinationResolver.AssertDestination(Rec);
             end;
         }
         field(65; "Construction Site Code"; Code[20])
@@ -236,16 +235,26 @@ table 61012 "SI Supply Allocation"
     begin
         TestEditable();
         CopyFromDecisionLine();
+        EnsureProjectDestination();
+        // A new allocation defaults to the unallocated demand, not the full demand.
+        ApplyInitialRemainingQuantity();
         if "Supply Method" = "Supply Method"::Purchase then
             ApplyPurchaseDefaults();
+        AssertDestination();
         if "Created By" = '' then
             "Created By" := CopyStr(UserId(), 1, MaxStrLen("Created By"));
         if "Created At" = 0DT then
             "Created At" := CurrentDateTime();
+        CheckTotalQuantity();
     end;
 
     trigger OnModify()
     begin
+        // Restore destination from project context before enforcing invariants.
+        if IsNullGuid("Execution System ID") then
+            EnsureProjectDestination();
+        CheckTotalQuantity();
+        AssertDestination();
         if SkipExecutionLock then
             exit;
 
@@ -287,8 +296,7 @@ table 61012 "SI Supply Allocation"
         "Unit of Measure Code" := DecisionLine."Unit of Measure Code";
         "Required on Site At" := DecisionLine."Required on Site At";
         "Construction Site Code" := DecisionLine."Construction Site Code";
-        if "Supply Method" <> "Supply Method"::Purchase then
-            "Target Location Code" := DecisionLine."Target Location Code";
+        "Target Location Code" := DecisionLine."Target Location Code";
 
         if Quantity = 0 then
             Quantity := DecisionLine.GetRemainingQuantity();
@@ -299,18 +307,11 @@ table 61012 "SI Supply Allocation"
 
 
     procedure ApplyPurchaseDefaults()
-    var
-        ReceivingLocationMgt: Codeunit "SI Purchase Receiving Loc.";
-        DefaultLocationCode: Code[10];
     begin
         if "Supply Method" <> "Supply Method"::Purchase then
             exit;
-
         Clear("Source Location Code");
-        Clear("Target Location Code");
-        DefaultLocationCode := ReceivingLocationMgt.ResolveDefault("Item No.", "Variant Code");
-        if DefaultLocationCode <> '' then
-            Validate("Target Location Code", DefaultLocationCode);
+        ApplyProjectTargetLocation();
     end;
 
     local procedure ApplyProjectTargetLocation()
@@ -320,6 +321,20 @@ table 61012 "SI Supply Allocation"
         if not DecisionLine.Get("Decision No.", "Decision Line No.") then
             exit;
         "Target Location Code" := DecisionLine."Target Location Code";
+    end;
+
+    procedure EnsureProjectDestination()
+    var
+        DestinationResolver: Codeunit "SI Supply Destination Resolver";
+    begin
+        DestinationResolver.EnsureAllocationDestination(Rec);
+    end;
+
+    procedure AssertDestination()
+    var
+        DestinationResolver: Codeunit "SI Supply Destination Resolver";
+    begin
+        DestinationResolver.AssertDestination(Rec);
     end;
 
     procedure GetTargetLocationName(): Text[100]
@@ -347,20 +362,47 @@ table 61012 "SI Supply Allocation"
 
     local procedure SetDefaultProductionLocation()
     var
-        Location: Record Location;
+        LocationResolver: Codeunit "SI Location Resolver";
+        SupplySetup: Record "SI Supply Req Setup";
+        ResolvedLocationCode: Code[10];
+        Reason: Text;
     begin
         if "Source Location Code" <> '' then
             exit;
 
-        SetSourceLocationFilter(Location);
-        if not Location.FindFirst() then
+        if not SupplySetup.Get() then
+            exit;
+        if SupplySetup."Concrete Location Spec." = '' then
+            exit;
+        // No arbitrary first Location: use configured Concrete specialization.
+        if not LocationResolver.TryResolveFinishedGoods(SupplySetup."Concrete Location Spec.", '', ResolvedLocationCode, Reason) then
             exit;
 
-        // Auto-fill only when the production source is unambiguous.
-        if Location.Next() <> 0 then
+        Validate("Source Location Code", ResolvedLocationCode);
+    end;
+
+    local procedure ApplyInitialRemainingQuantity()
+    var
+        DecisionLine: Record "SI Supply Decision Line";
+        Allocation: Record "SI Supply Allocation";
+        RemainingQty: Decimal;
+    begin
+        if not DecisionLine.Get("Decision No.", "Decision Line No.") then
             exit;
 
-        Validate("Source Location Code", Location.Code);
+        Allocation.SetRange("Decision No.", "Decision No.");
+        Allocation.SetRange("Decision Line No.", "Decision Line No.");
+        Allocation.SetFilter("Line No.", '<>%1', "Line No.");
+        Allocation.SetFilter(Status, '<>%1', Allocation.Status::Cancelled);
+        Allocation.CalcSums(Quantity);
+        RemainingQty := DecisionLine."Demand Quantity" - Allocation.Quantity;
+        if RemainingQty <= 0 then
+            Error('Потребу %1 уже повністю розподілено.', "Decision Line No.");
+
+        // Preserve an explicitly entered partial quantity; correct the page's
+        // full-demand default and the zero-value creation path.
+        if (Quantity = 0) or (Quantity = DecisionLine."Demand Quantity") then
+            Quantity := RemainingQty;
     end;
 
     local procedure CheckTotalQuantity()
@@ -377,8 +419,11 @@ table 61012 "SI Supply Allocation"
         Allocation.SetRange("Decision No.", "Decision No.");
         Allocation.SetRange("Decision Line No.", "Decision Line No.");
         Allocation.SetFilter("Line No.", '<>%1', "Line No.");
+        Allocation.SetFilter(Status, '<>%1', Allocation.Status::Cancelled);
         Allocation.CalcSums(Quantity);
-        TotalQty := Allocation.Quantity + Quantity;
+        TotalQty := Allocation.Quantity;
+        if Status <> Status::Cancelled then
+            TotalQty += Quantity;
 
         if TotalQty > DecisionLine."Demand Quantity" then
             Error(
@@ -446,6 +491,7 @@ table 61012 "SI Supply Allocation"
     procedure SetSourceLocationFilter(var Location: Record Location)
     var
         LocationSetup: Record "SI Location Setup";
+        SupplySetup: Record "SI Supply Req Setup";
     begin
         case "Supply Method" of
             "Supply Method"::Production:
@@ -453,6 +499,9 @@ table 61012 "SI Supply Allocation"
                     GetLocationSetup(LocationSetup);
                     LocationSetup.TestField("Finished Goods Type");
                     Location.SetRange("SI Location Type Code", LocationSetup."Finished Goods Type");
+                    if SupplySetup.Get() then
+                        if SupplySetup."Concrete Location Spec." <> '' then
+                            Location.SetRange("SI Location Spec. Code", SupplySetup."Concrete Location Spec.");
                 end;
             "Supply Method"::Purchase:
                 Location.SetRange(Code, '');
@@ -461,8 +510,11 @@ table 61012 "SI Supply Allocation"
 
     local procedure ValidateSourceLocation()
     var
+        LocationResolver: Codeunit "SI Location Resolver";
+        SupplySetup: Record "SI Supply Req Setup";
         Location: Record Location;
-        LocationSetup: Record "SI Location Setup";
+        ResolvedLocationCode: Code[10];
+        Reason: Text;
     begin
         if "Source Location Code" = '' then
             exit;
@@ -473,13 +525,14 @@ table 61012 "SI Supply Allocation"
         if "Supply Method" <> "Supply Method"::Production then
             exit;
 
-        GetLocationSetup(LocationSetup);
-        LocationSetup.TestField("Finished Goods Type");
-        Location.Get("Source Location Code");
-        if Location."SI Location Type Code" <> LocationSetup."Finished Goods Type" then
-            Error(
-                'Для способу забезпечення Виробництво можна вибрати лише склад типу %1.',
-                LocationSetup."Finished Goods Type");
+        if not SupplySetup.Get() then
+            Error('Не налаштовано параметри заявок на забезпечення.');
+        SupplySetup.TestField("Concrete Location Spec.");
+        if not LocationResolver.TryResolveFinishedGoods(SupplySetup."Concrete Location Spec.", "Source Location Code", ResolvedLocationCode, Reason) then
+            Error('%1', Reason);
+        Location.Get(ResolvedLocationCode);
+        if Location."SI Location Spec. Code" <> SupplySetup."Concrete Location Spec." then
+            Error('Склад %1 не має спеціалізації %2.', ResolvedLocationCode, SupplySetup."Concrete Location Spec.");
     end;
 
     local procedure GetLocationSetup(var LocationSetup: Record "SI Location Setup")

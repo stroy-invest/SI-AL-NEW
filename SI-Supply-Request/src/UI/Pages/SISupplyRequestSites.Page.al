@@ -29,7 +29,8 @@ page 61032 "SI Supply Request Sites"
 
         Rec.Reset();
         Rec.SetRange("Request No.", RequestNoContext);
-        Rec.SetRange(Selected, true);
+        // All active project sites are available, not only default/selected sites.
+        Rec.SetRange(Selected);
     end;
 
     procedure SetRequestNo(RequestNo: Code[20])

@@ -78,7 +78,7 @@ table 61011 "SI Supply Decision Line"
             CalcFormula = sum("SI Supply Allocation".Quantity where(
                 "Decision No." = field("Decision No."),
                 "Decision Line No." = field("Line No."),
-                "Counts as Allocated" = const(true)));
+                Status = filter(<> Cancelled)));
         }
     }
 

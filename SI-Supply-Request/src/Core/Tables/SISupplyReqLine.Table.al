@@ -99,6 +99,9 @@ table 61002 "SI Supply Req Line"
         field(60; "Approved Quantity"; Decimal)
         {
             Caption = 'Погоджена кількість';
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Approval lifecycle is not implemented; field retained for schema compatibility.';
+            ObsoleteTag = '1.0.0.62';
             DecimalPlaces = 0 : 5;
             MinValue = 0;
         }
@@ -215,7 +218,7 @@ table 61002 "SI Supply Req Line"
             Error('Будівельний майданчик %1 не належить проєкту %2.', "Construction Site Code", Header."Project No.");
         if Site.Status <> Site.Status::Active then
             Error('Будівельний майданчик %1 не є активним.', Site.Name);
-        if (not RequestSite.Get("Request No.", "Construction Site Code")) or (not RequestSite.Selected) then
+        if not RequestSite.Get("Request No.", "Construction Site Code") then
             Error('Будівельний майданчик %1 не включено до заявки %2.', Site.Name, "Request No.");
     end;
 

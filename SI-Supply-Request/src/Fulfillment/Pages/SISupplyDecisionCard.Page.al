@@ -26,7 +26,6 @@ page 61012 "SI Supply Decision Card"
                             Page.Run(Page::"SI Supply Req Card", RequestHeader);
                     end;
                 }
-                field(Status; Rec.Status) { ApplicationArea = All; Editable = false; }
                 field("Project No."; Rec."Project No.") { ApplicationArea = All; }
                 field("Project Location Code"; Rec."Project Location Code") { ApplicationArea = All; }
                 field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; }

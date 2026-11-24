@@ -16,7 +16,6 @@ page 61013 "SI Supply Decisions"
                 field("No."; Rec."No.") { ApplicationArea = All; }
                 field("Request No."; Rec."Request No.") { ApplicationArea = All; }
                 field("Project No."; Rec."Project No.") { ApplicationArea = All; }
-                field(Status; Rec.Status) { ApplicationArea = All; }
                 field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; }
                 field("Created At"; Rec."Created At") { ApplicationArea = All; }
             }

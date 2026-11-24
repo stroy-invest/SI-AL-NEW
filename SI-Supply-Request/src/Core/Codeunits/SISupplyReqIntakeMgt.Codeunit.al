@@ -26,18 +26,15 @@ codeunit 61002 "SI Supply Request Intake Mgt."
         Header."External Document No." := CopyStr(GetOptionalText(Intake, 'externalDocumentNo'), 1, MaxStrLen(Header."External Document No."));
         Header."External Registered At" := GetOptionalDateTime(Intake, 'externalRegisteredAt');
         Header.Validate("Project No.", ProjectNo);
-        Header.Validate("Required on Site At", RequiredOnSiteAt);
         Header.Description := CopyStr(GetOptionalText(Intake, 'description'), 1, MaxStrLen(Header.Description));
         Header.Insert(true);
 
         Lines := GetRequiredArray(Intake, 'lines');
-        CreateLines(Header, Lines);
+        CreateLines(Header, Lines, RequiredOnSiteAt);
 
         if TryGetObject(Intake, 'concreteSupplySpec', ConcreteSpec) then
             CreateConcreteSpec(Header, ConcreteSpec);
 
-        Header.Status := Header.Status::Approved;
-        Header.Modify(true);
     end;
 
     procedure FindExistingExternalRequest(ExternalSystemCode: Code[20]; ExternalDocumentId: Text[100]; var Header: Record "SI Supply Req Header"): Boolean
@@ -48,7 +45,7 @@ codeunit 61002 "SI Supply Request Intake Mgt."
         exit(Header.FindFirst());
     end;
 
-    local procedure CreateLines(Header: Record "SI Supply Req Header"; Lines: JsonArray)
+    local procedure CreateLines(Header: Record "SI Supply Req Header"; Lines: JsonArray; DefaultRequiredAt: DateTime)
     var
         Line: Record "SI Supply Req Line";
         LineToken: JsonToken;
@@ -88,6 +85,11 @@ codeunit 61002 "SI Supply Request Intake Mgt."
             Line.Validate("Item No.", ItemNo);
             if VariantCode <> '' then
                 Line.Validate("Variant Code", VariantCode);
+            // Backward-compatible intake: per-line requiredOnSiteAt overrides envelope default.
+            if GetOptionalText(LineObject, 'requiredOnSiteAt') <> '' then
+                Line.Validate("Required on Site At", GetRequiredDateTime(LineObject, 'requiredOnSiteAt'))
+            else
+                Line.Validate("Required on Site At", DefaultRequiredAt);
             Line.Validate("Requested Quantity", GetRequiredDecimal(LineObject, 'quantity'));
             if GetOptionalText(LineObject, 'uomCode') <> '' then
                 Line.Validate("Unit of Measure Code", CopyStr(GetOptionalText(LineObject, 'uomCode'), 1, MaxStrLen(Line."Unit of Measure Code")));

@@ -35,6 +35,11 @@ table 61000 "SI Supply Req Setup"
             Caption = 'Серія номерів каналів постачання';
             TableRelation = "No. Series";
         }
+        field(80; "Concrete Location Spec."; Code[20])
+        {
+            Caption = 'Спеціалізація складу ГП: бетон';
+            TableRelation = "SI Location Specialization".Code where(Active = const(true));
+        }
         field(70; "Planning Forecast Name"; Code[10])
         {
             Caption = 'Прогноз для планових потреб';

@@ -1,4 +1,4 @@
-codeunit 61043 "SI Planning Demand Mgt."
+﻿codeunit 61043 "SI Planning Demand Mgt."
 {
     procedure RebuildAll()
     begin
@@ -10,7 +10,7 @@ codeunit 61043 "SI Planning Demand Mgt."
         RebuildAllInternal(false);
     end;
 
-    procedure EnsurePurchaseDemand(Allocation: Record "SI Supply Allocation"): Integer
+    procedure EnsurePurchaseDemand(var Allocation: Record "SI Supply Allocation"): Integer
     var
         OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         Demand: Record "SI Planning Demand";
@@ -18,6 +18,7 @@ codeunit 61043 "SI Planning Demand Mgt."
         SyncedAt: DateTime;
     begin
         OverdueMgt.TestAllocationNotOverdue(Allocation);
+        Allocation.EnsureProjectDestination();
         Allocation.TestField("Supply Method", Allocation."Supply Method"::Purchase);
 
         if not IsPlanningEligible(Allocation) then
@@ -48,7 +49,8 @@ codeunit 61043 "SI Planning Demand Mgt."
         Allocation.Reset();
         if Allocation.FindSet() then
             repeat
-                if IsPlanningEligible(Allocation) then
+                if IsPlanningEligible(Allocation) then begin
+                    Allocation.EnsureProjectDestination();
                     if HasValidRequestLineage(Allocation) then
                         case Allocation."Supply Method" of
                         Allocation."Supply Method"::Purchase:
@@ -61,6 +63,7 @@ codeunit 61043 "SI Planning Demand Mgt."
                         end
                     else
                         CountSkippedOrphaned += 1;
+                end;
             until Allocation.Next() = 0;
 
         Demand.Reset();
@@ -100,15 +103,7 @@ codeunit 61043 "SI Planning Demand Mgt."
         if not RequestLine.Get(DecisionHeader."Request No.", DecisionLine."Request Line No.") then
             exit(false);
 
-        // Only a controlled, approved business demand may enter standard BC Planning.
-        // Draft/Pending requests are still mutable; Fulfilled/Cancelled are historical.
-        if not (RequestHeader.Status in [
-            RequestHeader.Status::Approved,
-            RequestHeader.Status::"In Fulfillment",
-            RequestHeader.Status::"Partially Fulfilled"])
-        then
-            exit(false);
-
+        // Link integrity is independent of any request approval lifecycle.
         exit(true);
     end;
 

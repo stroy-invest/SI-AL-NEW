@@ -41,43 +41,12 @@ page 61002 "SI Supply Req Card"
                     end;
                 }
                 field("Project Location Code"; Rec."Project Location Code") { ApplicationArea = All; Caption = 'Склад проєкту'; }
-                group(DeliveryGeography)
-                {
-                    Caption = 'Місця доставки';
-                    field("Departure Location Code"; Rec."Departure Location Code")
-                    {
-                        ApplicationArea = All;
-                        trigger OnValidate()
-                        begin
-                            CurrPage.Update(false);
-                        end;
-                    }
-                    field("Departure Point Code"; Rec."Departure Point Code") { ApplicationArea = All; }
-                    field("Destination Point Code"; Rec."Destination Point Code") { ApplicationArea = All; }
-                }
-                field("Required on Site At"; Rec."Required on Site At")
-                {
-                    ApplicationArea = All;
-                    Caption = 'Дата потреби';
-                    ShowMandatory = true;
-                    ToolTip = 'Обов’язкова дата і точний час, на які потреба має бути забезпечена на об’єкті. Для нової позиції це значення використовується як початкове і може бути змінене в рядку.';
-
-                    trigger OnValidate()
-                    begin
-                        CurrPage.SaveRecord();
-                        Commit();
-                        CurrPage.Update(false);
-                        CurrPage.DemandLines.Page.SetRequestContext(Rec."No.");
-                        CurrPage.DemandLines.Page.RefreshFromDatabase();
-                    end;
-                }
                 field("Is Overdue"; Rec."Is Overdue")
                 {
                     ApplicationArea = All;
                     Editable = false;
                     ToolTip = 'Ознака прострочення, що оновлюється фоновим завданням. Перед бізнес-операціями актуальність перевіряється за поточним часом.';
                 }
-                field(Status; Rec.Status) { ApplicationArea = All; }
                 field(CreatorDisplay; CreatorDisplay)
                 {
                     ApplicationArea = All;
@@ -159,25 +128,7 @@ page 61002 "SI Supply Req Card"
                     Page.Run(Page::"SI Supply Req Card", NewRequest);
                 end;
             }
-            action(AdminForceDraft)
-            {
-                ApplicationArea = All;
-                Caption = 'Примусово перевести в драфт';
-                ToolTip = 'Адміністративне переведення заявки в чернетку без пов’язаних рішень щодо забезпечення або записів планування. Лише SUPER.';
-                Image = ReOpen;
-                Visible = IsSuperUser;
-                Enabled = Rec.Status <> Rec.Status::Draft;
-                trigger OnAction()
-                var
-                    AdminMgt: Codeunit "SI Supply Req Admin Delete";
-                begin
-                    AdminMgt.CheckSuperPermission();
-                    if not Confirm('Примусово перевести заявку %1 у статус Чернетка?', false, Rec."No.") then
-                        exit;
-                    AdminMgt.ForceDraft(Rec);
-                    CurrPage.Update(false);
-                end;
-            }
+
 
             action(AdminForceDelete)
             {
@@ -206,7 +157,7 @@ page 61002 "SI Supply Req Card"
                 Image = SelectEntries;
                 Promoted = true;
                 PromotedCategory = Process;
-                Enabled = (Rec."Project No." <> '') and (Rec.Status = Rec.Status::Draft);
+                Enabled = Rec."Project No." <> '';
 
                 trigger OnAction()
                 var
@@ -260,27 +211,7 @@ page 61002 "SI Supply Req Card"
                         Message('Заявку синхронізовано зі Schrift. Змін не виявлено.');
                 end;
             }
-            action(ApproveRequest)
-            {
-                ApplicationArea = All;
-                Caption = 'Погодити';
-                ToolTip = 'Погодити заявку після перевірки, що всі позиції повністю та коректно розподілені у Плані забезпечення.';
-                Image = Approve;
-                Promoted = true;
-                PromotedCategory = Process;
-                Enabled = Rec.Status = Rec.Status::Draft;
 
-                trigger OnAction()
-                var
-                    DecisionMgt: Codeunit "SI Supply Decision Mgt.";
-                begin
-                    CurrPage.SaveRecord();
-                    DecisionMgt.ApproveRequest(Rec);
-                    CurrPage.Update(false);
-                    CurrPage.DemandLines.Page.RefreshFromDatabase();
-                    Message('Заявку %1 погоджено. План забезпечення зафіксовано та закрито для редагування.', Rec."No.");
-                end;
-            }
             action(OpenSupplyDecision)
             {
                 ApplicationArea = All;
@@ -311,7 +242,7 @@ page 61002 "SI Supply Req Card"
     trigger OnAfterGetCurrRecord()
     begin
         UpdateConcreteProfileVisibility();
-        EnsureConcreteSpecForDraft();
+        // Read-only: Concrete Spec is initialized by an explicit profile action.
     end;
 
     trigger OnNewRecord(BelowxRec: Boolean)
@@ -339,8 +270,6 @@ page 61002 "SI Supply Req Card"
         if not PersistedHeader.Get(Rec."No.") then
             exit;
         if PersistedHeader."Request Profile" <> PersistedHeader."Request Profile"::Concrete then
-            exit;
-        if PersistedHeader.Status <> PersistedHeader.Status::Draft then
             exit;
         if ConcreteSpec.Get(Rec."No.") then
             exit;

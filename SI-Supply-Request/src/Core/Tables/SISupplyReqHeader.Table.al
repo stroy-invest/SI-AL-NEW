@@ -63,7 +63,10 @@ table 61001 "SI Supply Req Header"
         }
         field(51; "Required on Site At"; DateTime)
         {
-            Caption = 'Дата потреби';
+            Caption = 'Дата потреби (legacy)';
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Required date/time is maintained at Supply Request Line level.';
+            ObsoleteTag = '1.0.0.60';
 
             trigger OnValidate()
             begin
@@ -86,6 +89,9 @@ table 61001 "SI Supply Req Header"
         field(60; Status; Enum "SI Supply Req Status")
         {
             Caption = 'Статус';
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Approval lifecycle is not implemented; field retained for schema compatibility.';
+            ObsoleteTag = '1.0.0.62';
             Editable = false;
         }
         field(70; "Requested By User ID"; Code[50])
@@ -201,7 +207,6 @@ table 61001 "SI Supply Req Header"
     {
         key(PK; "No.") { Clustered = true; }
         key(Project; "Project No.", Status) { }
-        key(RequiredDate; "Required on Site At") { }
         key(ExternalDocument; "External System Code", "External Document ID") { }
     }
 
@@ -232,9 +237,7 @@ table 61001 "SI Supply Req Header"
 
     trigger OnModify()
     begin
-        // The previous persisted state governs editability. This allows the controlled
-        // Draft -> Approved transition itself, then locks the approved manual request.
-        xRec.TestEditable();
+        // No header approval lifecycle. Data integrity is validated in dependent records.
     end;
 
     trigger OnDelete()
@@ -245,8 +248,6 @@ table 61001 "SI Supply Req Header"
         RequestSite: Record "SI Supply Request Site";
         DecisionHeader: Record "SI Supply Decision Header";
     begin
-        if not AdminDeleteAuthorized then
-            TestField(Status, Status::Draft);
 
         DecisionHeader.SetRange("Request No.", "No.");
         if not DecisionHeader.IsEmpty() then
@@ -291,22 +292,12 @@ table 61001 "SI Supply Req Header"
 
     procedure MarkApproved()
     begin
-        TestField(Status, Status::Draft);
-        Status := Status::Approved;
-        Modify(false);
+        // Legacy compatibility: no approval transition in the current MVP.
     end;
 
     procedure TestEditable()
     begin
-        if Status = Status::Draft then
-            exit;
-
-        // Temporary Schrift bridge: an externally approved Schrift request may be
-        // completed/corrected in BC until fulfillment starts. Remove with the bridge.
-        if "Schrift Request" and (Status = Status::Approved) then
-            exit;
-
-        Error('Заявку %1 не можна редагувати у статусі %2.', "No.", Format(Status));
+        // Approval-based header locking is disabled.
     end;
 
     var

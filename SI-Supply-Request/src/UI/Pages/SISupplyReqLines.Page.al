@@ -19,8 +19,7 @@ page 61001 "SI Supply Req Lines"
                 field("Variant Code"; Rec."Variant Code") { ApplicationArea = All; }
                 field(Description; Rec.Description) { ApplicationArea = All; }
                 field("Requested Quantity"; Rec."Requested Quantity") { ApplicationArea = All; }
-                field("Approved Quantity"; Rec."Approved Quantity") { ApplicationArea = All; Editable = false; }
-                field("Unit of Measure Code"; Rec."Unit of Measure Code") { ApplicationArea = All; }
+                    field("Unit of Measure Code"; Rec."Unit of Measure Code") { ApplicationArea = All; }
                 field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; ShowMandatory = true; }
                 field(Comment; Rec.Comment) { ApplicationArea = All; }
             }

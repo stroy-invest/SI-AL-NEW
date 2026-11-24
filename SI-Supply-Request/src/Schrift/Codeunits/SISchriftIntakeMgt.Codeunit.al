@@ -139,7 +139,7 @@ codeunit 61021 "SI Schrift Intake Mgt."
 
         DecisionHeader.Reset();
         DecisionHeader.SetRange("Request No.", Header."No.");
-        if DecisionHeader.FindFirst() or (Header.Status in [Header.Status::"In Fulfillment", Header.Status::"Partially Fulfilled", Header.Status::Fulfilled]) then begin
+        if DecisionHeader.FindFirst() then begin
             Header."External Sync Status" := Header."External Sync Status"::Changed;
             Header."External Sync Message" := 'Документ Schrift змінено після початку обробки. Автоматичне оновлення заблоковано.';
             Header.Modify(false);
@@ -179,7 +179,6 @@ codeunit 61021 "SI Schrift Intake Mgt."
         Header."External Document No." := CopyStr(DocumentNo, 1, MaxStrLen(Header."External Document No."));
         Header."External Registered At" := RegisteredAt;
         Header.Description := CopyStr(DocumentName, 1, MaxStrLen(Header.Description));
-        Header.Status := Header.Status::Draft;
         Header."Last External Sync At" := CurrentDateTime();
         Header."External Sync Status" := Header."External Sync Status"::Synchronized;
         Header."External Sync Message" := 'Створено зі Schrift.';
@@ -215,8 +214,6 @@ codeunit 61021 "SI Schrift Intake Mgt."
         SelfDischarge := FindPropertyBool(ResolvedProperties, 'самозлив');
         Hopper := FindPropertyBool(ResolvedProperties, 'бункер');
 
-        if RequiredAt <> 0DT then
-            Header."Required on Site At" := RequiredAt;
 
         UpsertConcreteLine(Header, ProductText, Quantity, RequiredAt);
         UpsertConcreteParameters(Header, ProductText);
@@ -244,8 +241,6 @@ codeunit 61021 "SI Schrift Intake Mgt."
         SelfDischarge := FindPropertyBool(ResolvedProperties, 'самозлив');
         Hopper := FindPropertyBool(ResolvedProperties, 'бункер');
 
-        if (RequiredAt <> 0DT) and (Header."Required on Site At" <> RequiredAt) then
-            exit(true);
 
         if (ProductText <> '') or (Quantity <> 0) then begin
             Line.Reset();

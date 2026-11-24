@@ -30,6 +30,11 @@ page 61000 "SI Supply Req Setup"
                     Editable = true;
                     ToolTip = 'Визначає серію номерів для каналів постачання постачальників.';
                 }
+                field("Concrete Location Spec."; Rec."Concrete Location Spec.")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Код активної спеціалізації складів готової бетонної продукції. Наприклад, БЕТОН. Використовується для автоматичного вибору складу у виробничих розподілах.';
+                }
                 field("Planning Forecast Name"; Rec."Planning Forecast Name")
                 {
                     ApplicationArea = All;

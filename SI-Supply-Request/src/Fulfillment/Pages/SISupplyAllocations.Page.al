@@ -74,34 +74,12 @@ page 61011 "SI Supply Allocations"
                         exit(true);
                     end;
                 }
-                field(PurchaseReceivingLocationName; TargetLocationName)
-                {
-                    ApplicationArea = All;
-                    Caption = 'Склад приходу';
-                    Editable = PurchaseLocationEditable;
-                    Lookup = true;
-
-                    trigger OnLookup(var Text: Text): Boolean
-                    var
-                        Location: Record Location;
-                        ReceivingLocationLookup: Page "SI Purchase Receiving Locs";
-                    begin
-                        ReceivingLocationLookup.LookupMode(true);
-                        if ReceivingLocationLookup.RunModal() = Action::LookupOK then begin
-                            ReceivingLocationLookup.GetRecord(Location);
-                            Rec.Validate("Target Location Code", Location.Code);
-                            TargetLocationName := Location.Name;
-                            CurrPage.SaveRecord();
-                            CurrPage.Update(false);
-                        end;
-                        exit(true);
-                    end;
-                }
-                field(ProjectTargetLocationName; ProjectTargetLocationName)
+                field(DestinationLocationName; TargetLocationName)
                 {
                     ApplicationArea = All;
                     Caption = 'Склад призначення';
                     Editable = false;
+                    ToolTip = 'Єдиний склад призначення. Визначається за контекстом рішення; спосіб забезпечення визначає його використання в документах BC.';
                 }
                 field("Required on Site At"; Rec."Required on Site At") { ApplicationArea = All; }
                 field(Status; Rec.Status) { ApplicationArea = All; }
@@ -250,7 +228,6 @@ page 61011 "SI Supply Allocations"
         SourceLocationName := Rec.GetSourceLocationName();
         SetTargetLocationDisplay();
         AllocationEditable := IsAllocationEditable();
-        PurchaseLocationEditable := AllocationEditable and (Rec."Supply Method" = Rec."Supply Method"::Purchase);
         SetRecipeDisplayValues();
     end;
 
@@ -261,7 +238,6 @@ page 61011 "SI Supply Allocations"
         SetTargetLocationDisplay();
         AllocationEditable := IsAllocationEditable();
         SourceLocationEditable := Rec."Supply Method" <> Rec."Supply Method"::Purchase;
-        PurchaseLocationEditable := AllocationEditable and (Rec."Supply Method" = Rec."Supply Method"::Purchase);
         SetRecipeDisplayValues();
     end;
 
@@ -271,17 +247,13 @@ page 61011 "SI Supply Allocations"
     begin
         if not DecisionHeader.Get(Rec."Decision No.") then
             exit(false);
-        exit(DecisionHeader.Status = DecisionHeader.Status::Draft);
+        exit(true);
     end;
 
     local procedure SetTargetLocationDisplay()
     begin
         Clear(TargetLocationName);
-        Clear(ProjectTargetLocationName);
-        if Rec."Supply Method" = Rec."Supply Method"::Purchase then
-            TargetLocationName := Rec.GetTargetLocationName()
-        else
-            ProjectTargetLocationName := Rec.GetTargetLocationName();
+        TargetLocationName := Rec.GetTargetLocationName();
     end;
 
     local procedure SetRecipeDisplayValues()
@@ -301,9 +273,7 @@ page 61011 "SI Supply Allocations"
         ConstructionSiteName: Text[100];
         SourceLocationName: Text[100];
         TargetLocationName: Text[100];
-        ProjectTargetLocationName: Text[100];
         SourceLocationEditable: Boolean;
-        PurchaseLocationEditable: Boolean;
         AllocationEditable: Boolean;
         RecipeResolutionStatusDisplay: Text[50];
         SelectedRevisionDisplay: Text[20];

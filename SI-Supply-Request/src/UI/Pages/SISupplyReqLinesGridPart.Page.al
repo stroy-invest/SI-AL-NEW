@@ -98,7 +98,6 @@ page 61033 "SI Supply Req Lines Grid"
                 LineObject.Add('variantCode', SupplyLine."Variant Code");
                 LineObject.Add('description', SupplyLine.Description);
                 LineObject.Add('requestedQty', Format(SupplyLine."Requested Quantity"));
-                LineObject.Add('approvedQty', Format(SupplyLine."Approved Quantity"));
                 LineObject.Add('uom', SupplyLine."Unit of Measure Code");
                 LineObject.Add('requiredAt', Format(SupplyLine."Required on Site At"));
                 LineObject.Add('comment', SupplyLine.Comment);
@@ -194,8 +193,6 @@ page 61033 "SI Supply Req Lines Grid"
         if Header."Project No." = '' then
             Error('Виберіть проєкт.');
 
-        if Header."Required on Site At" = 0DT then
-            Error('Введіть дату потреби.');
 
     end;
 
@@ -206,7 +203,7 @@ page 61033 "SI Supply Req Lines Grid"
         if SupplyLine."Construction Site Code" = '' then
             Error('Необхідно вибрати будівельний майданчик.');
 
-        if (not RequestSite.Get(RequestNo, SupplyLine."Construction Site Code")) or (not RequestSite.Selected) then
+        if not RequestSite.Get(RequestNo, SupplyLine."Construction Site Code") then
             Error(
                 'Будівельний майданчик %1 не включено до заявки %2.',
                 SupplyLine."Construction Site Code",
@@ -221,7 +218,7 @@ page 61033 "SI Supply Req Lines Grid"
             exit(false);
         if not Header.Get(RequestNo) then
             exit(false);
-        exit(Header.Status = Header.Status::Draft);
+        exit(true);
     end;
 
     local procedure EnsureRequestEditable(RequestNo: Code[20])

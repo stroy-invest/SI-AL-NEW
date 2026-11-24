@@ -8,7 +8,6 @@ codeunit 61010 "SI Supply Decision Mgt."
         OverdueMgt.TestNotOverdue(RequestHeader);
         RequestHeader.TestField("Project No.");
         RequestHeader.TestField("Project Location Code");
-        RequestHeader.TestField("Required on Site At");
 
         DecisionHeader.SetRange("Request No.", RequestHeader."No.");
         if not DecisionHeader.FindFirst() then
@@ -24,12 +23,20 @@ codeunit 61010 "SI Supply Decision Mgt."
         OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
         RequestLine: Record "SI Supply Req Line";
         DecisionLine: Record "SI Supply Decision Line";
+        DestinationResolver: Codeunit "SI Supply Destination Resolver";
+        DestinationCode: Code[10];
         DemandQty: Decimal;
     begin
         OverdueMgt.TestNotOverdue(RequestHeader);
         // Never alter a decision already transferred to execution.
         DecisionHeader.TestEditable();
         ValidateRequestDemandLines(RequestHeader);
+        // The caller supplies the request context; reject cross-document linkage.
+        if DecisionHeader."Request No." <> RequestHeader."No." then
+            Error('Рішення %1 належить заявці %2, але відкрито із заявки %3.',
+                DecisionHeader."No.", DecisionHeader."Request No.", RequestHeader."No.");
+        DestinationCode := DestinationResolver.ResolveProjectDestinationForRequest(
+            DecisionHeader."No.", RequestHeader."No.");
 
         // Remove obsolete draft projections, including their allocations via OnDelete.
         RemoveOrphanDraftDecisionLines(DecisionHeader);
@@ -41,9 +48,7 @@ codeunit 61010 "SI Supply Decision Mgt."
                 DecisionLine.SetRange("Decision No.", DecisionHeader."No.");
                 DecisionLine.SetRange("Request Line No.", RequestLine."Line No.");
                 if not DecisionLine.FindFirst() then begin
-                    DemandQty := RequestLine."Approved Quantity";
-                    if DemandQty <= 0 then
-                        DemandQty := RequestLine."Requested Quantity";
+                    DemandQty := RequestLine."Requested Quantity";
 
                     DecisionLine.Init();
                     DecisionLine."Decision No." := DecisionHeader."No.";
@@ -57,10 +62,49 @@ codeunit 61010 "SI Supply Decision Mgt."
                     DecisionLine."Unit of Measure Code" := RequestLine."Unit of Measure Code";
                     DecisionLine."Required on Site At" := RequestLine."Required on Site At";
                     DecisionLine."Construction Site Code" := RequestLine."Construction Site Code";
-                    DecisionLine."Target Location Code" := RequestHeader."Project Location Code";
+                    DecisionLine."Target Location Code" := DestinationCode;
                     DecisionLine.Insert(true);
-                end;
+                end else
+                    SynchronizeDestination(DecisionLine, DestinationCode);
             until RequestLine.Next() = 0;
+    end;
+
+    local procedure SynchronizeDestination(var DecisionLine: Record "SI Supply Decision Line"; ProjectLocationCode: Code[10])
+    var
+        Allocation: Record "SI Supply Allocation";
+    begin
+        if ProjectLocationCode = '' then
+            Error('Не визначено склад проєкту для рядка рішення %1/%2.', DecisionLine."Decision No.", DecisionLine."Line No.");
+
+        // Never rewrite a destination linked to an existing execution document.
+        Allocation.SetRange("Decision No.", DecisionLine."Decision No.");
+        Allocation.SetRange("Decision Line No.", DecisionLine."Line No.");
+        if Allocation.FindSet() then
+            repeat
+                if not IsNullGuid(Allocation."Execution System ID") then begin
+                    if (DecisionLine."Target Location Code" <> ProjectLocationCode) or
+                       (Allocation."Target Location Code" <> ProjectLocationCode) then
+                        Error('Розподіл %1/%2/%3 вже має документ виконання. Склад призначення не можна синхронізувати автоматично.',
+                            Allocation."Decision No.", Allocation."Decision Line No.", Allocation."Line No.");
+                end;
+            until Allocation.Next() = 0;
+
+        if DecisionLine."Target Location Code" <> ProjectLocationCode then begin
+            DecisionLine."Target Location Code" := ProjectLocationCode;
+            DecisionLine.Modify(true);
+        end;
+
+        Allocation.Reset();
+        Allocation.SetRange("Decision No.", DecisionLine."Decision No.");
+        Allocation.SetRange("Decision Line No.", DecisionLine."Line No.");
+        if Allocation.FindSet(true) then
+            repeat
+                if IsNullGuid(Allocation."Execution System ID") and
+                   (Allocation."Target Location Code" <> ProjectLocationCode) then begin
+                    Allocation."Target Location Code" := ProjectLocationCode;
+                    Allocation.Modify(true);
+                end;
+            until Allocation.Next() = 0;
     end;
 
     procedure RemoveOrphanDraftDecisionLines(var DecisionHeader: Record "SI Supply Decision Header"): Integer
@@ -92,16 +136,15 @@ codeunit 61010 "SI Supply Decision Mgt."
         RequestHeader.TestField("No.");
         RequestHeader.TestField("Project No.");
         RequestHeader.TestField("Project Location Code");
-        RequestHeader.TestField("Required on Site At");
         ValidateRequestDemandLines(RequestHeader);
 
         DecisionHeader.Init();
         DecisionHeader."No." := RequestHeader."No.";
         DecisionHeader."Request No." := RequestHeader."No.";
-        DecisionHeader.Status := DecisionHeader.Status::Draft;
         DecisionHeader."Project No." := RequestHeader."Project No.";
         DecisionHeader."Project Location Code" := RequestHeader."Project Location Code";
-        DecisionHeader."Required on Site At" := RequestHeader."Required on Site At";
+        // Header date is a derived earliest line date for legacy Decision Header consumers.
+        DecisionHeader."Required on Site At" := GetEarliestLineRequiredAt(RequestHeader."No.");
         DecisionHeader.Insert(true);
 
         RequestLine.SetRange("Request No.", RequestHeader."No.");
@@ -111,9 +154,7 @@ codeunit 61010 "SI Supply Decision Mgt."
         end;
 
         repeat
-            DemandQty := RequestLine."Approved Quantity";
-            if DemandQty <= 0 then
-                DemandQty := RequestLine."Requested Quantity";
+            DemandQty := RequestLine."Requested Quantity";
 
             DecisionLine.Init();
             DecisionLine."Decision No." := DecisionHeader."No.";
@@ -156,29 +197,6 @@ codeunit 61010 "SI Supply Decision Mgt."
         until RequestLine.Next() = 0;
     end;
 
-    procedure ApproveRequest(var RequestHeader: Record "SI Supply Req Header")
-    var
-        OverdueMgt: Codeunit "SI Supply Req Overdue Mgt";
-        DecisionHeader: Record "SI Supply Decision Header";
-    begin
-        OverdueMgt.TestNotOverdue(RequestHeader);
-        RequestHeader.TestField(Status, RequestHeader.Status::Draft);
-        RequestHeader.TestField("Project No.");
-        RequestHeader.TestField("Project Location Code");
-        RequestHeader.TestField("Required on Site At");
-        ValidateRequestDemandLines(RequestHeader);
-
-        DecisionHeader.SetRange("Request No.", RequestHeader."No.");
-        if not DecisionHeader.FindFirst() then
-            Error('Для заявки %1 ще не сформовано План забезпечення.', RequestHeader."No.");
-
-        ValidateDecisionMatchesRequest(RequestHeader, DecisionHeader);
-        ValidateAllocationPlan(DecisionHeader);
-
-        DecisionHeader.MarkReady();
-        RequestHeader.MarkApproved();
-    end;
-
     local procedure ValidateDecisionMatchesRequest(RequestHeader: Record "SI Supply Req Header"; DecisionHeader: Record "SI Supply Decision Header")
     var
         RequestLine: Record "SI Supply Req Line";
@@ -196,9 +214,7 @@ codeunit 61010 "SI Supply Decision Mgt."
                 if not DecisionLine.FindFirst() then
                     Error('План забезпечення не містить позицію %1. Оновіть план перед погодженням заявки.', RequestLine.Description);
 
-                DemandQty := RequestLine."Approved Quantity";
-                if DemandQty <= 0 then
-                    DemandQty := RequestLine."Requested Quantity";
+                DemandQty := RequestLine."Requested Quantity";
 
                 if (DecisionLine."Item No." <> RequestLine."Item No.") or
                    (DecisionLine."Variant Code" <> RequestLine."Variant Code") or
@@ -222,7 +238,6 @@ codeunit 61010 "SI Supply Decision Mgt."
         DecisionLine: Record "SI Supply Decision Line";
         Allocation: Record "SI Supply Allocation";
     begin
-        DecisionHeader.TestField(Status, DecisionHeader.Status::Draft);
 
         DecisionLine.SetRange("Decision No.", DecisionHeader."No.");
         if not DecisionLine.FindSet() then
@@ -254,12 +269,8 @@ codeunit 61010 "SI Supply Decision Mgt."
                     Allocation.TestField("Construction Site Code");
                     Allocation.TestField("Target Location Code");
 
+                    Allocation.AssertDestination();
                     case Allocation."Supply Method" of
-                        Allocation."Supply Method"::Purchase:
-                            begin
-                                Allocation.TestField("Target Location Code");
-                                Allocation.Validate("Target Location Code", Allocation."Target Location Code");
-                            end;
                         Allocation."Supply Method"::Transfer:
                             Allocation.TestField("Source Location Code");
                         Allocation."Supply Method"::Stock:
@@ -269,4 +280,19 @@ codeunit 61010 "SI Supply Decision Mgt."
             end;
         until DecisionLine.Next() = 0;
     end;
+    local procedure GetEarliestLineRequiredAt(RequestNo: Code[20]): DateTime
+    var
+        RequestLine: Record "SI Supply Req Line";
+        EarliestAt: DateTime;
+    begin
+        RequestLine.SetRange("Request No.", RequestNo);
+        RequestLine.SetFilter("Required on Site At", '<>%1', 0DT);
+        if RequestLine.FindSet() then
+            repeat
+                if (EarliestAt = 0DT) or (RequestLine."Required on Site At" < EarliestAt) then
+                    EarliestAt := RequestLine."Required on Site At";
+            until RequestLine.Next() = 0;
+        exit(EarliestAt);
+    end;
+
 }

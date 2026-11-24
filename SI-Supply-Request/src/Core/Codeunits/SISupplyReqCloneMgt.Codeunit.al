@@ -12,9 +12,6 @@ codeunit 61065 "SI Supply Req Clone Mgt"
     procedure TestCloneAllowed(var SourceHeader: Record "SI Supply Req Header")
     begin
         SourceHeader.TestField("No.");
-        SourceHeader.TestField("Required on Site At");
-        if SourceHeader.Status in [SourceHeader.Status::Fulfilled, SourceHeader.Status::Cancelled] then
-            Error('Заявку %1 у статусі %2 не можна клонувати.', SourceHeader."No.", SourceHeader.Status);
     end;
 
     procedure CloneRequest(SourceRequestNo: Code[20]; NewRequiredAt: DateTime; Reason: Text[250]; var NewHeader: Record "SI Supply Req Header")
@@ -43,7 +40,6 @@ codeunit 61065 "SI Supply Req Clone Mgt"
         NewHeader."Departure Location Code" := SourceHeader."Departure Location Code";
         NewHeader."Departure Point Code" := SourceHeader."Departure Point Code";
         NewHeader."Destination Point Code" := SourceHeader."Destination Point Code";
-        NewHeader."Required on Site At" := NewRequiredAt;
         NewHeader.Description := SourceHeader.Description;
         NewHeader."Cloned From Request No." := SourceHeader."No.";
         // Do not copy identity, external integration, approval or audit metadata.
@@ -61,7 +57,7 @@ codeunit 61065 "SI Supply Req Clone Mgt"
         AuditMgt.LogEvent(NewHeader."No.", Enum::"SI Supply Req Event Type"::"Request Cloned From",
             'Cloned From Request No.', '', SourceHeader."No.", Reason,
             StrSubstNo('Вихідна заявка %1; попередня дата потреби %2; нова дата %3.',
-                SourceHeader."No.", Format(SourceHeader."Required on Site At"), Format(NewRequiredAt)), CorrelationId);
+                SourceHeader."No.", 'див. рядки вихідної заявки', Format(NewRequiredAt)), CorrelationId);
     end;
 
     local procedure CopySites(SourceNo: Code[20]; TargetNo: Code[20])

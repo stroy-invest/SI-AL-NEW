@@ -10,8 +10,6 @@ codeunit 61066 "SI Supply Req Overdue Job"
     begin
         // Use a snapshot of candidate keys; SynchronizeOne locks and reloads each record.
         // Avoid modifying the same record variable while traversing the result set.
-        Request.SetFilter(Status, '<>%1&<>%2', Request.Status::Fulfilled, Request.Status::Cancelled);
-        Request.SetFilter("Required on Site At", '<>%1', 0DT);
         if Request.FindSet() then
             repeat
                 OverdueMgt.SynchronizeOne(Request."No.");

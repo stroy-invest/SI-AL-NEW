@@ -7,14 +7,14 @@ codeunit 61064 "SI Supply Req Overdue Mgt"
     begin
         if not IsEligible(Request) then
             exit(false);
-        exit(CurrentDateTime() >= Request."Required on Site At");
+        exit(GetEarliestRequiredAt(Request."No.") <= CurrentDateTime());
     end;
 
     procedure TestNotOverdue(Request: Record "SI Supply Req Header")
     begin
         if IsOverdue(Request) then
             Error('Заявка %1 задавнена: дата потреби %2 уже настала. Подальшу обробку заблоковано.',
-                Request."No.", Request."Required on Site At");
+                Request."No.", GetEarliestRequiredAt(Request."No."));
     end;
 
     // Resolve the owning request from a supply decision; do not trust a cached Is Overdue flag.
@@ -57,13 +57,28 @@ codeunit 61064 "SI Supply Req Overdue Mgt"
         if NewValue then
             AuditMgt.LogEvent(Request."No.", "SI Supply Req Event Type"::"Marked Overdue",
                 'Is Overdue', 'FALSE', 'TRUE', '',
-                StrSubstNo('Дата потреби: %1', Request."Required on Site At"), CreateGuid());
+                StrSubstNo('Найраніша дата потреби за рядками: %1', GetEarliestRequiredAt(Request."No.")), CreateGuid());
     end;
 
     local procedure IsEligible(Request: Record "SI Supply Req Header"): Boolean
     begin
-        if Request."Required on Site At" = 0DT then
+        if GetEarliestRequiredAt(Request."No.") = 0DT then
             exit(false);
-        exit(not (Request.Status in [Request.Status::Fulfilled, Request.Status::Cancelled]));
+        exit(true);
     end;
+    local procedure GetEarliestRequiredAt(RequestNo: Code[20]): DateTime
+    var
+        RequestLine: Record "SI Supply Req Line";
+        EarliestAt: DateTime;
+    begin
+        RequestLine.SetRange("Request No.", RequestNo);
+        RequestLine.SetFilter("Required on Site At", '<>%1', 0DT);
+        if RequestLine.FindSet() then
+            repeat
+                if (EarliestAt = 0DT) or (RequestLine."Required on Site At" < EarliestAt) then
+                    EarliestAt := RequestLine."Required on Site At";
+            until RequestLine.Next() = 0;
+        exit(EarliestAt);
+    end;
+
 }
