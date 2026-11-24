@@ -146,6 +146,16 @@ table 53001 "SI Product Parameter"
     trigger OnDelete()
     begin
         CheckDeleteAllowed();
+        CheckAttributeDefinitions();
+    end;
+
+    local procedure CheckAttributeDefinitions()
+    var
+        Def: Record "SI Value Attr. Definition";
+    begin
+        Def.SetRange("Parameter Code", Code);
+        if not Def.IsEmpty() then
+            Error('Спочатку видаліть визначення характеристик.');
     end;
 
     local procedure ValidateReferenceSetup()

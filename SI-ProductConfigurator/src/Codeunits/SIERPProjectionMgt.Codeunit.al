@@ -1,5 +1,7 @@
 codeunit 53001 "SI ERP Projection Mgt."
 {
+    Permissions = tabledata "SI Parameter Value" = m;
+
     // Orchestrates ERP preview and MVP materialization into standard Item and Item Variant records.
 
     procedure OpenPreview(ConfigurationNo: Code[20])
@@ -745,6 +747,7 @@ codeunit 53001 "SI ERP Projection Mgt."
             Error(ProjectionNotReadyErr, PrevBuffer."Validation Message");
         end;
 
+        CheckMaterializationValues(PrevBuffer."Configuration No.");
         ClearLastError();
 
         if not TryMaterialize(PrevBuffer) then begin
@@ -755,11 +758,46 @@ codeunit 53001 "SI ERP Projection Mgt."
             Error(MaterializationFailedErr, ErrorText);
         end;
 
+        MarkValuesEverUsed(PrevBuffer."Configuration No.");
         PrevBuffer.SetValidationResult(
             PrevBuffer.Status::Projected,
             false,
             MaterializationCompletedMsg);
         PrevBuffer.Modify();
+    end;
+
+    local procedure CheckMaterializationValues(ConfigurationNo: Code[20])
+    var
+        ConfigValue: Record "SI Product Config. Value";
+        ParameterValue: Record "SI Parameter Value";
+    begin
+        ParameterValue.LockTable();
+        ConfigValue.SetRange("Configuration No.", ConfigurationNo);
+        ConfigValue.SetRange("Value Type", ConfigValue."Value Type"::"Controlled Value");
+        ConfigValue.SetFilter("Parameter Value Code", '<>%1', '');
+        if ConfigValue.FindSet() then
+            repeat
+                ParameterValue.Get(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code");
+                ParameterValue.TestField(Blocked, false);
+            until ConfigValue.Next() = 0;
+    end;
+
+    internal procedure MarkValuesEverUsed(ConfigurationNo: Code[20])
+    var
+        ConfigValue: Record "SI Product Config. Value";
+        ParameterValue: Record "SI Parameter Value";
+    begin
+        ConfigValue.SetRange("Configuration No.", ConfigurationNo);
+        ConfigValue.SetRange("Value Type", ConfigValue."Value Type"::"Controlled Value");
+        ConfigValue.SetFilter("Parameter Value Code", '<>%1', '');
+        if ConfigValue.FindSet() then
+            repeat
+                if ParameterValue.Get(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code") then
+                    if not ParameterValue."Ever Used" then begin
+                        ParameterValue."Ever Used" := true;
+                        ParameterValue.Modify(false);
+                    end;
+            until ConfigValue.Next() = 0;
     end;
 
     [TryFunction]

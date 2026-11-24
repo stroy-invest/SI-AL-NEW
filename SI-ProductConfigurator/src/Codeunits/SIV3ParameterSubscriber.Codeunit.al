@@ -28,6 +28,7 @@ codeunit 53093 "SI V3 Parameter Subscriber"
     var
         ConfigValue: Record "SI Product Config. Value";
         Parameter: Record "SI Product Parameter";
+        ParameterValue: Record "SI Parameter Value";
         FamilyParameter: Record "SI Family Parameter";
         ProductConfig: Record "SI Product Config.";
         Section: JsonObject;
@@ -57,6 +58,9 @@ codeunit 53093 "SI V3 Parameter Subscriber"
                             else
                                 IncludeValue := FamilyParameter."ERP Projection Role" <> FamilyParameter."ERP Projection Role"::"Item Identity";
                     end;
+                    if IncludeValue and (ConfigValue."Value Type" = ConfigValue."Value Type"::"Controlled Value") then
+                        if ParameterValue.Get(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code") then
+                            IncludeValue := not ParameterValue.Blocked;
                     if IncludeValue then begin
                         ParameterCaption := ConfigValue."Parameter Code";
                         UnitCode := '';
@@ -72,10 +76,63 @@ codeunit 53093 "SI V3 Parameter Subscriber"
                         Row.Add('unit', UnitCode);
                         Row.Add('source', SectionCode);
                         Rows.Add(Row);
+                        if ConfigValue."Value Type" = ConfigValue."Value Type"::"Controlled Value" then
+                            AppendAttributes(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code", SectionCode, Rows);
                     end;
                 until ConfigValue.Next() = 0;
         end;
         Section.Add('rows', Rows);
         Sections.Add(Section);
+    end;
+    local procedure AppendAttributes(ParameterCode: Code[30]; ValueCode: Code[30]; SectionCode: Text; var Rows: JsonArray)
+    var
+        Attr: Record "SI Parameter Value Attr.";
+        Def: Record "SI Value Attr. Definition";
+        Resolver: Codeunit "SI Value Attr. Resolver";
+        Row: JsonObject;
+    begin
+        if not Resolver.GetAttributes(ParameterCode, ValueCode, Attr) then
+            exit;
+        Def.SetRange("Parameter Code", ParameterCode);
+        Def.SetCurrentKey("Parameter Code", "Sort Order", Code);
+        if Def.FindSet() then
+            repeat
+                if Attr.Get(ParameterCode, ValueCode, Def.Code) then begin
+                    Clear(Row);
+                    Row.Add('code', ParameterCode + ':' + Def.Code);
+                    Row.Add('caption', '↳ ' + Def.Description);
+                    Row.Add('displayValue', FormatAttribute(Attr, Def."Value Type"));
+                    Row.Add('unit', Def."UoM Code");
+                    Row.Add('source', SectionCode);
+                    Rows.Add(Row);
+                end;
+            until Def.Next() = 0;
+    end;
+
+    local procedure FormatAttribute(Attr: Record "SI Parameter Value Attr."; AttrType: Enum "SI Value Attr. Type"): Text
+    begin
+        case AttrType of
+            AttrType::Decimal:
+                exit(Format(Attr."Decimal Value"));
+            AttrType::Integer:
+                exit(Format(Attr."Integer Value"));
+            AttrType::Text:
+                exit(Attr."Text Value");
+            AttrType::Boolean:
+                if Attr."Boolean Value" then
+                    exit('Так')
+                else
+                    exit('Ні');
+            AttrType::Range:
+                begin
+                    if Attr."Has Minimum" and Attr."Has Maximum" then
+                        exit(Format(Attr.Minimum) + '–' + Format(Attr.Maximum));
+                    if Attr."Has Minimum" then
+                        exit('≥' + Format(Attr.Minimum));
+                    if Attr."Has Maximum" then
+                        exit('≤' + Format(Attr.Maximum));
+                end;
+        end;
+        exit('');
     end;
 }

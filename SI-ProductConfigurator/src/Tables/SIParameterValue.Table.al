@@ -102,6 +102,13 @@ table 53002 "SI Parameter Value"
             DataClassification = CustomerContent;
         }
 
+        field(41; "Ever Used"; Boolean)
+        {
+            Caption = 'Використовувалося';
+            DataClassification = CustomerContent;
+            Editable = false;
+        }
+
         field(50; "ERP Code"; Code[20])
         {
             Caption = 'Скорочений код ERP';
@@ -145,8 +152,53 @@ table 53002 "SI Parameter Value"
 
     trigger OnModify()
     begin
+        if xRec."Ever Used" then
+            "Ever Used" := true;
         NormalizeCode();
         ValidateParameter();
+    end;
+
+    trigger OnDelete()
+    var
+        Attr: Record "SI Parameter Value Attr.";
+    begin
+        CheckRemovalAllowed();
+        Attr.SetRange("Parameter Code", "Parameter Code");
+        Attr.SetRange("Value Code", Code);
+        Attr.DeleteAll(true);
+    end;
+
+    trigger OnRename()
+    var
+        Attr: Record "SI Parameter Value Attr.";
+    begin
+        xRec.CheckRemovalAllowed();
+        Attr.SetRange("Parameter Code", xRec."Parameter Code");
+        Attr.SetRange("Value Code", xRec.Code);
+        if not Attr.IsEmpty() then
+            Error('Спочатку видаліть додаткові характеристики.');
+    end;
+
+    procedure CheckRemovalAllowed()
+    var
+        ConfigValue: Record "SI Product Config. Value";
+        FamilyParameter: Record "SI Family Parameter";
+        TemplateParameter: Record "SI Family Template Parameter";
+    begin
+        if "Ever Used" then
+            Error(UsedValueErr, "Parameter Code", Code);
+        ConfigValue.SetRange("Parameter Code", "Parameter Code");
+        ConfigValue.SetRange("Parameter Value Code", Code);
+        if not ConfigValue.IsEmpty() then
+            Error(ReferencedValueErr, "Parameter Code", Code);
+        FamilyParameter.SetRange("Parameter Code", "Parameter Code");
+        FamilyParameter.SetRange("Default Value Code", Code);
+        if not FamilyParameter.IsEmpty() then
+            Error(ReferencedValueErr, "Parameter Code", Code);
+        TemplateParameter.SetRange("Parameter Code", "Parameter Code");
+        TemplateParameter.SetRange("Default Value Code", Code);
+        if not TemplateParameter.IsEmpty() then
+            Error(ReferencedValueErr, "Parameter Code", Code);
     end;
 
     local procedure NormalizeCode()
@@ -177,6 +229,8 @@ table 53002 "SI Parameter Value"
     end;
 
     var
+        UsedValueErr: Label 'Значення %2 параметра %1 вже використовувалося. Його можна лише заблокувати.';
+        ReferencedValueErr: Label 'Значення %2 параметра %1 має залежні записи. Спочатку усуньте посилання.';
         InvalidParameterTypeErr: Label
             'Допустимі значення можна створювати лише для параметрів із типом «Контрольоване значення». Параметр: %1.';
         BlockedParameterErr: Label

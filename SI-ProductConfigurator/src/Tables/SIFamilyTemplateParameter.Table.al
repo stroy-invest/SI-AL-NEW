@@ -30,7 +30,7 @@ table 53011 "SI Family Template Parameter"
         {
             Caption = 'Значення за замовчуванням';
             DataClassification = CustomerContent;
-            TableRelation = "SI Parameter Value".Code where("Parameter Code" = field("Parameter Code"));
+            TableRelation = "SI Parameter Value".Code where("Parameter Code" = field("Parameter Code"), Blocked = const(false));
         }
         field(120; Blocked; Boolean) { Caption = 'Заблоковано'; DataClassification = CustomerContent; }
     }

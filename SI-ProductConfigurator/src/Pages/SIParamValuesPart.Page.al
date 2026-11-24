@@ -57,11 +57,38 @@ page 53011 "SI Param. Values Part"
                     ToolTip = 'Визначає порядок відображення.';
                 }
 
+                field("Ever Used"; Rec."Ever Used")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    ToolTip = 'Значення вже використовувалося в матеріалізованій ERP-проєкції.';
+                }
+
                 field(Blocked; Rec.Blocked)
                 {
                     ApplicationArea = All;
                     ToolTip = 'Визначає, чи заблоковано значення.';
                 }
+            }
+        }
+    }
+    actions
+    {
+        area(Processing)
+        {
+            action(AttributeDefinitions)
+            {
+                ApplicationArea = All;
+                Caption = 'Визначення характеристик';
+                RunObject = page "SI Value Attr. Definitions";
+                RunPageLink = "Parameter Code" = field("Parameter Code");
+            }
+            action(ValueAttributes)
+            {
+                ApplicationArea = All;
+                Caption = 'Додаткові характеристики';
+                RunObject = page "SI Parameter Value Attrs";
+                RunPageLink = "Parameter Code" = field("Parameter Code"), "Value Code" = field(Code);
             }
         }
     }

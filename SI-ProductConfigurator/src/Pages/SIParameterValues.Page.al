@@ -79,6 +79,13 @@ page 53004 "SI Parameter Values"
                     ToolTip = 'Визначає порядок відображення значень.';
                 }
 
+                field("Ever Used"; Rec."Ever Used")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    ToolTip = 'Значення вже використовувалося в матеріалізованій ERP-проєкції.';
+                }
+
                 field(Blocked; Rec.Blocked)
                 {
                     ApplicationArea = All;
@@ -86,5 +93,54 @@ page 53004 "SI Parameter Values"
                 }
             }
         }
+        area(FactBoxes)
+        {
+            part(ValueAttrFactBox; "SI Value Attr. FactBox")
+            {
+                ApplicationArea = All;
+            }
+        }
     }
+
+    actions
+    {
+        area(Processing)
+        {
+            action(AttributeDefinitions)
+            {
+                ApplicationArea = All;
+                Caption = 'Визначення характеристик';
+                trigger OnAction()
+                var
+                    AttrDef: Record "SI Value Attr. Definition";
+                begin
+                    CurrPage.SaveRecord();
+                AttrDef.SetRange("Parameter Code", Rec."Parameter Code");
+                Page.RunModal(Page::"SI Value Attr. Definitions", AttrDef);
+                    CurrPage.ValueAttrFactBox.Page.LoadAttributes(Rec."Parameter Code", Rec.Code);
+                end;
+            }
+            action(ValueAttributes)
+            {
+                ApplicationArea = All;
+                Caption = 'Додаткові характеристики';
+                trigger OnAction()
+                var
+                    Attr: Record "SI Parameter Value Attr.";
+                begin
+                    CurrPage.SaveRecord();
+                Attr.SetRange("Parameter Code", Rec."Parameter Code");
+                Attr.SetRange("Value Code", Rec.Code);
+                Page.RunModal(Page::"SI Parameter Value Attrs", Attr);
+                    CurrPage.ValueAttrFactBox.Page.LoadAttributes(Rec."Parameter Code", Rec.Code);
+                end;
+            }
+        }
+    }
+
+    trigger OnAfterGetCurrRecord()
+    begin
+        CurrPage.ValueAttrFactBox.Page.LoadAttributes(Rec."Parameter Code", Rec.Code);
+    end;
+
 }

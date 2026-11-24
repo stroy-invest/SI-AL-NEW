@@ -4,6 +4,15 @@ permissionset 53001 "SI PROD CONFIG USER"
     Caption = 'SI Конфігуратор: користувач';
 
     Permissions =
+        tabledata "SI Value Attr. Definition" = R,
+        tabledata "SI Parameter Value Attr." = R,
+        table "SI Value Attr. Definition" = X,
+        table "SI Parameter Value Attr." = X,
+        page "SI Value Attr. Definitions" = X,
+        page "SI Parameter Value Attrs" = X,
+        page "SI Value Attr. FactBox" = X,
+        table "SI Category Attribute Buffer" = X,
+        codeunit "SI Value Attr. Resolver" = X,
         codeunit "SI Reference Parameter Mgt." = X,
         // Operational product configuration.
         tabledata "SI Product Config." = RIM,

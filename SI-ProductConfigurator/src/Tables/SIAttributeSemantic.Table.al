@@ -30,7 +30,11 @@ table 53012 "SI Attribute Semantic"
     var
         ItemAttribute: Record "Item Attribute";
         ProductParameter: Record "SI Product Parameter";
+        Def: Record "SI Value Attr. Definition";
     begin
+        Def.SetRange("Semantic Code", Code);
+        if not Def.IsEmpty() then
+            Error('Семантика використовується характеристикою значення.');
         ItemAttribute.SetRange("SI Semantic Code", Code);
         if not ItemAttribute.IsEmpty() then
             Error(SemanticUsedByAttributeErr, Code);
