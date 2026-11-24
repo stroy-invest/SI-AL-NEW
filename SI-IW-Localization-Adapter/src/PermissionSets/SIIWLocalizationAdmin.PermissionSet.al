@@ -11,9 +11,11 @@ permissionset 65000 "SI IW LOC ADMIN"
         codeunit "SI IW Vehicle Sync Events" = X,
         codeunit "SI IW Vehicle Sync Processor" = X,
         codeunit "SI IW Vehicle Sync Worker" = X,
+        codeunit "SI IW Integration Setup Check" = X,
 
         table "SI IW Vehicle Type Mapping" = X,
         table "SI IW Vehicle Sync Outbox" = X,
+        table "SI IW Setup Check Result" = X,
 
         tabledata Vendor = RM,
         tabledata Customer = RM,
@@ -22,6 +24,8 @@ permissionset 65000 "SI IW LOC ADMIN"
         tabledata "SI IW Vehicle Sync Outbox" = RIMD,
 
         tabledata "SI Vehicle Profile" = R,
+        tabledata "SI Vehicle Type" = R,
+        tabledata "Job Queue Entry" = R,
         tabledata "SI Vehicle Brand" = R,
         tabledata "SI Vehicle Model" = R,
         tabledata IWSVehicle = RIM,
@@ -31,5 +35,6 @@ permissionset 65000 "SI IW LOC ADMIN"
         page "SI IW Vehicle Capacity Part" = X,
         page "SI IW Vehicle Legacy FactBox" = X,
         page "SI IW Vehicle Type Mappings" = X,
-        page "SI IW Vehicle Sync Outbox" = X;
+        page "SI IW Vehicle Sync Outbox" = X,
+        page "SI IW Setup Check Results" = X;
 }

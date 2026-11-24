@@ -39,4 +39,20 @@ page 65002 "SI IW Vehicle Type Mappings"
             }
         }
     }
+    actions
+    {
+        area(Processing)
+        {
+            action(CheckIntegrationSetup)
+            {
+                ApplicationArea = All;
+                Caption = 'Перевірити налаштування';
+                Image = Check;
+                trigger OnAction()
+                begin
+                    Page.Run(Page::"SI IW Setup Check Results");
+                end;
+            }
+        }
+    }
 }
