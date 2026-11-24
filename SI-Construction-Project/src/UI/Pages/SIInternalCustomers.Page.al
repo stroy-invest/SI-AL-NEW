@@ -5,7 +5,7 @@ page 60037 "SI Internal Customers"
     SourceTable = Customer;
     SourceTableView = where("SI Customer Type" = filter("Internal Project" | "Internal Operations"));
     ApplicationArea = All;
-    UsageCategory = None;
+    UsageCategory = Administration;
     CardPageId = "SI Internal Customer Card";
     InsertAllowed = false;
     DeleteAllowed = false;
@@ -15,11 +15,11 @@ page 60037 "SI Internal Customers"
         {
             repeater(Customers)
             {
-                field("No."; Rec."No.") { ApplicationArea = All; }
-                field(Name; Rec.Name) { ApplicationArea = All; }
+                field("No."; Rec."No.") { ApplicationArea = All; Caption = 'Код'; Editable = false; }
+                field(Name; Rec.Name) { ApplicationArea = All; Caption = 'Назва'; Editable = false; }
                 field("SI Customer Type"; Rec."SI Customer Type") { ApplicationArea = All; Editable = false; }
-                field("SI Project No."; Rec."SI Project No.") { ApplicationArea = All; Editable = false; }
-                field(Blocked; Rec.Blocked) { ApplicationArea = All; }
+                field("SI Project No."; Rec."SI Project No.") { ApplicationArea = All; Caption = 'Проєкт / об’єкт'; Editable = false; }
+                field(Blocked; Rec.Blocked) { ApplicationArea = All; Editable = false; }
             }
         }
     }

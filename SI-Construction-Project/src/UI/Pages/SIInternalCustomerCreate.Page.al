@@ -7,8 +7,8 @@ page 60039 "SI Internal Customer Create"
     {
         area(Content)
         {
-            field(CustomerNo; CustomerNo) { ApplicationArea = All; Caption = 'Код'; }
-            field(CustomerName; CustomerName) { ApplicationArea = All; Caption = 'Назва'; }
+            field(CustomerNo; CustomerNo) { ApplicationArea = All; Caption = 'Код'; ShowMandatory = true; }
+            field(CustomerName; CustomerName) { ApplicationArea = All; Caption = 'Назва'; ShowMandatory = true; }
         }
     }
     var

@@ -12,8 +12,20 @@ page 60030 "SI Internal Operations Setup"
         {
             repeater(Purposes)
             {
-                field(Code; Rec.Code) { ApplicationArea = All; }
-                field(Description; Rec.Description) { ApplicationArea = All; }
+                field(Code; Rec.Code)
+                {
+                    ApplicationArea = All;
+                    trigger OnValidate()
+                    begin
+                        UpdateDescription();
+                    end;
+                }
+                field(Description; OperationDescription)
+                {
+                    Caption = 'Опис';
+                    ApplicationArea = All;
+                    Editable = false;
+                }
                 field("Customer No."; Rec."Customer No.") { ApplicationArea = All; }
                 field(Enabled; Rec.Enabled) { ApplicationArea = All; }
             }
@@ -35,6 +47,12 @@ page 60030 "SI Internal Operations Setup"
                     Message('Активні налаштування перевірено.');
                 end;
             }
+            action(OperationsDirectory)
+            {
+                Caption = 'Внутрішні операції';
+                ApplicationArea = All;
+                RunObject = page "SI Internal Operations";
+            }
             action(InternalCustomers)
             {
                 Caption = 'Внутрішні клієнти';
@@ -44,4 +62,22 @@ page 60030 "SI Internal Operations Setup"
         }
     }
 
+    trigger OnAfterGetRecord()
+    begin
+        UpdateDescription();
+    end;
+    trigger OnAfterGetCurrRecord()
+    begin
+        UpdateDescription();
+    end;
+    local procedure UpdateDescription()
+    var
+        Operation: Record "SI Internal Operation";
+    begin
+        Clear(OperationDescription);
+        if Operation.Get(Rec.Code) then
+            OperationDescription := Operation.Description;
+    end;
+    var
+        OperationDescription: Text[100];
 }

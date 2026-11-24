@@ -5,6 +5,12 @@ permissionset 60000 "SI CP ADMIN"
     Caption = 'SI Construction Project Admin';
 
     Permissions =
+        tabledata "SI Internal Operation" = RIMD,
+        table "SI Internal Operation" = X,
+        page "SI Internal Operations" = X,
+        codeunit "SI Internal Operation Seed" = X,
+        codeunit "SI Internal Operation Upgrade" = X,
+        codeunit "SI Internal Operation Install" = X,
         page "SI Internal Customers" = X,
         page "SI Internal Customer Card" = X,
         page "SI Internal Customer Create" = X,

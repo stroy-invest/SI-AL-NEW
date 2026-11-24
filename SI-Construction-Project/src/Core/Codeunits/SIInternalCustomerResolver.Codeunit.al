@@ -25,9 +25,7 @@ codeunit 60035 "SI Internal Customer Resolver"
             exit(false);
         if not CustomerRec.Get(PurposeSetup."Customer No.") then
             exit(false);
-        if CustomerRec."SI Customer Type" <> CustomerRec."SI Customer Type"::"Internal Operations" then
-            exit(false);
-        if CustomerRec."SI Project No." <> '' then
+        if not (CustomerRec."SI Customer Type" in [CustomerRec."SI Customer Type"::"Internal Operations", CustomerRec."SI Customer Type"::"Internal Project"]) then
             exit(false);
         CustomerNo := CustomerRec."No.";
         exit(true);

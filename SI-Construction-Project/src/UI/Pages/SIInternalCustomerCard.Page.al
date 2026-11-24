@@ -15,8 +15,8 @@ page 60038 "SI Internal Customer Card"
             group(General)
             {
                 Caption = 'Загальне';
-                field("No."; Rec."No.") { ApplicationArea = All; Editable = false; }
-                field(Name; Rec.Name) { ApplicationArea = All; Editable = IsOperations; }
+                field("No."; Rec."No.") { ApplicationArea = All; Caption = 'Код'; }
+                field(Name; Rec.Name) { ApplicationArea = All; Caption = 'Назва'; Editable = IsOperations; }
                 field("SI Customer Type"; Rec."SI Customer Type") { ApplicationArea = All; Editable = false; }
                 field("SI Project No."; Rec."SI Project No.") { ApplicationArea = All; Editable = false; }
                 field(Blocked; Rec.Blocked) { ApplicationArea = All; Editable = IsOperations; }
