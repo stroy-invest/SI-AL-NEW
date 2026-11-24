@@ -6,7 +6,7 @@ page 62100 "SI Concrete Recipes"
 {
     PageType = List;
     SourceTable = "SI Concrete Recipe";
-    Caption = 'Рецептури бетону';
+    Caption = 'Рецептури бетону (cписок)';
     ApplicationArea = All;
     UsageCategory = Lists;
     CardPageId = "SI Concrete Recipe Card";
@@ -90,17 +90,26 @@ page 62100 "SI Concrete Recipes"
 
                 trigger OnAction()
                 var
+                    PurposeDialog: Page "SI Recipe Purpose Dialog";
+                    Purpose: Enum "SI Recipe Purpose";
+                    TechDescription: Text[100];
                     ProductSelector: Page "SI Recipe Product Selector";
                     RecipeCreationMgt: Codeunit "SI Recipe Creation Mgt.";
                     RecipeRevision: Record "SI Concrete Recipe Revision";
                     ItemNo: Code[20];
                     VariantCode: Code[10];
                 begin
-                    ProductSelector.RunModal();
-                    if not ProductSelector.GetSelection(ItemNo, VariantCode) then
+                    if PurposeDialog.RunModal() <> Action::OK then
                         exit;
-
-                    RecipeCreationMgt.GetOrCreateDraftRevision(ItemNo, VariantCode, RecipeRevision);
+                    PurposeDialog.GetSelection(Purpose, TechDescription);
+                    if Purpose = Purpose::Technological then
+                        RecipeCreationMgt.CreateTechnologicalRecipe(TechDescription, RecipeRevision)
+                    else begin
+                        ProductSelector.RunModal();
+                        if not ProductSelector.GetSelection(ItemNo, VariantCode) then
+                            exit;
+                        RecipeCreationMgt.GetOrCreateDraftRevision(ItemNo, VariantCode, RecipeRevision);
+                    end;
 
                     // Keep the UI boundary outside the write transaction.
                     Commit();

@@ -47,7 +47,7 @@ table 62021 "SI Concrete Recipe Revision"
         }
         field(12; "Valid From"; Date)
         {
-            Caption = 'Чинна з';
+            Caption = 'Чинна з:';
             ToolTip = 'Вказує першу дату валідності цієї ревізії.';
 
             trigger OnValidate()
@@ -58,7 +58,7 @@ table 62021 "SI Concrete Recipe Revision"
         }
         field(13; "Valid To"; Date)
         {
-            Caption = 'Чинна до';
+            Caption = 'Чинна до:';
             ToolTip = 'Вказує останню дату валідності цієї ревізії.';
 
             trigger OnValidate()
@@ -87,6 +87,17 @@ table 62021 "SI Concrete Recipe Revision"
             begin
                 CementMfrMgt.ValidateManufacturer("Cement Manufacturer Code");
             end;
+        }
+        field(17; "Recipe Purpose"; Enum "SI Recipe Purpose")
+        {
+            Caption = 'Призначення рецептури';
+            ToolTip = 'Визначає товарне або технологічне призначення конкретної редакції.';
+        }
+        field(18; "Proktek Number"; Text[20])
+        {
+            Caption = 'Номер у Proktek';
+            Editable = false;
+            ToolTip = 'Користувацький номер для операторського АРМ Proktek; не є ERP-ідентифікатором.';
         }
         field(20; "Source Revision No."; Integer)
         {
@@ -172,6 +183,13 @@ table 62021 "SI Concrete Recipe Revision"
 
     trigger OnModify()
     begin
+        if "Recipe Purpose" <> xRec."Recipe Purpose" then
+            Error('Призначення рецептури не можна змінювати після створення ревізії.');
+        if AllowProktekNumberModify then begin
+            CheckProktekNumberOnlyChange();
+            exit;
+        end;
+
         if AllowLifecycleModify then
             exit;
 
@@ -241,6 +259,8 @@ table 62021 "SI Concrete Recipe Revision"
            ("Recipe No." <> xRec."Recipe No.") or
            ("Revision No." <> xRec."Revision No.") or
            ("Source Revision No." <> xRec."Source Revision No.") or
+           ("Recipe Purpose" <> xRec."Recipe Purpose") or
+           ("Proktek Number" <> xRec."Proktek Number") or
            ("Production BOM Version Code" <> xRec."Production BOM Version Code") or
            ("Projection Status" <> xRec."Projection Status") or
            ("Projection Error" <> xRec."Projection Error") or
@@ -249,6 +269,54 @@ table 62021 "SI Concrete Recipe Revision"
            ("Closed At" <> xRec."Closed At") or
            ("Closed By" <> xRec."Closed By") then
             Error(AdminMetadataOnlyErr);
+    end;
+
+    procedure SetProktekNumber(NewNumber: Text[20])
+    var
+        OtherRevision: Record "SI Concrete Recipe Revision";
+    begin
+        Get("Recipe No.", "Revision No.");
+        if "Proktek Number" <> '' then
+            Error('Номер Proktek для цієї редакції вже вписано.');
+        NewNumber := CopyStr(DelChr(NewNumber, '<>', ' '), 1, MaxStrLen("Proktek Number"));
+        if NewNumber = '' then
+            Error('Вкажіть номер рецептури для Proktek.');
+
+        OtherRevision.SetFilter("Proktek Number", '<>%1', '');
+        if OtherRevision.FindSet() then
+            repeat
+                if UpperCase(OtherRevision."Proktek Number") = UpperCase(NewNumber) then
+                    Error('Номер Proktek %1 уже використано в рецептурі %2, редакція %3.',
+                        NewNumber, OtherRevision."Recipe No.", OtherRevision."Revision No.");
+            until OtherRevision.Next() = 0;
+
+        "Proktek Number" := NewNumber;
+        AllowProktekNumberModify := true;
+        Modify(true);
+        AllowProktekNumberModify := false;
+    end;
+
+    local procedure CheckProktekNumberOnlyChange()
+    begin
+        if ("Recipe No." <> xRec."Recipe No.") or
+           ("Revision No." <> xRec."Revision No.") or
+           (Status <> xRec.Status) or
+           ("Administrative Status" <> xRec."Administrative Status") or
+           ("Recipe Purpose" <> xRec."Recipe Purpose") or
+           ("Validity Type" <> xRec."Validity Type") or
+           ("Valid From" <> xRec."Valid From") or
+           ("Valid To" <> xRec."Valid To") or
+           (Season <> xRec.Season) or
+           ("Cement Manufacturer Code" <> xRec."Cement Manufacturer Code") or
+           ("Source Revision No." <> xRec."Source Revision No.") or
+           ("Production BOM Version Code" <> xRec."Production BOM Version Code") or
+           ("Projection Status" <> xRec."Projection Status") or
+           ("Projection Error" <> xRec."Projection Error") or
+           ("Certified At" <> xRec."Certified At") or
+           ("Certified By" <> xRec."Certified By") or
+           ("Closed At" <> xRec."Closed At") or
+           ("Closed By" <> xRec."Closed By") then
+            Error('Під час вписування номера Proktek заборонено змінювати інші поля редакції.');
     end;
 
     procedure GetDisplayName(): Text
@@ -297,8 +365,28 @@ table 62021 "SI Concrete Recipe Revision"
             "Valid To" := DMY2Date(31, 12, 2999);
     end;
 
+    procedure MarkReady()
+    begin
+        if "Recipe Purpose" <> "Recipe Purpose"::Technological then
+            Error('Затвердження без сертифікації доступне лише технологічним рецептурам.');
+        if Status <> Status::Draft then
+            Error('Затвердити можна лише чернеткову редакцію.');
+
+        AllowLifecycleModify := true;
+        Status := Status::Ready;
+        "Administrative Status" := "Administrative Status"::Active;
+        "Certified At" := CurrentDateTime();
+        "Certified By" := UserSecurityId();
+        "Closed At" := 0DT;
+        Clear("Closed By");
+        Modify(true);
+        AllowLifecycleModify := false;
+    end;
+
     procedure MarkCertified()
     begin
+        if "Recipe Purpose" <> "Recipe Purpose"::Commercial then
+            Error('Сертифікація доступна лише товарним рецептурам.');
         if Status <> Status::Draft then
             Error(CertifyDraftOnlyErr, "Recipe No.", "Revision No.");
 
@@ -315,7 +403,7 @@ table 62021 "SI Concrete Recipe Revision"
 
     procedure Deactivate()
     begin
-        if Status <> Status::Certified then
+        if (Status <> Status::Certified) and (Status <> Status::Ready) then
             Error(DeactivateCertifiedOnlyErr, "Recipe No.", "Revision No.");
 
         if "Administrative Status" = "Administrative Status"::Inactive then
@@ -331,7 +419,7 @@ table 62021 "SI Concrete Recipe Revision"
 
     procedure Activate()
     begin
-        if Status <> Status::Certified then
+        if (Status <> Status::Certified) and (Status <> Status::Ready) then
             Error(ActivateCertifiedOnlyErr, "Recipe No.", "Revision No.");
 
         if "Administrative Status" = "Administrative Status"::Active then
@@ -384,6 +472,7 @@ table 62021 "SI Concrete Recipe Revision"
     end;
 
     var
+        AllowProktekNumberModify: Boolean;
         AllowLifecycleModify: Boolean;
         AllowAdminMetadataModify: Boolean;
         AdminMetadataOnlyErr: Label 'Адміністративний режим дозволяє змінювати лише метадані ревізії.';

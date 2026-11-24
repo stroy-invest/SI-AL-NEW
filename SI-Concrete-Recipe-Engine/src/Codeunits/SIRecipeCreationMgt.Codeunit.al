@@ -1,6 +1,7 @@
 namespace STROYINVEST.ConcreteRecipeEngine;
 
 using Microsoft.Inventory.Item;
+using Microsoft.Foundation.UOM;
 
 codeunit 62200 "SI Recipe Creation Mgt."
 {
@@ -26,7 +27,47 @@ codeunit 62200 "SI Recipe Creation Mgt."
         Recipe: Record "SI Concrete Recipe";
     begin
         Recipe.Get(RecipeNo);
+        if Recipe."Item No." = '' then begin
+            FindOrCreateDraftForRecipe(Recipe, RecipeRevision);
+            exit;
+        end;
         GetOrCreateDraftRevision(Recipe."Item No.", Recipe."Variant Code", RecipeRevision);
+    end;
+
+    procedure CreateTechnologicalRecipe(Description: Text[100]; var RecipeRevision: Record "SI Concrete Recipe Revision")
+    var
+        Recipe: Record "SI Concrete Recipe";
+        UoM: Record "Unit of Measure";
+        NewGuid: Guid;
+    begin
+        if Description = '' then
+            Error('Вкажіть опис технологічної рецептури.');
+        if not UoM.Get('BATCH') then
+            Error('Одиниця виміру BATCH відсутня. Створіть її у довіднику одиниць виміру перед створенням технологічної рецептури.');
+
+        NewGuid := CreateGuid();
+        Recipe.Init();
+        Recipe."Recipe No." := CopyStr('TECH-' + DelChr(Format(NewGuid), '=', '{}-'), 1, MaxStrLen(Recipe."Recipe No."));
+        Recipe.Description := Description;
+        Recipe."Recipe Type" := Recipe."Recipe Type"::Base;
+        Recipe.Validate("Output Quantity", 1);
+        Recipe.Validate("Output UoM Code", 'BATCH');
+        Recipe.Active := true;
+        Recipe.Insert(true);
+        FindOrCreateDraftForRecipe(Recipe, RecipeRevision);
+    end;
+
+    local procedure FindOrCreateDraftForRecipe(Recipe: Record "SI Concrete Recipe"; var RecipeRevision: Record "SI Concrete Recipe Revision")
+    begin
+        RecipeRevision.Reset();
+        RecipeRevision.SetRange("Recipe No.", Recipe."Recipe No.");
+        RecipeRevision.SetRange(Status, RecipeRevision.Status::Draft);
+        if RecipeRevision.FindLast() then
+            exit;
+        RecipeRevision.Init();
+        RecipeRevision.Validate("Recipe No.", Recipe."Recipe No.");
+        RecipeRevision."Recipe Purpose" := RecipeRevision."Recipe Purpose"::Technological;
+        RecipeRevision.Insert(true);
     end;
 
     procedure GetConcreteRootCategoryCode(): Code[20]

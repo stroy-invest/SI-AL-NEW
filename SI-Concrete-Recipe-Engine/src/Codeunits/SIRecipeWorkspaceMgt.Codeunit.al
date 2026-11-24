@@ -127,6 +127,8 @@ codeunit 62206 "SI Recipe Workspace Mgt."
         FirstChild: Boolean;
     begin
         CategoryName := CategoryCode;
+        if CategoryCode = '' then
+            CategoryName := 'Технологічні рецептури';
         if Category.Get(CategoryCode) and (Category.Description <> '') then
             CategoryName := Category.Description;
 

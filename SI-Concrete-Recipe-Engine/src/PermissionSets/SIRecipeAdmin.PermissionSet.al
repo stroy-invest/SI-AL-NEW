@@ -25,6 +25,7 @@ permissionset 62300 "SI RECIPE ADMIN"
         page "SI Recipe Lines Part" = X,
         page "SI Recipe Setup" = X,
         page "SI Recipe Product Selector" = X,
+        page "SI Recipe Purpose Dialog" = X,
         page "SI Recipe Candidates" = X,
         page "SI Recipe Resolve Date" = X,
         page "SI Concrete Recipes Tree" = X,

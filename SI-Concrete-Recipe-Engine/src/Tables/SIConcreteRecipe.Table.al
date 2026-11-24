@@ -72,7 +72,10 @@ table 62020 "SI Concrete Recipe"
 
             trigger OnValidate()
             begin
-                if ("Recipe Type" = "Recipe Type"::Base) and ("Variant Code" <> '') then
+                if ("Item No." = '') and ("Variant Code" <> '') then
+            Error(BaseRecipeVariantErr);
+
+        if ("Recipe Type" = "Recipe Type"::Base) and ("Variant Code" <> '') then
                     Error(BaseRecipeVariantErr);
             end;
         }
@@ -163,7 +166,6 @@ table 62020 "SI Concrete Recipe"
         }
         key(ItemVariant; "Item No.", "Variant Code")
         {
-            Unique = true;
         }
         key(SubcategoryItemVariant; "Subcategory Code", "Item No.", "Variant Code")
         {
@@ -174,10 +176,17 @@ table 62020 "SI Concrete Recipe"
     }
 
     trigger OnInsert()
+    var
+        ExistingRecipe: Record "SI Concrete Recipe";
     begin
         TestField("Recipe No.");
-        TestField("Item No.");
-        TestField("Subcategory Code");
+        if "Item No." <> '' then begin
+            TestField("Subcategory Code");
+            ExistingRecipe.SetRange("Item No.", "Item No.");
+            ExistingRecipe.SetRange("Variant Code", "Variant Code");
+            if not ExistingRecipe.IsEmpty() then
+                Error('Для товару %1 та варіанта %2 рецептура вже існує.', "Item No.", "Variant Code");
+        end;
 
         if "Output Quantity" = 0 then
             "Output Quantity" := 1;

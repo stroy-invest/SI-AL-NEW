@@ -9,6 +9,7 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
     begin
         RecipeRevision.Get(RecipeRevision."Recipe No.", RecipeRevision."Revision No.");
         RecipeRevision.TestField(Status, RecipeRevision.Status::Draft);
+        RecipeRevision.TestField("Recipe Purpose", RecipeRevision."Recipe Purpose"::Commercial);
         RecipeRevision.ValidateValidity();
         ValidateRecipeLines(RecipeRevision);
         CementMfrMgt.ValidateManufacturer(RecipeRevision."Cement Manufacturer Code");
@@ -26,6 +27,25 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
         RecipeBOMProjection.ProjectRevision(RecipeRevision);
     end;
 
+    procedure ApproveTechnologicalRevision(var RecipeRevision: Record "SI Concrete Recipe Revision")
+    var
+        RecipeBOMProjection: Codeunit "SI Recipe BOM Projection";
+        CementMfrMgt: Codeunit "SI Recipe Cement Mfr Mgt.";
+    begin
+        RecipeRevision.Get(RecipeRevision."Recipe No.", RecipeRevision."Revision No.");
+        RecipeRevision.TestField(Status, RecipeRevision.Status::Draft);
+        RecipeRevision.TestField("Recipe Purpose", RecipeRevision."Recipe Purpose"::Technological);
+        RecipeRevision.ValidateValidity();
+        ValidateRecipeLines(RecipeRevision);
+        CementMfrMgt.ValidateManufacturer(RecipeRevision."Cement Manufacturer Code");
+        RecipeRevision.MarkReady();
+        RecipeRevision.SetProjectionState(
+            RecipeRevision."Projection Status"::Pending,
+            '',
+            '');
+        RecipeBOMProjection.ProjectRevision(RecipeRevision);
+    end;
+
     procedure CloneRevision(SourceRevision: Record "SI Concrete Recipe Revision"; var NewRevision: Record "SI Concrete Recipe Revision")
     begin
         SourceRevision.Get(SourceRevision."Recipe No.", SourceRevision."Revision No.");
@@ -33,6 +53,8 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
         NewRevision.Init();
         NewRevision.Validate("Recipe No.", SourceRevision."Recipe No.");
         NewRevision."Source Revision No." := SourceRevision."Revision No.";
+        NewRevision."Recipe Purpose" := SourceRevision."Recipe Purpose";
+        // Proktek Number deliberately NOT copied: unique per revision.
         NewRevision."Validity Type" := SourceRevision."Validity Type";
         NewRevision.Season := SourceRevision.Season;
         NewRevision."Cement Manufacturer Code" := SourceRevision."Cement Manufacturer Code";
@@ -53,7 +75,9 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
     procedure DeactivateRevision(var RecipeRevision: Record "SI Concrete Recipe Revision")
     begin
         RecipeRevision.Get(RecipeRevision."Recipe No.", RecipeRevision."Revision No.");
-        RecipeRevision.TestField(Status, RecipeRevision.Status::Certified);
+        if (RecipeRevision.Status <> RecipeRevision.Status::Certified) and
+           (RecipeRevision.Status <> RecipeRevision.Status::Ready) then
+            Error('Адміністративна дія доступна лише для затвердженої редакції.');
 
         if RecipeRevision."Administrative Status" = RecipeRevision."Administrative Status"::Inactive then
             exit;
@@ -66,7 +90,9 @@ codeunit 62201 "SI Recipe Lifecycle Mgt."
     procedure ActivateRevision(var RecipeRevision: Record "SI Concrete Recipe Revision")
     begin
         RecipeRevision.Get(RecipeRevision."Recipe No.", RecipeRevision."Revision No.");
-        RecipeRevision.TestField(Status, RecipeRevision.Status::Certified);
+        if (RecipeRevision.Status <> RecipeRevision.Status::Certified) and
+           (RecipeRevision.Status <> RecipeRevision.Status::Ready) then
+            Error('Адміністративна дія доступна лише для затвердженої редакції.');
 
         if RecipeRevision."Administrative Status" = RecipeRevision."Administrative Status"::Active then
             exit;

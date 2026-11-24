@@ -21,10 +21,15 @@ codeunit 62204 "SI Recipe BOM Projection"
         ExpectedLineCount: Integer;
     begin
         RecipeRevision.Get(RecipeRevision."Recipe No.", RecipeRevision."Revision No.");
-        RecipeRevision.TestField(Status, RecipeRevision.Status::Certified);
+        if not (((RecipeRevision."Recipe Purpose" = RecipeRevision."Recipe Purpose"::Commercial) and
+                 (RecipeRevision.Status = RecipeRevision.Status::Certified)) or
+                ((RecipeRevision."Recipe Purpose" = RecipeRevision."Recipe Purpose"::Technological) and
+                 (RecipeRevision.Status = RecipeRevision.Status::Ready))) then
+            Error('BOM Projection дозволено лише для сертифікованої товарної або затвердженої технологічної редакції.');
 
         Recipe.Get(RecipeRevision."Recipe No.");
-        Recipe.TestField("Item No.");
+        if RecipeRevision."Recipe Purpose" = RecipeRevision."Recipe Purpose"::Commercial then
+            Recipe.TestField("Item No.");
         Recipe.TestField("Output UoM Code");
         if Recipe."Output Quantity" <= 0 then
             Error(OutputQuantityErr, Recipe."Recipe No.");
@@ -32,7 +37,8 @@ codeunit 62204 "SI Recipe BOM Projection"
         ExpectedLineCount := ValidateRecipeLines(RecipeRevision);
 
         EnsureProductionBOMHeader(Recipe, ProdBOMHeader);
-        EnsureProductBOMLink(Recipe, ProdBOMHeader."No.");
+        if RecipeRevision."Recipe Purpose" = RecipeRevision."Recipe Purpose"::Commercial then
+            EnsureProductBOMLink(Recipe, ProdBOMHeader."No.");
 
         VersionCode := BuildVersionCode(RecipeRevision."Revision No.");
         RecipeRevision.SetProjectionState(

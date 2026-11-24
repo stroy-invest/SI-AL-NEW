@@ -13,6 +13,10 @@ enum 62001 "SI Recipe Revision Status"
     {
         Caption = 'Сертифікована';
     }
+    value(3; Ready)
+    {
+        Caption = 'Готова до використання';
+    }
     value(2; Closed)
     {
         Caption = 'Закрита';

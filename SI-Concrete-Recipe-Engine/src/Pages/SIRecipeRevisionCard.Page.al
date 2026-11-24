@@ -54,6 +54,7 @@ page 62103 "SI Recipe Revision Card"
                 {
                     ApplicationArea = All;
                     Editable = IsDraft or AdminEdit;
+                    Caption = 'Тип валідності';
 
                     trigger OnValidate()
                     begin
@@ -66,6 +67,7 @@ page 62103 "SI Recipe Revision Card"
                 {
                     ApplicationArea = All;
                     Editable = IsDraft or AdminEdit;
+                    Caption = 'Чинна з:';
                     trigger OnValidate()
                     begin
                         SaveAdminMetadata();
@@ -75,6 +77,7 @@ page 62103 "SI Recipe Revision Card"
                 {
                     ApplicationArea = All;
                     Editable = IsTemporaryDraft or (AdminEdit and (AdminValidityType = AdminValidityType::Temporary));
+                    Caption = 'Чинна до:';
                     trigger OnValidate()
                     begin
                         SaveAdminMetadata();
@@ -84,7 +87,7 @@ page 62103 "SI Recipe Revision Card"
                 {
                     ApplicationArea = All;
                     Editable = IsDraft or AdminEdit;
-
+                    Caption = 'Сезонність';
                     trigger OnValidate()
                     begin
                         SaveAdminMetadata();
@@ -96,6 +99,7 @@ page 62103 "SI Recipe Revision Card"
                 {
                     ApplicationArea = All;
                     Editable = IsDraft or AdminEdit;
+                    Caption = 'Виробник цементу';
                     trigger OnValidate()
                     begin
                         SaveAdminMetadata();
@@ -115,6 +119,17 @@ page 62103 "SI Recipe Revision Card"
                         end;
                         exit(true);
                     end;
+                }
+                field("Recipe Purpose"; Rec."Recipe Purpose")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    ToolTip = 'Призначення встановлюється під час створення рецептури та не змінюється.';
+                }
+                field("Proktek Number"; Rec."Proktek Number")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
                 }
                 field("Source Revision No."; Rec."Source Revision No.")
                 {
@@ -222,6 +237,27 @@ page 62103 "SI Recipe Revision Card"
                     CurrPage.Update(false);
                 end;
             }
+            action(EnterProktekNumber)
+            {
+                Caption = 'Вписати номер';
+                ApplicationArea = All;
+                Image = Edit;
+                Enabled = ProktekNumberMissing;
+                ToolTip = 'Одноразово вписати номер рецептури для Proktek. Для передавання скористайтеся наявною дією «Передати в Proktek».';
+
+                trigger OnAction()
+                var
+                    NumberDialog: Page "SI Recipe Proktek No. Dialog";
+                    NewNumber: Text[20];
+                begin
+                    if NumberDialog.RunModal() <> Action::OK then
+                        exit;
+                    NewNumber := NumberDialog.GetNumber();
+                    Rec.SetProktekNumber(NewNumber);
+                    UpdateState();
+                    CurrPage.Update(false);
+                end;
+            }
             action(Certify)
             {
                 Caption = 'Сертифікувати';
@@ -230,6 +266,7 @@ page 62103 "SI Recipe Revision Card"
                 Promoted = true;
                 PromotedCategory = Process;
                 PromotedOnly = true;
+                Visible = IsCommercial;
                 Enabled = IsDraft;
                 ToolTip = 'Перевірити цю чернеткову ревізію та сертифікувати її. Сертифіковані ревізії незмінні.';
 
@@ -241,6 +278,29 @@ page 62103 "SI Recipe Revision Card"
                         exit;
 
                     RecipeLifecycleMgt.CertifyRevision(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
+            action(ApproveTechnological)
+            {
+                Caption = 'Затвердити';
+                ApplicationArea = All;
+                Image = Approve;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedOnly = true;
+                Visible = IsTechnological;
+                Enabled = IsDraft;
+                ToolTip = 'Затвердити технологічну рецептуру та сформувати Production BOM без бізнес-сертифікації.';
+
+                trigger OnAction()
+                var
+                    RecipeLifecycleMgt: Codeunit "SI Recipe Lifecycle Mgt.";
+                begin
+                    if not Confirm('Затвердити технологічну редакцію %1 рецептури %2?', false,
+                        Rec."Revision No.", Rec."Recipe No.") then
+                        exit;
+                    RecipeLifecycleMgt.ApproveTechnologicalRevision(Rec);
                     CurrPage.Update(false);
                 end;
             }
@@ -401,17 +461,20 @@ page 62103 "SI Recipe Revision Card"
         AdminSeason := Rec.Season;
         AdminCementManufacturer := Rec."Cement Manufacturer Code";
         IsDraft := Rec.Status = Rec.Status::Draft;
+        IsCommercial := Rec."Recipe Purpose" = Rec."Recipe Purpose"::Commercial;
+        IsTechnological := Rec."Recipe Purpose" = Rec."Recipe Purpose"::Technological;
+        ProktekNumberMissing := Rec."Proktek Number" = '';
         IsCertified := Rec.Status = Rec.Status::Certified;
         IsTemporaryDraft := IsDraft and (Rec."Validity Type" = Rec."Validity Type"::Temporary);
-        CanDeactivate := IsCertified and (Rec."Administrative Status" = Rec."Administrative Status"::Active);
-        CanActivate := IsCertified and (Rec."Administrative Status" = Rec."Administrative Status"::Inactive);
+        CanDeactivate := (IsCertified or (Rec.Status = Rec.Status::Ready)) and (Rec."Administrative Status" = Rec."Administrative Status"::Active);
+        CanActivate := (IsCertified or (Rec.Status = Rec.Status::Ready)) and (Rec."Administrative Status" = Rec."Administrative Status"::Inactive);
         HasProjection :=
             (Rec."Projection Status" = Rec."Projection Status"::Projected) and
             (Rec."Production BOM Version Code" <> '');
 
         UpdateProductionBOMVersionDisplay();
 
-        if IsCertified then
+        if IsCertified or (Rec.Status = Rec.Status::Ready) then
             ApplicabilityDisplay := Format(Rec.GetApplicability(Today()))
         else
             Clear(ApplicabilityDisplay);
@@ -481,6 +544,9 @@ page 62103 "SI Recipe Revision Card"
         AdminCementManufacturer: Code[20];
         RevisionDisplayName: Text;
         IsDraft: Boolean;
+        IsCommercial: Boolean;
+        IsTechnological: Boolean;
+        ProktekNumberMissing: Boolean;
         IsCertified: Boolean;
         IsTemporaryDraft: Boolean;
         CanDeactivate: Boolean;
