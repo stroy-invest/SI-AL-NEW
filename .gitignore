@@ -32,3 +32,10 @@ cache_*
 **/*_app.json
 # Generated AL object ID reports
 SI-ProductConfigurator/AL-ID-Report.txt
+
+# Generated AL Object ID reports
+/reports/al-object-ids/AL-Object-IDs.json
+/reports/al-object-ids/AL-Object-IDs.txt
+
+# Local backups
+/_backups/
