@@ -4,6 +4,7 @@ codeunit 57234 "SI Prok Fact Shipment Audit"
     procedure RunReadOnly()
     var
         Fact: Record "SI Prok Production Fact";
+        Revision: Record "SI Concrete Recipe Revision";
         Shipment: Record "SI Prok Shipment";
         Site: Record "SI Construction Site";
         Guard: Codeunit "SI Prok Concrete Identity";
@@ -18,11 +19,20 @@ codeunit 57234 "SI Prok Fact Shipment Audit"
         AddressIssues: Integer;
         ClosedIssues: Integer;
         ClosedHasIssue: Boolean;
+        NonCommercial: Integer;
+        Unresolved: Integer;
     begin
         if Fact.FindSet() then
             repeat
                 FactCount += 1;
                 if Fact."Produced Quantity M3" > 0 then begin
+                    if not Revision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+                        Unresolved += 1
+                    else
+                        if Revision."Recipe Purpose" = Revision."Recipe Purpose"::Technological then
+                            NonCommercial += 1;
+                    if Revision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+                        if Revision."Recipe Purpose" = Revision."Recipe Purpose"::Commercial then begin
                     Expected += 1;
                     if not Guard.IsValidFact(Fact, Reason) then begin
                         IdentityErrors += 1;
@@ -65,12 +75,13 @@ codeunit 57234 "SI Prok Fact Shipment Audit"
                         if ClosedHasIssue and (Shipment.Status = Shipment.Status::Closed) then
                             ClosedIssues += 1;
                     end;
+                    end;
                 end;
             until Fact.Next() = 0;
 
         Message(
-            'Аудит Proktek (лише читання)\Фактів: %1; із випуском > 0: %2; без Shipment: %3; помилок ідентичності/кількості: %4; проблем майданчика: %5; порожніх адрес: %6; проблем у закритих документах: %7.\Приклади:\%8',
-            FactCount, Expected, Missing, IdentityErrors, SiteIssues, AddressIssues, ClosedIssues, Examples);
+            'Аудит Proktek (лише читання)\Фактів: %1; із випуском > 0: %2; без Shipment: %3; помилок ідентичності/кількості: %4; проблем майданчика: %5; порожніх адрес: %6; проблем у закритих документах: %7; технологічних без вимоги Shipment: %8; невизначених (потребують окремого розбору): %9.\Приклади:\%10',
+            FactCount, Expected, Missing, IdentityErrors, SiteIssues, AddressIssues, ClosedIssues, NonCommercial, Unresolved, Examples);
     end;
 
     local procedure AppendExample(var Examples: Text; FactEntryNo: Integer; Reason: Text)

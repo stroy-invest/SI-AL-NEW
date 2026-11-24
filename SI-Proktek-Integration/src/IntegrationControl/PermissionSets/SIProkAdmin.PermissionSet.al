@@ -1,9 +1,12 @@
-﻿permissionset 57950 "SI PROK ADMIN"
+permissionset 57950 "SI PROK ADMIN"
 {
     Assignable = true;
     Caption = 'SI Proktek Integration Admin';
 
     Permissions =
+        page "SI Prok Sim Fact Del Audit" = X,
+        tabledata "SI Prok Sim Fact Del Audit" = R,
+        codeunit "SI Prok Internal Cust Resolver" = X,
         tabledata "SI Prok Operations Setup" = RIMD,
         table "SI Prok Operations Setup" = X,
         page "SI Prok Operations Setup" = X,
@@ -140,6 +143,9 @@
         page "SI Prok Raw API Responses" = X,
         codeunit "SI Prok Capture Mgt." = X,
         codeunit "SI Prok Fact Intake Worker" = X,
+        codeunit "SI Prok Fact Recovery" = X,
+        codeunit "SI Prok Recovery Worker" = X,
+        page "SI Prok Recovery Reason" = X,
         codeunit "SI Prok Fact Content Compare" = X,
         codeunit "SI Prok Formula Projector" = X,
         page "SI Prok Formula Sync Status" = X,

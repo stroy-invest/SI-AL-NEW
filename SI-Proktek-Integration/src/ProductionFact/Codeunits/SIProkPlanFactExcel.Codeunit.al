@@ -1,4 +1,4 @@
-﻿codeunit 57222 "SI Prok Plan Fact Excel"
+codeunit 57222 "SI Prok Plan Fact Excel"
 {
     // Report structure and styles are defined by Resources/PlanFactTemplate.xlsx.
     // One sheet; header, consecutive concrete parties and one material summary.
@@ -51,6 +51,7 @@
         Plan: Record "SI Prok Production Plan";
         Resolver: Codeunit "SI Prok PF Link Resolver";
         Writer: Codeunit "SI Prok PF Template Writer";
+        M3Resolver: Codeunit "SI Prok Concrete M3 UoM";
     begin
         if (Resolver.Resolve(Fact, Request) = Enum::"SI Prok PF Link State"::Linked) and
             Plan.Get(Request."Entry No.") then begin
@@ -58,7 +59,10 @@
             WriteLinkedMaterials(Writer, Fact, Plan, GetPlanOutputM3(Plan),
                 Fact."Produced Quantity M3", Summary, false);
         end else
-            WriteUnlinkedMaterials(Writer, Fact, Summary, false);
+            if IsTechnologicalRecipe(Fact) then
+                WriteTechnologicalMaterials(Writer, Fact, Summary, false)
+            else
+                WriteUnlinkedMaterials(Writer, Fact, Summary, false);
     end;
 
     local procedure ExportFilteredRequests(var Request: Record "SI Concrete Prod Request"; ReportNo: Text)
@@ -247,7 +251,10 @@
             if IsLinked then
                 WriteLinkedMaterials(Writer, FirstFact, Plan, PlannedM3, TotalM3, Summary, true)
             else
-                WriteUnlinkedMaterials(Writer, FirstFact, Summary, true);
+                if IsTechnologicalRecipe(FirstFact) then
+                    WriteTechnologicalMaterials(Writer, FirstFact, Summary, true)
+                else
+                    WriteUnlinkedMaterials(Writer, FirstFact, Summary, true);
         end else begin
             Fact.Reset();
             if Fact.FindSet() then
@@ -259,7 +266,10 @@
                         Writer.AddPartyHeader(PartyNo, Fact."Truck Plate", DriverName,
                             FormatDateTime(Fact."Production Date/Time"), Fact."Planned Quantity M3" > 0,
                             Fact."Planned Quantity M3", PartyM3);
-                        WriteUnlinkedMaterials(Writer, Fact, Summary, true);
+                        if IsTechnologicalRecipe(Fact) then
+                            WriteTechnologicalMaterials(Writer, Fact, Summary, true)
+                        else
+                            WriteUnlinkedMaterials(Writer, Fact, Summary, true);
                         Writer.BlankRow();
                     end;
                 until Fact.Next() = 0;
@@ -328,6 +338,93 @@
             until Batch.Next() = 0;
     end;
 
+    // TECH-05: technological facts have no production order/plan. Their immutable
+    // recipe revision BOM Version is the normative source, not the current recipe.
+    local procedure WriteTechnologicalMaterials(var Writer: Codeunit "SI Prok PF Template Writer"; Fact: Record "SI Prok Production Fact"; var Summary: Record "SI Prok PF Material Buffer" temporary; EmitRows: Boolean)
+    var
+        Batch: Record "SI Prok PF Material Buffer" temporary;
+        Recipe: Record "SI Concrete Recipe";
+        Revision: Record "SI Concrete Recipe Revision";
+        BOMVersion: Record "Production BOM Version";
+        BOMLine: Record "Production BOM Line";
+        Material: Record "SI Prok Prod Fact Material";
+        Item: Record Item;
+        Converter: Codeunit "SI Item UoM Conversion";
+        M3Resolver: Codeunit "SI Prok Concrete M3 UoM";
+        MaterialKey: Text[250];
+        MaterialName: Text[150];
+        OutputQty: Decimal;
+        NormKg: Decimal;
+        IsMapped: Boolean;
+        SourceUoM: Code[10];
+    begin
+        if (Fact."Recipe No." = '') or (Fact."Recipe Revision No." = 0) then
+            Error('Для технологічного факту #%1 не визначено історичну редакцію.', Fact."Entry No.");
+        if not Revision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+            Error('Історичну редакцію для факту #%1 не знайдено.', Fact."Entry No.");
+        if Revision."Recipe Purpose" <> Revision."Recipe Purpose"::Technological then
+            Error('Редакція факту #%1 не є технологічною.', Fact."Entry No.");
+        Recipe.Get(Fact."Recipe No.");
+        Recipe.TestField("Production BOM No.");
+        Revision.TestField("Production BOM Version Code");
+        Recipe.TestField("Output UoM Code");
+        BOMVersion.Get(Recipe."Production BOM No.", Revision."Production BOM Version Code");
+        if (Fact."Production BOM No." <> '') and (Fact."Production BOM No." <> Recipe."Production BOM No.") then
+            Error('Конфлікт BOM у технологічному факті #%1.', Fact."Entry No.");
+        if (Fact."Production BOM Version Code" <> '') and
+            (Fact."Production BOM Version Code" <> Revision."Production BOM Version Code") then
+            Error('Конфлікт BOM Version у технологічному факті #%1.', Fact."Entry No.");
+        OutputQty := Fact."Produced Quantity M3";
+        if Fact."Planned Quantity M3" > 0 then
+            OutputQty := Fact."Planned Quantity M3";
+        if OutputQty <= 0 then
+            Error('Технологічний факт #%1 не має додатного обсягу.', Fact."Entry No.");
+        if not Converter.CanConvertItemQuantity(Recipe."Item No.", Recipe."Variant Code", M3Resolver.Resolve(Recipe."Item No."), Recipe."Output UoM Code") then
+            Error('Немає перерахунку M3 → %1 для рецептури %2.', Recipe."Output UoM Code", Recipe."Recipe No.");
+        OutputQty := Converter.ConvertItemQuantity(Recipe."Item No.", Recipe."Variant Code", OutputQty, M3Resolver.Resolve(Recipe."Item No."), Recipe."Output UoM Code");
+        BOMLine.SetRange("Production BOM No.", Recipe."Production BOM No.");
+        BOMLine.SetRange("Version Code", Revision."Production BOM Version Code");
+        if not BOMLine.FindSet() then
+            Error('BOM Version технологічної редакції %1/%2 не має рядків.', Recipe."Recipe No.", Revision."Revision No.");
+        repeat
+            if BOMLine.Type <> BOMLine.Type::Item then
+                Error('Непідтримуваний тип BOM Line %1.', BOMLine."Line No.");
+            BOMLine.TestField("No.");
+            Item.Get(BOMLine."No.");
+            SourceUoM := BOMLine."Unit of Measure Code";
+            if SourceUoM = '' then
+                SourceUoM := Item."Base Unit of Measure";
+            if not Converter.CanConvertItemQuantity(BOMLine."No.", BOMLine."Variant Code", SourceUoM, 'KG') then
+                Error('Немає перерахунку %1 → KG для матеріалу %2.', SourceUoM, BOMLine."No.");
+            NormKg := Converter.ConvertItemQuantity(BOMLine."No.", BOMLine."Variant Code", BOMLine."Quantity per" * OutputQty, SourceUoM, 'KG');
+            MaterialKey := BuildBCKey(BOMLine."No.", BOMLine."Variant Code");
+            MaterialName := CopyStr(BOMLine.Description, 1, MaxStrLen(MaterialName));
+            if MaterialName = '' then
+                MaterialName := BOMLine."No.";
+            Accumulate(Batch, MaterialKey, BOMLine."No.", BOMLine."Variant Code", MaterialName, NormKg, 0, 0, true, false, false);
+        until BOMLine.Next() = 0;
+        Material.SetRange("Production Fact Entry No.", Fact."Entry No.");
+        if Material.FindSet() then
+            repeat
+                IsMapped := Material."BC Material Resolved" and (Material."Item No." <> '');
+                if IsMapped then
+                    MaterialKey := BuildBCKey(Material."Item No.", Material."Variant Code")
+                else
+                    MaterialKey := BuildExternalKey(Material, Fact."Connection Code");
+                MaterialName := GetMaterialName(Material, MaterialKey);
+                Accumulate(Batch, MaterialKey, Material."Item No.", Material."Variant Code", MaterialName,
+                    0, Material."Requested Kg", Material."Actual Kg", false, true, not IsMapped);
+            until Material.Next() = 0;
+        if EmitRows then
+            WriteMaterialRows(Writer, Batch, true);
+        if Batch.FindSet() then
+            repeat
+                Accumulate(Summary, Batch."Material Key", Batch."Item No.", Batch."Variant Code",
+                    Batch."Material Name", Batch."Norm Kg", Batch."MES Requested Kg", Batch."Actual Kg",
+                    Batch."Has Norm", Batch."Has Actual Line", Batch.Unmapped);
+            until Batch.Next() = 0;
+    end;
+
     local procedure WriteUnlinkedMaterials(var Writer: Codeunit "SI Prok PF Template Writer"; Fact: Record "SI Prok Production Fact"; var Summary: Record "SI Prok PF Material Buffer" temporary; EmitRows: Boolean)
     var
         Batch: Record "SI Prok PF Material Buffer" temporary;
@@ -384,8 +481,13 @@
 
     local procedure GetDisplayPlanKg(Buffer: Record "SI Prok PF Material Buffer"; WithoutOrder: Boolean): Decimal
     begin
-        if WithoutOrder then
-            exit(Buffer."MES Requested Kg");
+        if WithoutOrder then begin
+            if Buffer."MES Requested Kg" <> 0 then
+                exit(Buffer."MES Requested Kg");
+            if Buffer."Has Norm" then
+                exit(Buffer."Norm Kg");
+            exit(0);
+        end;
         // A material outside the approved recipe has no normative plan.
         if not Buffer."Has Norm" then
             exit(0);
@@ -443,12 +545,13 @@
     procedure GetPlanOutputM3(Plan: Record "SI Prok Production Plan"): Decimal
     var
         Converter: Codeunit "SI Item UoM Conversion";
+        M3Resolver: Codeunit "SI Prok Concrete M3 UoM";
     begin
         if Plan."Unit of Measure Code" = '' then
             Error('Не задано одиницю виміру виробничої заявки #%1.', Plan."Prod. Request Entry No.");
-        if not Converter.CanConvertItemQuantity(Plan."Item No.", Plan."Variant Code", Plan."Unit of Measure Code", 'M3') then
+        if not Converter.CanConvertItemQuantity(Plan."Item No.", Plan."Variant Code", Plan."Unit of Measure Code", M3Resolver.Resolve(Plan."Item No.")) then
             Error('Немає перерахунку %1 → M3 для %2.', Plan."Unit of Measure Code", Plan."Item No.");
-        exit(Converter.ConvertItemQuantity(Plan."Item No.", Plan."Variant Code", Plan."Planned Quantity", Plan."Unit of Measure Code", 'M3'));
+        exit(Converter.ConvertItemQuantity(Plan."Item No.", Plan."Variant Code", Plan."Planned Quantity", Plan."Unit of Measure Code", M3Resolver.Resolve(Plan."Item No.")));
     end;
 
     local procedure GetPlanMaterialKg(PlanLine: Record "SI Prok Production Plan Line"): Decimal
@@ -604,4 +707,14 @@
             Value := 'Request';
         exit(CopyStr(Value, 1, 50));
     end;
+    // Read-only classification from the historical recipe revision, never from a cached fact field.
+    local procedure IsTechnologicalRecipe(Fact: Record "SI Prok Production Fact"): Boolean
+    var
+        Revision: Record "SI Concrete Recipe Revision";
+    begin
+        if not Revision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+            Error('Факт %1: історичну редакцію рецептури %2/%3 не знайдено.', Fact."Entry No.", Fact."Recipe No.", Fact."Recipe Revision No.");
+        exit(Revision."Recipe Purpose" = Revision."Recipe Purpose"::Technological);
+    end;
+
 }

@@ -1,4 +1,4 @@
-page 57093 "SI Prok Production Fact Card"
+﻿page 57093 "SI Prok Production Fact Card"
 {
     PageType = Card;
     SourceTable = "SI Prok Production Fact";
@@ -10,40 +10,15 @@ page 57093 "SI Prok Production Fact Card"
     {
         area(Content)
         {
-            group(OrderInformation)
-            {
-                Caption = 'Загальна інформація по замовленню';
-                field(RequestNoView; RequestNoView) { ApplicationArea = All; Caption = 'Заявка №'; }
-                field(RequestTypeView; RequestTypeView) { ApplicationArea = All; Caption = 'Тип заявки'; }
-                field(ProjectView; ProjectView) { ApplicationArea = All; Caption = 'Проєкт'; }
-                field(ConcreteView; ConcreteView) { ApplicationArea = All; Caption = 'Бетон'; }
-                field(RecipeView; RecipeView) { ApplicationArea = All; Caption = 'Рецептура'; }
-                field(RequiredAtView; RequiredAtView) { ApplicationArea = All; Caption = 'Дата/час потреби'; }
-                field(UnloadingView; UnloadingView) { ApplicationArea = All; Caption = 'Точка розвантаження'; ToolTip = 'Показується, коли точка розвантаження доступна в даних заявки.'; }
-                field(RequestedByView; RequestedByView) { ApplicationArea = All; Caption = 'Замовив'; }
-                field(OrderQuantityView; OrderQuantityView) { ApplicationArea = All; Caption = 'Замовлена кількість всього, м³'; DecimalPlaces = 0 : 5; }
-                field(TotalProducedView; TotalProducedView) { ApplicationArea = All; Caption = 'Вироблена кількість всього, м³'; DecimalPlaces = 0 : 5; ToolTip = 'Поточна сума унікальних фактів за заявкою. Оновлюється при відкритті або оновленні картки.'; }
-            }
-            group(BatchInformation)
-            {
-                Caption = 'Інформація про партію';
-                field(MixerView; MixerView) { ApplicationArea = All; Caption = 'Автоміксер'; }
-                field("Truck Plate"; Rec."Truck Plate") { ApplicationArea = All; Caption = 'Номер автоміксера'; }
-                field(DriverView; DriverView) { ApplicationArea = All; Caption = 'Водій'; }
-                field("Production Date/Time"; Rec."Production Date/Time") { ApplicationArea = All; Caption = 'Дата/час виробництва'; }
-            }
-            group(BatchOutput)
-            {
-                Caption = 'Випуск бетону в партії, м³';
-                field(BatchPlanView; BatchPlanView) { ApplicationArea = All; Caption = 'План, м³'; ToolTip = 'План конкретної партії; порожньо, якщо план не підтверджено.'; }
-                field(BatchActualView; BatchActualView) { ApplicationArea = All; Caption = 'Факт, м³'; DecimalPlaces = 0 : 5; }
-                field(BatchVarianceView; BatchVarianceView) { ApplicationArea = All; Caption = 'Відхилення, м³'; ToolTip = 'Факт мінус план; порожньо, якщо план партії відсутній.'; }
-            }
-            part(Materials; "SI Prok Prod Fact Materials")
+            usercontrol(FactWorkspace; "SI Prok Fact Workspace")
             {
                 ApplicationArea = All;
-                Caption = 'Матеріали';
-                SubPageLink = "Production Fact Entry No." = field("Entry No.");
+                trigger Ready()
+                begin
+                    WorkspaceReady := true;
+                    LoadBusinessContext();
+                    RenderWorkspace();
+                end;
             }
             group(AccountingControl)
             {
@@ -402,6 +377,7 @@ page 57093 "SI Prok Production Fact Card"
     trigger OnAfterGetRecord()
     begin
         LoadBusinessContext();
+        RenderWorkspace();
     end;
 
     local procedure LoadBusinessContext()
@@ -412,6 +388,7 @@ page 57093 "SI Prok Production Fact Card"
         Item: Record Item;
         ItemVariant: Record "Item Variant";
         Job: Record Job;
+        Vehicle: Record "SI Vehicle Profile";
     begin
         Clear(RequestNoView);
         Clear(RequestTypeView);
@@ -425,13 +402,8 @@ page 57093 "SI Prok Production Fact Card"
         Clear(TotalProducedView);
         Clear(MixerView);
         Clear(DriverView);
-        Clear(BatchPlanView);
-        Clear(BatchVarianceView);
         BatchActualView := Rec."Produced Quantity M3";
-        if Rec."Planned Quantity M3" > 0 then begin
-            BatchPlanView := Format(Rec."Planned Quantity M3");
-            BatchVarianceView := Format(Rec."Produced Quantity M3" - Rec."Planned Quantity M3");
-        end;
+
 
         if Item.Get(Rec."Item No.") then
             ConcreteView := Item.Description;
@@ -464,9 +436,15 @@ page 57093 "SI Prok Production Fact Card"
             RequestNoView := Rec."Order No.";
             ProjectView := Rec."Project No.";
             OrderQuantityView := Rec."Ordered Quantity M3";
+            // A production fact may exist without a BC production request.
+            // In that case the total is the actual quantity of this fact.
+            TotalProducedView := Rec."Produced Quantity M3";
         end;
 
         MixerView := Rec."Truck Code";
+        if Vehicle.Get(Rec."Truck Code") then
+            if Vehicle.Description <> '' then
+                MixerView := Vehicle.Description;
         Shipment.SetRange("Production UUID", Rec."Production UUID");
         if Shipment.FindFirst() then begin
             DriverView := Shipment."Driver Name";
@@ -478,6 +456,64 @@ page 57093 "SI Prok Production Fact Card"
         end;
         // Batch planned quantity and unloading point require a verified source mapping.
         // Deliberately blank instead of showing order totals as batch plans.
+    end;
+
+    local procedure RenderWorkspace()
+    var
+        Material: Record "SI Prok Prod Fact Material";
+        Converter: Codeunit "SI Item UoM Conversion";
+        Payload: JsonObject;
+        Batch: JsonArray;
+        OrderContext: JsonArray;
+        Materials: JsonArray;
+        Line: JsonObject;
+        MassUoM: Code[10];
+        PayloadText: Text;
+    begin
+        if not WorkspaceReady then
+            exit;
+        AddViewRow(Batch, 'Автоміксер', MixerView);
+        AddViewRow(Batch, 'Номер автоміксера', Rec."Truck Plate");
+        AddViewRow(Batch, 'Водій', DriverView);
+        AddViewRow(Batch, 'Дата/час виробництва', Format(Rec."Production Date/Time"));
+        AddViewRow(Batch, 'Фактичний випуск, м³', Format(BatchActualView));
+        AddViewRow(OrderContext, 'Заявка №', RequestNoView);
+        AddViewRow(OrderContext, 'Тип заявки', RequestTypeView);
+        AddViewRow(OrderContext, 'Проєкт', ProjectView);
+        AddViewRow(OrderContext, 'Бетон', ConcreteView);
+        AddViewRow(OrderContext, 'Рецептура', RecipeView);
+        AddViewRow(OrderContext, 'Дата/час потреби', Format(RequiredAtView));
+        AddViewRow(OrderContext, 'Точка розвантаження', UnloadingView);
+        AddViewRow(OrderContext, 'Замовив', RequestedByView);
+        AddViewRow(OrderContext, 'Замовлено за заявкою, м³', Format(OrderQuantityView));
+        AddViewRow(OrderContext, 'Вироблено за заявкою, м³', Format(TotalProducedView));
+        Material.SetRange("Production Fact Entry No.", Rec."Entry No.");
+        if Material.FindSet() then begin
+            MassUoM := Converter.ResolveLocalUoMCode('KG');
+            repeat
+                Clear(Line);
+                Line.Add('name', Material."Material Name");
+                Line.Add('unit', MassUoM);
+                Line.Add('plan', Format(Material."Requested Kg"));
+                Line.Add('actual', Format(Material."Actual Kg"));
+                Line.Add('variance', Format(Material."Variance Kg"));
+                Materials.Add(Line);
+            until Material.Next() = 0;
+        end;
+        Payload.Add('batch', Batch);
+        Payload.Add('order', OrderContext);
+        Payload.Add('materials', Materials);
+        Payload.WriteTo(PayloadText);
+        CurrPage.FactWorkspace.RenderFact(PayloadText);
+    end;
+
+    local procedure AddViewRow(var Rows: JsonArray; RowCaption: Text; RowValue: Text)
+    var
+        Row: JsonObject;
+    begin
+        Row.Add('caption', RowCaption);
+        Row.Add('value', RowValue);
+        Rows.Add(Row);
     end;
 
     local procedure IsNullGuid(Value: Guid): Boolean
@@ -499,7 +535,6 @@ page 57093 "SI Prok Production Fact Card"
         TotalProducedView: Decimal;
         MixerView: Text[100];
         DriverView: Text[100];
-        BatchPlanView: Text[30];
         BatchActualView: Decimal;
-        BatchVarianceView: Text[30];
+        WorkspaceReady: Boolean;
 }

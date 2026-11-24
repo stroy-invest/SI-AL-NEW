@@ -40,6 +40,10 @@ codeunit 57212 "SI Prok Sync Job"
             Enum::"SI Prok Capture Mode"::Normal,
             Imported, Existing, Conflicts, Failed);
 
+        if (Conflicts > 0) or (Failed > 0) then
+            Error('Proktek %1: нові %2; наявні %3; конфлікти %4; помилки %5. Деталі в архіві відповідей API.',
+                ConnectionCode, Imported, Existing, Conflicts, Failed);
+
         // Capture writes individual results/errors to the existing Raw API archive.
         // No additional processing, journal posting, or API calls are introduced.
     end;

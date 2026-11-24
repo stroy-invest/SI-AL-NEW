@@ -1,4 +1,4 @@
-﻿codeunit 57094 "SI Prok Capture Mgt."
+codeunit 57094 "SI Prok Capture Mgt."
 {
     procedure Capture(DateFrom: Date; DateTo: Date; ConnectionCode: Code[50]; var Imported: Integer; var Existing: Integer; var Failed: Integer)
     var
@@ -11,6 +11,16 @@
     end;
 
     procedure CaptureWithMode(DateFrom: Date; DateTo: Date; ConnectionCode: Code[50]; Mode: Enum "SI Prok Capture Mode"; var Imported: Integer; var Existing: Integer; var Conflicts: Integer; var Failed: Integer)
+    begin
+        CaptureInternal(DateFrom, DateTo, ConnectionCode, Mode, false, Imported, Existing, Conflicts, Failed);
+    end;
+
+    procedure CaptureRefresh(DateFrom: Date; DateTo: Date; ConnectionCode: Code[50]; var Imported: Integer; var Existing: Integer; var Conflicts: Integer; var Failed: Integer)
+    begin
+        CaptureInternal(DateFrom, DateTo, ConnectionCode, Enum::"SI Prok Capture Mode"::Normal, true, Imported, Existing, Conflicts, Failed);
+    end;
+
+    local procedure CaptureInternal(DateFrom: Date; DateTo: Date; ConnectionCode: Code[50]; Mode: Enum "SI Prok Capture Mode"; ForceRefresh: Boolean; var Imported: Integer; var Existing: Integer; var Conflicts: Integer; var Failed: Integer)
     var
         Connection: Record "SI Prok Connection";
         ProviderContext: Codeunit "SI EDS Provider Context";
@@ -26,7 +36,7 @@
         Connection.Get(ConnectionCode);
         ProviderContext.BeginScope(Connection."EDS Service Code", Connection."EDS Provider Code", ScopeToken);
         ClearLastError();
-        if not TryCaptureCore(DateFrom, DateTo, Connection, Mode, Imported, Existing, Conflicts, Failed) then begin
+        if not TryCaptureCore(DateFrom, DateTo, Connection, Mode, ForceRefresh, Imported, Existing, Conflicts, Failed) then begin
             // Preserve the original error before cleanup can affect LastError.
             FailureText := GetLastErrorText();
             if FailureText = '' then
@@ -42,12 +52,13 @@
     end;
 
     [TryFunction]
-    local procedure TryCaptureCore(DateFrom: Date; DateTo: Date; Connection: Record "SI Prok Connection"; Mode: Enum "SI Prok Capture Mode"; var Imported: Integer; var Existing: Integer; var Conflicts: Integer; var Failed: Integer)
+    local procedure TryCaptureCore(DateFrom: Date; DateTo: Date; Connection: Record "SI Prok Connection"; Mode: Enum "SI Prok Capture Mode"; ForceRefresh: Boolean; var Imported: Integer; var Existing: Integer; var Conflicts: Integer; var Failed: Integer)
     var
         ExportMgt: Codeunit "SI Prok Production Export Mgt.";
         Worker: Codeunit "SI Prok Fact Intake Worker";
         Uuids: List of [Text];
         PageUuids: List of [Text];
+        PendingUuids: List of [Text];
         Seen: Dictionary of [Text, Boolean];
         Uuid: Text;
         ResponseText: Text;
@@ -65,6 +76,8 @@
         MaterialUuids: Dictionary of [Text, Text];
         MaterialNames: Dictionary of [Text, Text];
         ConfigError: Text;
+        ReuseArchive: Boolean;
+        WorkerConfigEntryNo: Integer;
     begin
         // This boundary catches errors for scope cleanup, not for rollback.
         // Fact/material writes remain in the Boolean Run worker below.
@@ -99,6 +112,13 @@
                 end;
             PageNo += 1;
         until PageNo > TotalPages;
+        foreach Uuid in Uuids do
+            if (Mode = Mode::Normal) and not ForceRefresh and IsAcceptedFact(Connection.Code, Uuid, Mode) then
+                Existing += 1
+            else
+                PendingUuids.Add(Uuid);
+        if PendingUuids.Count() = 0 then
+            exit;
         ClearLastError();
         if not ExportMgt.TryGetCaptureMaterialConfigResponse(Connection, ConfigurationResponse) then
             ConfigError := GetLastErrorText();
@@ -122,33 +142,51 @@
         // Material Config/auth may have written session state. The isolated
         // worker must always be called outside an open write transaction.
         Commit();
-        foreach Uuid in Uuids do begin
-            if DetailNo > 0 then
-                Sleep(600);
-            DetailNo += 1;
-            Clear(DetailText);
-            ClearLastError();
-            if not TryGetDetails(Connection, Uuid, DetailText) then begin
-                ErrorText := GetLastErrorText();
-                ArchiveResponse(Connection.Code, 'GetProductionDetails', Uuid, DetailText, Mode, Archive);
-                MarkError(Archive, 'Не вдалося отримати деталі виробництва. ' + ErrorText);
-                Commit();
-                Failed += 1;
+        foreach Uuid in PendingUuids do begin
+            // Recheck after configuration retrieval; another capture may have finished.
+            if (Mode = Mode::Normal) and not ForceRefresh and IsAcceptedFact(Connection.Code, Uuid, Mode) then begin
+                Existing += 1;
                 continue;
             end;
-            ArchiveResponse(Connection.Code, 'GetProductionDetails', Uuid, DetailText, Mode, Archive);
-            Commit();
             Clear(Canonical);
-            ClearLastError();
-            if not TryBuildCanonical(DetailText, Uuid, EntCodes, MaterialUuids, MaterialNames, Canonical) then begin
-                MarkError(Archive, GetLastErrorText());
+            ReuseArchive := false;
+            WorkerConfigEntryNo := ConfigurationArchiveEntryNo;
+            if (Mode = Mode::Normal) and not ForceRefresh then
+                ReuseArchive := FindRetryArchive(Connection.Code, Uuid, Mode, Archive, Canonical);
+            if ReuseArchive then
+                WorkerConfigEntryNo := Archive."Config Archive Entry No."
+            else begin
+                if DetailNo > 0 then
+                    Sleep(600);
+                DetailNo += 1;
+                Clear(DetailText);
+                ClearLastError();
+                if not TryGetDetails(Connection, Uuid, DetailText) then begin
+                    ErrorText := GetLastErrorText();
+                    ArchiveResponse(Connection.Code, 'GetProductionDetails', Uuid, DetailText, Mode, Archive);
+                    MarkError(Archive, 'Не вдалося отримати деталі виробництва. ' + ErrorText);
+                    Commit();
+                    Failed += 1;
+                    continue;
+                end;
+                ArchiveResponse(Connection.Code, 'GetProductionDetails', Uuid, DetailText, Mode, Archive);
                 Commit();
-                Failed += 1;
-                continue;
+                Clear(Canonical);
+                ClearLastError();
+                if not TryBuildCanonical(DetailText, Uuid, EntCodes, MaterialUuids, MaterialNames, Canonical) then begin
+                    MarkError(Archive, GetLastErrorText());
+                    Commit();
+                    Failed += 1;
+                    continue;
+                end;
+                Archive.SetRecoveryCanonical(Canonical);
+                Archive."Config Archive Entry No." := ConfigurationArchiveEntryNo;
+                Archive.Modify(true);
+                Commit();
             end;
             Clear(Worker);
             Worker.SetCanonical(Canonical);
-            Worker.SetConfigurationArchive(ConfigurationArchiveEntryNo);
+            Worker.SetConfigurationArchive(WorkerConfigEntryNo);
             ClearLastError();
             if not Worker.Run(Archive) then begin
                 ErrorText := GetLastErrorText();
@@ -165,7 +203,7 @@
                 Archive."Intake Result"::Conflict: Conflicts += 1;
                 else Failed += 1;
             end;
-            if ConfigError <> '' then begin
+            if (ConfigError <> '') and not ReuseArchive then begin
                 Archive."Error Message" := CopyStr(
                     Archive."Error Message" + ' Material Config недоступний; використано fallback. ' + ConfigError,
                     1, MaxStrLen(Archive."Error Message"));
@@ -173,6 +211,43 @@
             end;
             Commit();
         end;
+    end;
+
+    local procedure IsAcceptedFact(ConnectionCode: Code[50]; UuidText: Text; Mode: Enum "SI Prok Capture Mode"): Boolean
+    var
+        Fact: Record "SI Prok Production Fact";
+        Uuid: Guid;
+    begin
+        if not Evaluate(Uuid, UuidText) then
+            exit(false);
+        Fact.SetRange("Production UUID", Uuid);
+        Fact.SetRange("Connection Code", ConnectionCode);
+        Fact.SetRange("Capture Mode", Mode);
+        exit(not Fact.IsEmpty());
+    end;
+
+    local procedure FindRetryArchive(ConnectionCode: Code[50]; UuidText: Text; Mode: Enum "SI Prok Capture Mode"; var Archive: Record "SI Prok Raw API Response"; var Canonical: Text): Boolean
+    var
+        ExpectedUuid: Guid;
+        ArchivedUuid: Guid;
+    begin
+        if not Evaluate(ExpectedUuid, UuidText) then
+            exit(false);
+        Archive.Reset();
+        Archive.SetRange("Connection Code", ConnectionCode);
+        Archive.SetRange("Capture Mode", Mode);
+        Archive.SetRange("API Operation", 'GETPRODUCTIONDETAILS');
+        Archive.SetFilter("Processing Status", '%1|%2', Archive."Processing Status"::Error, Archive."Processing Status"::Received);
+        if Archive.FindLast() then
+            repeat
+                if Evaluate(ArchivedUuid, Archive."Production UUID") then
+                    if ArchivedUuid = ExpectedUuid then begin
+                        Canonical := Archive.GetRecoveryCanonical();
+                        if Canonical <> '' then
+                            exit(true);
+                    end;
+            until Archive.Next(-1) = 0;
+        exit(false);
     end;
 
     [TryFunction]

@@ -26,6 +26,8 @@ codeunit 57139 "SI Prok Process Journal Prep"
         FinishedLocation: Record Location;
         Item: Record Item;
         ItemUoM: Record "Item Unit of Measure";
+        M3Resolver: Codeunit "SI Prok Concrete M3 UoM";
+        M3Code: Code[10];
         Link: Record "SI Prok Journal Link";
         Attempt: Record "SI Prok Posting Attempt";
         Semantics: Codeunit "SI Prok Location Semantics";
@@ -113,12 +115,11 @@ codeunit 57139 "SI Prok Process Journal Prep"
             until Material.Next() = 0;
 
         Item.Get(Fact."Item No.");
-        if not ItemUoM.Get(Item."No.", 'M3') then
-            Error('SI Process Production: для бетону %1 відсутня одиниця M3.', Item."No.");
-        ItemUoM.TestField("Qty. per Unit of Measure");
+        if not M3Resolver.TryResolve(Item."No.", M3Code) then
+            Error('SI Process Production: для бетону %1 відсутня одиниця M3 або М3.', Item."No.");
         CreateJournalLine(JournalLine, Setup, NextLine, PostingDate, DocumentNo,
             JournalLine."Entry Type"::"Positive Adjmt.", Fact."Item No.", Fact."Variant Code",
-            FinishedLocation.Code, 'M3', Fact."Produced Quantity M3");
+            FinishedLocation.Code, M3Code, Fact."Produced Quantity M3");
         LinkLine += 10000;
         SaveLink(Fact, LinkLine, 0, JournalLine);
         Fact."Accounting Material Lines" := MaterialCount;
@@ -133,6 +134,8 @@ codeunit 57139 "SI Prok Process Journal Prep"
         Material: Record "SI Prok Prod Fact Material";
         Item: Record Item;
         ItemUoM: Record "Item Unit of Measure";
+        M3Resolver: Codeunit "SI Prok Concrete M3 UoM";
+        M3Code: Code[10];
         ConcreteGuard: Codeunit "SI Prok Concrete Identity";
         PositiveCount: Integer;
     begin
@@ -151,9 +154,8 @@ codeunit 57139 "SI Prok Process Journal Prep"
             Error('SI Process Production: товар бетону %1 не знайдено.', Fact."Item No.");
         if Item.Type <> Item.Type::Inventory then
             Error('SI Process Production: бетон %1 повинен бути складським товаром.', Item."No.");
-        if not ItemUoM.Get(Item."No.", 'M3') then
-            Error('SI Process Production: у товару %1 немає одиниці M3.', Item."No.");
-        ItemUoM.TestField("Qty. per Unit of Measure");
+        if not M3Resolver.TryResolve(Item."No.", M3Code) then
+            Error('SI Process Production: у товару %1 немає одиниці M3 або М3.', Item."No.");
 
         Material.SetRange("Production Fact Entry No.", Fact."Entry No.");
         if not Material.FindSet() then
@@ -176,8 +178,7 @@ codeunit 57139 "SI Prok Process Journal Prep"
                 Error('SI Process Production: базова ОВ матеріалу %1 не відповідає картці товару.', Material."Line No.");
             if not ItemUoM.Get(Item."No.", Item."Base Unit of Measure") then
                 Error('SI Process Production: базова ОВ %1 для товару %2 відсутня.', Item."Base Unit of Measure", Item."No.");
-            ItemUoM.TestField("Qty. per Unit of Measure");
-            if Material."Actual Base Qty" > 0 then
+                if Material."Actual Base Qty" > 0 then
                 PositiveCount += 1;
         until Material.Next() = 0;
         if PositiveCount = 0 then

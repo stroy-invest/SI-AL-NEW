@@ -5,6 +5,7 @@ codeunit 57145 "SI Prok Shipment Mgt."
     procedure TryCreateForFact(FactEntryNo: Integer): Boolean
     var
         Fact: Record "SI Prok Production Fact";
+        Revision: Record "SI Concrete Recipe Revision";
         Shipment: Record "SI Prok Shipment";
         Request: Record "SI Concrete Prod Request";
         BOMVersion: Record "Production BOM Version";
@@ -23,6 +24,10 @@ codeunit 57145 "SI Prok Shipment Mgt."
         ConcreteReason: Text;
     begin
         if not Fact.Get(FactEntryNo) then
+            exit(false);
+        if not Revision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+            exit(false);
+        if Revision."Recipe Purpose" <> Revision."Recipe Purpose"::Commercial then
             exit(false);
         // A Production Order / BC binding is optional. The imported MES fact
         // is sufficient to create an OPEN shipment; posting has separate checks.
@@ -104,10 +109,15 @@ codeunit 57145 "SI Prok Shipment Mgt."
     procedure EnsureForFact(FactEntryNo: Integer)
     var
         Fact: Record "SI Prok Production Fact";
+        Revision: Record "SI Concrete Recipe Revision";
         Shipment: Record "SI Prok Shipment";
         Guard: Codeunit "SI Prok Concrete Identity";
     begin
         Fact.Get(FactEntryNo);
+        if not Revision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+            Error('Факт %1: історичну редакцію рецептури %2/%3 не знайдено.', FactEntryNo, Fact."Recipe No.", Fact."Recipe Revision No.");
+        if Revision."Recipe Purpose" <> Revision."Recipe Purpose"::Commercial then
+            exit;
         if Fact."Produced Quantity M3" <= 0 then
             exit; // A genuine zero-volume fact must not create a Shipment.
         if IsNullGuid(Fact."Production UUID") then

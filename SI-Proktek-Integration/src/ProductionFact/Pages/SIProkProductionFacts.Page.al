@@ -1,4 +1,4 @@
-﻿page 57091 "SI Prok Production Facts"
+page 57091 "SI Prok Production Facts"
 {
     PageType = List;
     SourceTable = "SI Prok Production Fact";
@@ -43,6 +43,18 @@
     {
         area(Processing)
         {
+            action(RecoverProductionFact)
+            {
+                Caption = 'Прив’язати до заявки та повторити обробку';
+                ApplicationArea = All;
+                AccessByPermission = codeunit "SI Prok Fact Recovery" = X;
+                trigger OnAction()
+                var Recovery: Codeunit "SI Prok Fact Recovery";
+                begin
+                    Recovery.RecoverFact(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
             action(OpenFactHierarchy)
             {
                 Caption = 'Факти за заявками (ієрархія)';
@@ -76,7 +88,20 @@
                 ToolTip = 'Зберегти реальні факти без обов’язкової заявки, підтвердження обсягу чи готовності до проведення.';
                 trigger OnAction()
                 begin
-                    RunCapture();
+                    RunCapture(false);
+                end;
+            }
+
+            action(CaptureRefresh)
+            {
+                Caption = 'Повторно отримати факти з Proktek';
+                ApplicationArea = All;
+                Image = Import;
+                AccessByPermission = codeunit "SI Prok Fact Recovery" = X;
+                ToolTip = 'Примусово отримує деталі за період; застосовує наявну перевірку конфліктів. Не перезаписує виробничі дані.';
+                trigger OnAction()
+                begin
+                    RunCapture(true);
                 end;
             }
 
@@ -96,7 +121,7 @@
 
             action(CreateMissingShipments)
             {
-                Caption = 'Створити відсутні Shipment';
+                Caption = 'Створити відсутні документи відвантаження';
                 ApplicationArea = All;
                 Image = Create;
                 ToolTip = 'Створює відсутні відкриті Shipment для вибраних/відфільтрованих фактів з Production UUID. Без повторного створення і без проведення.';
@@ -107,9 +132,10 @@
                     Shipment: Record "SI Prok Shipment";
                     Created: Integer;
                     Skipped: Integer;
+                    Revision: Record "SI Concrete Recipe Revision";
                 begin
                     CurrPage.SetSelectionFilter(SelectedFact);
-                    if not Confirm('Створити відсутні Shipment для вибраних/відфільтрованих фактів (%1 записів)? Проведення не виконується.',
+                    if not Confirm('Створити відсутні документи відвантаження для вибраних/відфільтрованих фактів (%1 записів)? Проведення не виконується.',
                         false, SelectedFact.Count()) then
                         exit;
                     if SelectedFact.FindSet() then
@@ -118,14 +144,47 @@
                             Shipment.SetRange("Production UUID", SelectedFact."Production UUID");
                             if (SelectedFact."Produced Quantity M3" <= 0) or not Shipment.IsEmpty() then
                                 Skipped += 1
-                            else begin
-                                // An invalid nonzero fact must raise a diagnostic,
-                                // not disappear into the skipped counter.
-                                ShipmentMgt.EnsureForFact(SelectedFact."Entry No.");
-                                Created += 1;
-                            end;
+                            else
+                                if not Revision.Get(SelectedFact."Recipe No.", SelectedFact."Recipe Revision No.") then
+                                    Error('Факт %1: редакцію рецептури %2/%3 не знайдено.', SelectedFact."Entry No.", SelectedFact."Recipe No.", SelectedFact."Recipe Revision No.")
+                                else
+                                    if Revision."Recipe Purpose" <> Revision."Recipe Purpose"::Commercial then
+                                        Skipped += 1
+                                    else begin
+                                        ShipmentMgt.EnsureForFact(SelectedFact."Entry No.");
+                                        Created += 1;
+                                    end;
                         until SelectedFact.Next() = 0;
-                    Message('Створено Shipment: %1; пропущено (наявні або нульовий випуск): %2.', Created, Skipped);
+                    Message('Створено Shipment: %1; пропущено (наявні, нульовий випуск або технологічна рецептура): %2.', Created, Skipped);
+                end;
+            }
+
+            action(OpenSimFactDeletionAudit)
+            {
+                Caption = 'Аудит видалення фактів';
+                ApplicationArea = All;
+                Image = Log;
+                RunObject = page "SI Prok Sim Fact Del Audit";
+            }
+
+            action(DeleteSelectedSimulatedFacts)
+            {
+                Caption = 'Адміністративно видалити вибрані факти';
+                ApplicationArea = All;
+                Image = Delete;
+                ToolTip = 'Видаляє лише явно виділені факти, без пов’язаних документів; записує аудит.';
+                trigger OnAction()
+                var
+                    SelectedFacts: Record "SI Prok Production Fact";
+                    DeleteMgt: Codeunit "SI Prok Sim Fact Admin Delete";
+                    Deleted: Integer;
+                begin
+                    CurrPage.SetSelectionFilter(SelectedFacts);
+                    Deleted := DeleteMgt.DeleteSelected(SelectedFacts);
+                    if Deleted > 0 then begin
+                        CurrPage.Update(false);
+                        Message('Адміністративно видалено фактів: %1. Аудит збережено.', Deleted);
+                    end;
                 end;
             }
 
@@ -187,7 +246,7 @@
         }
     }
 
-    local procedure RunCapture()
+    local procedure RunCapture(ForceRefresh: Boolean)
     var
         Params: Page "SI Prok Prod Export Params";
         ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
@@ -207,10 +266,15 @@
         if not Confirm('Отримати факти з профілю %1? Приймання не підтверджує м³ і не виконує проведення.',
             false, Params.GetConnectionCode()) then
             exit;
-        CaptureMgt.CaptureWithMode(Params.GetDateFrom(), Params.GetDateTo(),
-            Params.GetConnectionCode(), Enum::"SI Prok Capture Mode"::Normal, Imported, Existing, Conflicts, Failed);
+        if ForceRefresh then begin
+            if not Confirm('Примусово повторити API-запити за весь вибраний період?', false) then
+                exit;
+            CaptureMgt.CaptureRefresh(Params.GetDateFrom(), Params.GetDateTo(), Params.GetConnectionCode(), Imported, Existing, Conflicts, Failed);
+        end else
+            CaptureMgt.CaptureWithMode(Params.GetDateFrom(), Params.GetDateTo(),
+                Params.GetConnectionCode(), Enum::"SI Prok Capture Mode"::Normal, Imported, Existing, Conflicts, Failed);
         CurrPage.Update(false);
-        Message('Нові: %1; незмінені: %2; конфлікти: %3; помилки: %4.',
+        Message('Нові: %1; наявні: %2; конфлікти: %3; помилки: %4.',
             Imported, Existing, Conflicts, Failed);
     end;
 }

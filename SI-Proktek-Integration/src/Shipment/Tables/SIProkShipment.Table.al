@@ -45,8 +45,8 @@ table 57142 "SI Prok Shipment"
         field(190; "Concrete Description"; Text[150]) { Caption = 'Бетон'; Editable = false; }
         field(191; "Delivery Project No."; Code[20]) { Caption = 'Проєкт доставки'; Editable = false; }
         field(192; "Delivery Site Code"; Code[20]) { Caption = 'Код майданчика'; Editable = false; }
-        field(193; "Delivery Site Name"; Text[100]) { Caption = 'Точка розвантаження'; Editable = false; }
-        field(194; "Delivery Address"; Text[250]) { Caption = 'Адреса'; Editable = false; }
+        field(193; "Delivery Site Name"; Text[255]) { Caption = 'Точка розвантаження'; Editable = false; }
+        field(194; "Delivery Address"; Text[255]) { Caption = 'Адреса'; Editable = false; }
         field(195; "Shipped By Employee No."; Code[20]) { Caption = 'Відвантажив (Employee)'; Editable = false; TableRelation = Employee."No."; }
         field(196; "Shipped By Name"; Text[100]) { Caption = 'Відвантажив'; Editable = false; }
         field(197; "Received By Employee No."; Code[20]) { Caption = 'Прийняв (Employee)'; Editable = false; TableRelation = Employee."No."; }

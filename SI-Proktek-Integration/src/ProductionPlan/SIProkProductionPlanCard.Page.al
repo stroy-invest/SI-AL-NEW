@@ -12,6 +12,9 @@ page 57103 "SI Prok Production Plan Card"
             field("Item No."; Rec."Item No.") { ApplicationArea = All; }
             field("Variant Code"; Rec."Variant Code") { ApplicationArea = All; }
             field("Planned Quantity"; Rec."Planned Quantity") { ApplicationArea = All; }
+            field("Production Plan Completed"; Rec."Production Plan Completed") { ApplicationArea = All; }
+            field("Completed Planned Qty. M3"; Rec."Completed Planned Qty. M3") { ApplicationArea = All; }
+            field("Plan Completion Diagnostics"; Rec."Plan Completion Diagnostics") { ApplicationArea = All; }
             field("Unit of Measure Code"; Rec."Unit of Measure Code") { ApplicationArea = All; }
             field("Recipe No."; Rec."Recipe No.") { ApplicationArea = All; }
             field("Recipe Revision No."; Rec."Recipe Revision No.") { ApplicationArea = All; }

@@ -31,6 +31,18 @@ page 57098 "SI Prok Raw API Responses"
     {
         area(Processing)
         {
+            action(RecoverProductionFact)
+            {
+                Caption = 'Прив’язати до заявки та повторити обробку';
+                ApplicationArea = All;
+                AccessByPermission = codeunit "SI Prok Fact Recovery" = X;
+                trigger OnAction()
+                var Recovery: Codeunit "SI Prok Fact Recovery";
+                begin
+                    Recovery.RecoverArchive(Rec);
+                    CurrPage.Update(false);
+                end;
+            }
             action(DownloadRaw)
             {
                 Caption = 'Завантажити первинний JSON';

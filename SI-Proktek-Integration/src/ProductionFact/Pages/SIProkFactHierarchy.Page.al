@@ -1,4 +1,4 @@
-﻿page 57220 "SI Prok Fact Hierarchy"
+page 57220 "SI Prok Fact Hierarchy"
 {
     PageType = List;
     SourceTable = "SI Prok Fact Tree Buffer";
@@ -286,6 +286,8 @@
         Rec."Source No." := Request."Source No.";
         Rec."Prod. Request Entry No." := Request."Entry No.";
         Rec."Item No." := Request."Item No.";
+        if Request."Proktek Order ID" <> 0 then
+            Rec."Proktek Order No." := Format(Request."Proktek Order ID");
         PlanKnown := true;
         if IsSupplyGroup(Request) then begin
             Rec."Request Scope" := Rec."Request Scope"::SupplyRequest;
@@ -294,11 +296,13 @@
             if GroupRequest.FindSet() then
                 repeat
                     CountRequests += 1;
-                    if Plan.Get(GroupRequest."Entry No.") and (Plan."Unit of Measure Code" = 'M3') then
+                    if Plan.Get(GroupRequest."Entry No.") and ((Plan."Unit of Measure Code" = 'M3') or (Plan."Unit of Measure Code" = 'М3')) then
                         Rec."Planned Quantity M3" += Plan."Planned Quantity"
                     else
                         PlanKnown := false;
                 until GroupRequest.Next() = 0;
+            if CountRequests > 1 then
+                Rec."Proktek Order No." := ''; // Group may contain different Proktek orders.
             if CountRequests > 1 then
                 Rec."Display Name" := CopyStr(StrSubstNo('Заявка %1 · %2 виробничі позиції', Request."Source No.", CountRequests), 1, 250)
             else
@@ -306,7 +310,7 @@
         end else begin
             Rec."Request Scope" := Rec."Request Scope"::ProductionRequest;
             Rec."Display Name" := CopyStr(StrSubstNo('Виробнича заявка #%1 · %2', Request."Entry No.", Request.GetProductDescription()), 1, 250);
-            if Plan.Get(Request."Entry No.") and (Plan."Unit of Measure Code" = 'M3') then
+            if Plan.Get(Request."Entry No.") and ((Plan."Unit of Measure Code" = 'M3') or (Plan."Unit of Measure Code" = 'М3')) then
                 Rec."Planned Quantity M3" := Plan."Planned Quantity"
             else
                 PlanKnown := false;
@@ -348,6 +352,23 @@
         Rec.Insert();
     end;
 
+    local procedure ResolveOrderDisplay(Fact: Record "SI Prok Production Fact"; State: Enum "SI Prok PF Link State"): Text[150]
+    var
+        Request: Record "SI Concrete Prod Request";
+        LinkResolver: Codeunit "SI Prok PF Link Resolver";
+    begin
+        if State = Enum::"SI Prok PF Link State"::Linked then begin
+            if Fact."Order ID" <> 0 then
+                exit(CopyStr(Format(Fact."Order ID"), 1, 150));
+            if LinkResolver.Resolve(Fact, Request) = Enum::"SI Prok PF Link State"::Linked then
+                if Request."Proktek Order ID" <> 0 then
+                    exit(CopyStr(Format(Request."Proktek Order ID"), 1, 150));
+        end;
+        if Fact."Order ID" <> 0 then
+            exit(CopyStr(Format(Fact."Order ID"), 1, 150));
+        exit(Fact."Order No.");
+    end;
+
     local procedure InsertFactWithParty(Fact: Record "SI Prok Production Fact"; FactNo: Integer; State: Enum "SI Prok PF Link State")
     var
         FactNodeNo: Integer;
@@ -365,7 +386,7 @@
         Rec."Production Date/Time" := Fact."Production Date/Time";
         Rec."Truck Plate" := CopyStr(Fact."Truck Plate", 1, MaxStrLen(Rec."Truck Plate"));
         Rec."Item No." := Fact."Item No.";
-        Rec."Proktek Order No." := Fact."Order No.";
+        Rec."Proktek Order No." := ResolveOrderDisplay(Fact, State);
         Rec."Display Name" := CopyStr(StrSubstNo('Факт №%1 · Production ID %2', FactNo, Fact."Production ID"), 1, 250);
         Rec."Quantity Known" := TryReadProducedQuantity(Fact, Qty);
         if Rec."Quantity Known" then begin
@@ -393,7 +414,7 @@
         Rec."Production Date/Time" := Fact."Production Date/Time";
         Rec."Truck Plate" := CopyStr(Fact."Truck Plate", 1, MaxStrLen(Rec."Truck Plate"));
         Rec."Item No." := Fact."Item No.";
-        Rec."Proktek Order No." := Fact."Order No.";
+        Rec."Proktek Order No." := ResolveOrderDisplay(Fact, State);
         Rec."Display Name" := CopyStr(StrSubstNo('Партія №1 · %1 · Production ID %2', Fact."Truck Plate", Fact."Production ID"), 1, 250);
         Rec."Quantity Known" := TryReadProducedQuantity(Fact, Qty);
         if Rec."Quantity Known" then begin

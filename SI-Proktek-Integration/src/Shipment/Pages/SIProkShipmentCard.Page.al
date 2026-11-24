@@ -89,6 +89,33 @@ page 57143 "SI Prok Shipment Card"
                     Message('Стан реквізитів: %1', Rec."Document Snapshot Status");
                 end;
             }
+            action(EditDeliveryLocation)
+            {
+                Caption = 'Редагувати місце довозу';
+                ApplicationArea = All;
+                Image = Edit;
+                Enabled = IsOpen;
+                trigger OnAction()
+                var
+                    DeliveryDialog: Page "SI Prok Delivery Location Edit";
+                    SiteName: Text[255];
+                    Address: Text[255];
+                begin
+                    DeliveryDialog.SetValues(Rec."Delivery Site Name", Rec."Delivery Address");
+                    if DeliveryDialog.RunModal() <> Action::OK then
+                        exit;
+
+                    DeliveryDialog.GetValues(SiteName, Address);
+                    if DelChr(Address, '<>', ' ') = '' then
+                        Error('Адреса обов’язкова. Вкажіть адресу місця довозу.');
+
+                    Rec.TestField(Status, Rec.Status::Open);
+                    Rec."Delivery Site Name" := SiteName;
+                    Rec."Delivery Address" := Address;
+                    Rec.Modify(true);
+                    CurrPage.Update(false);
+                end;
+            }
             action(ChangeShippedBy)
             {
                 Caption = 'Змінити... (Відвантажив)';

@@ -19,6 +19,8 @@ codeunit 57152 "SI Prok Concrete Identity"
         FinishedVariant: Record "Item Variant";
         ItemUoM: Record "Item Unit of Measure";
         ConcreteName: Text;
+        M3Code: Code[10];
+        M3Resolver: Codeunit "SI Prok Concrete M3 UoM";
     begin
         Clear(Reason);
         if Fact."Item No." = '' then begin
@@ -46,12 +48,8 @@ codeunit 57152 "SI Prok Concrete Identity"
             Reason := StrSubstNo('Item %1 не має назви бетону (Description).', Fact."Item No.");
             exit(false);
         end;
-        if not ItemUoM.Get(Fact."Item No.", 'M3') then begin
-            Reason := StrSubstNo('Для бетону %1 немає одиниці виміру M3.', Fact."Item No.");
-            exit(false);
-        end;
-        if ItemUoM."Qty. per Unit of Measure" <= 0 then begin
-            Reason := StrSubstNo('Для бетону %1 некоректний коефіцієнт M3.', Fact."Item No.");
+        if not M3Resolver.TryResolve(Fact."Item No.", M3Code) then begin
+            Reason := StrSubstNo('Для бетону %1 немає одиниці виміру M3 або М3 з додатним коефіцієнтом.', Fact."Item No.");
             exit(false);
         end;
         exit(true);

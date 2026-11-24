@@ -220,7 +220,8 @@ codeunit 57060 "SI Prok Formula Projector"
         if FormulaName = '' then
             FormulaName := Item.Description;
         FormulaName := StrSubstNo('%1 v.%2', FormulaName, RecipeRevision."Revision No.");
-        FormulaCode := BuildRecipeFormulaIntegrationKey(Recipe."Recipe No.", RecipeRevision."Revision No.");
+        RecipeRevision.TestField("Proktek Number");
+        FormulaCode := RecipeRevision."Proktek Number";
 
         RecipeMaterials := BuildRecipeMaterialsArray(
             Recipe,

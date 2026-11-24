@@ -8,6 +8,11 @@ codeunit 57090 "SI Prok Recipe Formula Mgt."
         Mapping: Record "SI Prok Entity Mapping";
         ConnectionMgt: Codeunit "SI Prok Connection Mgt.";
     begin
+        // REC-13B: user number is MES-facing only; it never participates in BC matching.
+        if RecipeRevision."Proktek Number" = '' then begin
+            if not PromptProktekNumber(RecipeRevision) then
+                exit;
+        end;
         ValidateRevision(RecipeRevision);
         ConnectionMgt.GetActive(Connection);
         GetOrInitMapping(Connection, RecipeRevision, Mapping);
@@ -19,6 +24,16 @@ codeunit 57090 "SI Prok Recipe Formula Mgt."
             then
                 exit;
 
+        // REC-11: повторна передача зберігає останній відомий стан активації.
+        // Не створюємо нову Formula та не показуємо діалог активації.
+        if (Mapping."Proktek Internal Code" > 0) and (not IsNullGuid(Mapping."Proktek UUID")) then begin
+            SaveRevisionFormula(Connection, RecipeRevision, Mapping, Mapping."SI Proktek Active");
+            Message('Ревізію %1 рецептури %2 оновлено в Proktek. Стан активації збережено.',
+                RecipeRevision."Revision No.", RecipeRevision."Recipe No.");
+            exit;
+        end;
+
+        // Первинна публікація: неактивна Formula + пропозиція активації.
         SaveRevisionFormula(Connection, RecipeRevision, Mapping, false);
 
         if Confirm('Активувати цю рецептуру в Proktek?', false) then begin
@@ -28,6 +43,16 @@ codeunit 57090 "SI Prok Recipe Formula Mgt."
 
         Message('Ревізію %1 рецептури %2 успішно передано в Proktek. Formula Index: %3. Formula залишена неактивною.',
             RecipeRevision."Revision No.", RecipeRevision."Recipe No.", Mapping."Proktek Internal Code");
+    end;
+
+    local procedure PromptProktekNumber(var RecipeRevision: Record "SI Concrete Recipe Revision"): Boolean
+    var
+        NumberDialog: Page "SI Recipe Proktek No. Dialog";
+    begin
+        if NumberDialog.RunModal() <> Action::OK then
+            exit(false);
+        RecipeRevision.SetProktekNumber(NumberDialog.GetNumber());
+        exit(true);
     end;
 
     procedure Activate(RecipeRevision: Record "SI Concrete Recipe Revision")
@@ -242,8 +267,12 @@ codeunit 57090 "SI Prok Recipe Formula Mgt."
         Recipe: Record "SI Concrete Recipe";
         RecipeLine: Record "SI Concrete Recipe Line";
     begin
-        if RecipeRevision.Status <> RecipeRevision.Status::Certified then
-            Error('У Proktek можна публікувати лише сертифіковану ревізію.');
+        if not (((RecipeRevision."Recipe Purpose" = RecipeRevision."Recipe Purpose"::Commercial) and
+                 (RecipeRevision.Status = RecipeRevision.Status::Certified)) or
+                ((RecipeRevision."Recipe Purpose" = RecipeRevision."Recipe Purpose"::Technological) and
+                 (RecipeRevision.Status = RecipeRevision.Status::Ready))) then
+            Error('Передача в Proktek дозволена для товарної редакції у статусі Certified або технологічної у статусі Ready.');
+        RecipeRevision.TestField("Proktek Number");
         if RecipeRevision."Administrative Status" <> RecipeRevision."Administrative Status"::Active then
             Error('Ревізія %1 адміністративно неактивна в BC.', RecipeRevision."Revision No.");
         if RecipeRevision."Projection Status" <> RecipeRevision."Projection Status"::Projected then

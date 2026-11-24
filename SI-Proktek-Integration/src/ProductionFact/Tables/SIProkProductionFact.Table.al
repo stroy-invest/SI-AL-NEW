@@ -31,6 +31,8 @@ table 57091 "SI Prok Production Fact"
         field(303; "Formula ID"; BigInteger) { Caption = 'Formula ID Proktek'; Editable = false; }
         field(304; "Formula Name"; Text[150]) { Caption = 'Назва формули Proktek'; Editable = false; }
         field(305; "Recipe Resolution Note"; Text[250]) { Caption = 'Визначення рецептури'; Editable = false; }
+        field(306; "Fact Purpose"; Enum "SI Prok Fact Purpose") { Caption = 'Призначення факту'; Editable = false; ObsoleteState = Pending; ObsoleteReason = 'Призначення визначається лише редакцією рецептури.'; ObsoleteTag = '1.0.0.103'; }
+        field(307; "Purpose Diagnostics"; Text[250]) { Caption = 'Діагностика призначення'; Editable = false; ObsoleteState = Pending; ObsoleteReason = 'Застаріла діагностика дубльованого призначення.'; ObsoleteTag = '1.0.0.103'; }
         field(200; "Ordered Quantity M3"; Decimal) { Caption = 'Замовлено, м³'; DecimalPlaces = 0 : 5; }
         field(210; "Order Produced Total M3"; Decimal) { Caption = 'Вироблено по Order, м³'; DecimalPlaces = 0 : 5; }
         field(220; "Order Remaining M3"; Decimal) { Caption = 'Залишок по Order, м³'; DecimalPlaces = 0 : 5; }
@@ -94,6 +96,14 @@ table 57091 "SI Prok Production Fact"
         field(335; "Accounting Material Lines"; Integer) { Caption = 'Перевірено матеріалів'; Editable = false; }
         // TC-01: test fixture only. Real plan must come from a verified MES batch source.
         field(336; "Planned Quantity M3"; Decimal) { Caption = 'План партії, м³'; DecimalPlaces = 0 : 5; Editable = false; }
+        field(339; "Batch Plan Diagnostics"; Text[250]) { Caption = 'Діагностика плану партії'; Editable = false; }
+        field(340; "Batch Plan Vehicle No."; Code[20]) { Caption = 'ТЗ для плану партії'; Editable = false; }
+        field(341; "Internal Customer No."; Code[20])
+        {
+            Caption = 'Клієнт внутрішніх операцій';
+            TableRelation = Customer."No.";
+            Editable = false;
+        }
         field(337; "Accounting Document No."; Code[20])
         {
             Caption = 'Номер облікового документа';
@@ -104,6 +114,10 @@ table 57091 "SI Prok Production Fact"
             Caption = 'Модель проведення';
             Editable = false;
         }
+        field(342; "Recovery At"; DateTime) { Editable = false; }
+        field(343; "Recovery By"; Text[100]) { Editable = false; }
+        field(344; "Recovery Reason"; Text[250]) { Editable = false; }
+        field(345; "Recovery Raw Entry No."; Integer) { Editable = false; }
         field(280; "Canonical JSON"; Blob) { Caption = 'Canonical JSON'; SubType = Memo; }
     }
 

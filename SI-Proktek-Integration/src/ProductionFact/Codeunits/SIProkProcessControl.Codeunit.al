@@ -110,7 +110,7 @@ codeunit 57140 "SI Prok Process Control"
                 if (Link."Expected Entry Type" <> Link."Expected Entry Type"::"Positive Adjmt.") or
                    (Link."Expected Item No." <> Fact."Item No.") or
                    (Link."Expected Variant Code" <> Fact."Variant Code") or
-                   (Link."Expected UoM" <> 'M3') or
+                   ((Link."Expected UoM" <> 'M3') and (Link."Expected UoM" <> 'М3')) or
                    (Link."Expected Quantity" <> Fact."Produced Quantity M3") then
                     Error('SI Process: рядок надходження не відповідає фактичному випуску.');
             end else begin

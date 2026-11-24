@@ -223,8 +223,8 @@ codeunit 57112 "SI Prok Vehicle Sync"
         Mixer.Add('plaka', Vehicle."Registration No.");
         Mixer.Add('kapasite', CapacityM3);
         Mixer.Add('surucu_kod', 0);
-        Mixer.Add('aciklama1', Vehicle."VIN");
-        Mixer.Add('aciklama2', '');
+        Mixer.Add('aciklama1', Vehicle.Description);
+        Mixer.Add('aciklama2', Vehicle."VIN");
         Mixer.Add('hub', EmptyHub);
         Mixer.Add('uuid', '00000000-0000-0000-0000-000000000000');
         Mixer.Add('surucu_uuid', '00000000-0000-0000-0000-000000000000');
@@ -302,7 +302,7 @@ codeunit 57112 "SI Prok Vehicle Sync"
     begin
         if not VehicleMgt.GetActualCharacteristicValue(VehicleNo, 'DRUM-VOLUME', Quantity, UoMCode) then
             Error('Для ТЗ %1 не задано реальне DRUM-VOLUME у характеристиках ТЗ.', VehicleNo);
-        if UoMCode <> 'M3' then
+        if (UoMCode <> 'M3') and (UoMCode <> 'М3') then
             Error('Для ТЗ %1 одиниця DRUM-VOLUME = %2; очікується M3. Синхронізацію зупинено.', VehicleNo, UoMCode);
         if Quantity <= 0 then
             Error('DRUM-VOLUME для ТЗ %1 має бути більше нуля.', VehicleNo);

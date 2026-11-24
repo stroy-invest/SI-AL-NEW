@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "29716061-69ed-45ef-a790-a2377e00f960",
   "name": "SI Proktek Integration",
   "publisher": "STROYINVEST",
-  "version": "1.0.0.92",
+  "version": "1.1.0.2",
   "platform": "28.0.0.0",
   "application": "28.0.0.0",
   "idRanges": [
@@ -16,37 +16,37 @@
       "id": "03296e2f-ef03-4e2c-a893-8a7bf5dbac69",
       "name": "STROYINVEST Foundation",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.86"
+      "version": "1.0.0.91"
     },
     {
       "id": "e7e9d6bb-52d8-4f68-93ad-d8c390cbbf73",
       "name": "SI Construction Project",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.23"
+      "version": "1.0.0.25"
     },
     {
       "id": "39320ea1-c92d-4838-b833-4080842bc10e",
       "name": "SI Master Data Toolkit",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.25"
+      "version": "1.0.0.26"
     },
     {
       "id": "bca54530-bd7f-45ec-b290-81531873ad33",
       "name": "SI Supply Request Engine",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.56"
+      "version": "1.0.0.67"
     },
     {
       "id": "a483f66a-7af7-4f98-bbac-7abd480ef70e",
       "name": "SI Concrete Recipe Engine",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.23"
+      "version": "1.0.0.27"
     },
     {
       "id": "c7ba7490-cd03-4d6c-b987-64d412401a89",
       "name": "SI Vehicle Management",
       "publisher": "STROYINVEST",
-      "version": "1.0.0.6"
+      "version": "1.0.0.8"
     }
   ],
   "resourceExposurePolicy": {
@@ -56,8 +56,8 @@
   },
   "runtime": "17.0",
   "resourceFolders": [
-      "Resources"
-  ],  
+    "Resources"
+  ],
   "features": [
     "NoImplicitWith",
     "TranslationFile"

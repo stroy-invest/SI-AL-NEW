@@ -9,6 +9,7 @@ codeunit 57119 "SI Prok Prod Order Trans. Sub"
         Fact: Record "SI Prok Production Fact";
         Binding: Codeunit "SI Prok Fact BC Binding Mgt.";
         ShipmentMgt: Codeunit "SI Prok Shipment Mgt.";
+        Revision: Record "SI Concrete Recipe Revision";
     begin
         // Only orders explicitly linked to SI plans; never touch unrelated BC orders.
         Plan.SetRange("BC Prod. Order Status", FromProdOrder.Status);
@@ -28,8 +29,12 @@ codeunit 57119 "SI Prok Prod Order Trans. Sub"
             Fact.SetRange("BC Prod. Order No.", FromProdOrder."No.");
             if Fact.FindSet() then
                 repeat
-                    Binding.BindFact(Fact);
-                    ShipmentMgt.TryCreateForFact(Fact."Entry No.");
+                    // Only the historical recipe revision defines commercial purpose.
+                    if Revision.Get(Fact."Recipe No.", Fact."Recipe Revision No.") then
+                        if Revision."Recipe Purpose" = Revision."Recipe Purpose"::Commercial then begin
+                            Binding.BindFact(Fact);
+                            ShipmentMgt.TryCreateForFact(Fact."Entry No.");
+                        end;
                 until Fact.Next() = 0;
             ShipmentMgt.CreateForReleasedOrder(ToProdOrder."No.");
         end;

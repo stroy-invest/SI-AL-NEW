@@ -70,7 +70,8 @@ codeunit 57113 "SI Prok Mixer Sync Manager"
             IdentityChanged := (not HadMapping) or (Mapping."External Mixer ID" <> RemoteId) or
                 (Mapping."External Mixer UUID" <> RemoteUuid) or (Mapping."External Mixer Code" <> Vehicle."No.");
             NeedsUpdate := (GetText(Candidate, 'plaka') <> Vehicle."Registration No.") or
-                (GetText(Candidate, 'aciklama1') <> Vehicle."VIN") or
+                (GetText(Candidate, 'aciklama1') <> Vehicle.Description) or
+                (GetText(Candidate, 'aciklama2') <> Vehicle."VIN") or
                 (GetDecimal(Candidate, 'kapasite') <> Capacity) or
                 (GetBool(Candidate, 'aktif') <> (not Vehicle.Blocked));
             // TEMP DIAGNOSTICS: remove after the VECHICLE-0003 discrepancy is resolved.
@@ -82,7 +83,8 @@ codeunit 57113 "SI Prok Mixer Sync Manager"
             if NeedsUpdate then begin
                 Existing := Candidate;
                 SetValue(Existing, 'plaka', Vehicle."Registration No.");
-                SetValue(Existing, 'aciklama1', Vehicle."VIN");
+                SetValue(Existing, 'aciklama1', Vehicle.Description);
+                SetValue(Existing, 'aciklama2', Vehicle."VIN");
                 SetValue(Existing, 'kapasite', Capacity);
                 SetValue(Existing, 'aktif', not Vehicle.Blocked);
                 SaveMixer(Connection, Existing, Result);
@@ -106,8 +108,8 @@ codeunit 57113 "SI Prok Mixer Sync Manager"
             Existing.Add('aktif', not Vehicle.Blocked);
             Existing.Add('plaka', Vehicle."Registration No.");
             Existing.Add('kapasite', Capacity);
-            Existing.Add('aciklama1', Vehicle."VIN");
-            Existing.Add('aciklama2', '');
+            Existing.Add('aciklama1', Vehicle.Description);
+            Existing.Add('aciklama2', Vehicle."VIN");
             Existing.Add('surucu_kod', 0);
             Existing.Add('surucu_uuid', '00000000-0000-0000-0000-000000000000');
             Existing.Add('hub', EmptyHub);
@@ -269,8 +271,9 @@ codeunit 57113 "SI Prok Mixer Sync Manager"
         Token: JsonToken;
     begin
         if (GetText(Result, 'plaka') <> Vehicle."Registration No.") or
-           (GetText(Result, 'aciklama1') <> Vehicle."VIN") then
-            Error('SaveMixer: plate/VIN mismatch for vehicle %1. Check GetMixers before retry.', Vehicle."No.");
+           (GetText(Result, 'aciklama1') <> Vehicle.Description) or
+           (GetText(Result, 'aciklama2') <> Vehicle."VIN") then
+            Error('SaveMixer: plate/description/VIN mismatch for vehicle %1. Check GetMixers before retry.', Vehicle."No.");
         if not Result.Get('kapasite', Token) then
             Error('SaveMixer: missing kapasite for vehicle %1. Check GetMixers before retry.', Vehicle."No.");
         if (not Token.IsValue()) or Token.AsValue().IsNull() then
@@ -294,7 +297,7 @@ codeunit 57113 "SI Prok Mixer Sync Manager"
     begin
         if not VehicleMgt.GetActualCharacteristicValue(VehicleNo, 'DRUM-VOLUME', Value, UoM) then
             Error('Vehicle %1: actual DRUM-VOLUME missing.', VehicleNo);
-        if (UoM <> 'M3') or (Value <= 0) then
+        if ((UoM <> 'M3') and (UoM <> 'М3')) or (Value <= 0) then
             Error('Vehicle %1: actual DRUM-VOLUME must be positive in M3.', VehicleNo);
         exit(Value);
     end;

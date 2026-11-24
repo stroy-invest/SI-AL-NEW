@@ -59,7 +59,7 @@ codeunit 57116 "SI Prok Accounting Prep Mgt."
                 else begin
                     if (ProdLine."Item No." <> Fact."Item No.") or (ProdLine."Variant Code" <> Fact."Variant Code") then
                         AddIssue(Issues, 'Товар/варіант випуску не відповідає виробничому рядку.');
-                    if ProdLine."Unit of Measure Code" <> 'M3' then
+                    if (ProdLine."Unit of Measure Code" <> 'M3') and (ProdLine."Unit of Measure Code" <> 'М3') then
                         AddIssue(Issues, 'Одиниця випуску не M3: конверсію слід узгодити до PF-02.2B.');
                     LocationSemantics.AssertFinishedGoods(ProdLine."Location Code");
                     // Validate ALL components, not only those occurring in

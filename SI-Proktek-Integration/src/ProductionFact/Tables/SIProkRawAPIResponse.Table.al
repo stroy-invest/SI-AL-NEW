@@ -15,12 +15,29 @@ table 57094 "SI Prok Raw API Response"
         field(80; "Raw JSON"; Blob) { Caption = 'Первинна відповідь'; SubType = Memo; }
         field(90; "Intake Result"; Enum "SI Prok Intake Result") { Caption = 'Результат приймання'; Editable = false; }
         field(100; "Production Fact Entry No."; Integer) { Caption = 'Факт виробництва'; TableRelation = "SI Prok Production Fact"."Entry No."; Editable = false; }
+        field(110; "Recovery Canonical"; Blob) { SubType = Memo; }
+        field(120; "Config Archive Entry No."; Integer) { Editable = false; }
     }
     keys { key(PK; "Entry No.") { Clustered = true; } }
     trigger OnInsert()
     begin
         if "Received At" = 0DT then
             "Received At" := CurrentDateTime();
+    end;
+    procedure SetRecoveryCanonical(Value: Text)
+    var O: OutStream;
+    begin
+        "Recovery Canonical".CreateOutStream(O, TextEncoding::UTF8);
+        O.WriteText(Value);
+    end;
+    procedure GetRecoveryCanonical(): Text
+    var I: InStream; S: Text; L: Text;
+    begin
+        CalcFields("Recovery Canonical");
+        if not "Recovery Canonical".HasValue() then exit('');
+        "Recovery Canonical".CreateInStream(I, TextEncoding::UTF8);
+        while not I.EOS() do begin I.ReadText(L); S += L; end;
+        exit(S);
     end;
     procedure SetRaw(Value: Text)
     var O: OutStream;

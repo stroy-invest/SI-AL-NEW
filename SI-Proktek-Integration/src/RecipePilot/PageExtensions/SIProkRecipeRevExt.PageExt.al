@@ -65,7 +65,7 @@ pageextension 57090 "SI Prok Recipe Rev Ext" extends "SI Recipe Revision Card"
                     Promoted = true;
                     PromotedCategory = Process;
                     Enabled = CanPublish;
-                    ToolTip = 'Передати нову Formula або оновити вже пов''язану Formula в Proktek. Після передачі система запропонує одразу активувати рецептуру.';
+                    ToolTip = 'Передати нову Formula або оновити вже пов''язану Formula в Proktek. Для первинної передачі система запропонує активацію; при повторній передачі зберігає попередній стан.';
 
                     trigger OnAction()
                     var
@@ -147,7 +147,8 @@ pageextension 57090 "SI Prok Recipe Rev Ext" extends "SI Recipe Revision Card"
     begin
         FormulaMgt.GetProjectionState(Rec, FormulaIndex, FormulaUUID, Published, ProktekActive, LastSyncAt, ProktekStatusText);
         CanPublish :=
-            (Rec.Status = Rec.Status::Certified) and
+            (((Rec."Recipe Purpose" = Rec."Recipe Purpose"::Commercial) and (Rec.Status = Rec.Status::Certified)) or
+             ((Rec."Recipe Purpose" = Rec."Recipe Purpose"::Technological) and (Rec.Status = Rec.Status::Ready))) and
             (Rec."Administrative Status" = Rec."Administrative Status"::Active) and
             (Rec."Projection Status" = Rec."Projection Status"::Projected) and
             (Rec."Production BOM Version Code" <> '');

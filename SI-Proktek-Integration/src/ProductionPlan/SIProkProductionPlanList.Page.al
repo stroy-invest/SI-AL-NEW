@@ -19,6 +19,9 @@ page 57104 "SI Prok Production Plan List"
                 field("Item No."; Rec."Item No.") { ApplicationArea = All; }
                 field("Variant Code"; Rec."Variant Code") { ApplicationArea = All; }
                 field("Planned Quantity"; Rec."Planned Quantity") { ApplicationArea = All; }
+            field("Production Plan Completed"; Rec."Production Plan Completed") { ApplicationArea = All; }
+            field("Completed Planned Qty. M3"; Rec."Completed Planned Qty. M3") { ApplicationArea = All; }
+            field("Plan Completion Diagnostics"; Rec."Plan Completion Diagnostics") { ApplicationArea = All; }
                 field("Unit of Measure Code"; Rec."Unit of Measure Code") { ApplicationArea = All; }
                 field("Production BOM No."; Rec."Production BOM No.") { ApplicationArea = All; }
                 field("Production BOM Version Code"; Rec."Production BOM Version Code") { ApplicationArea = All; }
