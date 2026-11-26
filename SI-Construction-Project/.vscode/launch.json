@@ -18,7 +18,7 @@
             "breakOnError": "All",
             "breakOnRecordWrite": "None",
 
-            "launchBrowser": true,
+            "launchBrowser": false,
 
             "enableSqlInformationDebugger": true,
             "enableLongRunningSqlStatements": true,
