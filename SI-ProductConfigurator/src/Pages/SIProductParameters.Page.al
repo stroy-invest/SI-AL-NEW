@@ -55,6 +55,9 @@ page 53002 "SI Product Parameters"
                     ToolTip = 'Визначає стабільну бізнес-семантику параметра. Значення вибирається зі спільного довідника семантик атрибутів і параметрів продукту.';
                 }
 
+                field("Value Source"; Rec."Value Source") { ApplicationArea = All; }
+                field("Mapping Set Code"; Rec."Mapping Set Code") { ApplicationArea = All; }
+                field("Nominal Value Field"; Rec."Nominal Value Field") { ApplicationArea = All; }
                 field("Reference Type"; Rec."Reference Type")
                 {
                     ApplicationArea = All;

@@ -4,6 +4,17 @@ permissionset 53000 "SI PROD CONFIG ADMIN"
     Caption = 'SI Конфігуратор: адмін', MaxLength = 30;
 
     Permissions =
+        tabledata "SI Template Req. Group" = RIMD,
+        table "SI Template Req. Group" = X,
+        page "SI Template Req. Groups" = X,
+        tabledata "SI Family Req. Group" = RIMD,
+        table "SI Family Req. Group" = X,
+        page "SI Family Req. Groups" = X,
+        tabledata "SI Nominal Size Mapping" = R,
+        table "SI Nominal Size Mapping" = X,
+        page "SI Nominal Value Lookup" = X,
+        codeunit "SI Dynamic Value Source" = X,
+        codeunit "SI Parameter Value Resolver" = X,
         tabledata "SI Value Attr. Definition" = RIMD,
         tabledata "SI Parameter Value Attr." = RIMD,
         table "SI Value Attr. Definition" = X,

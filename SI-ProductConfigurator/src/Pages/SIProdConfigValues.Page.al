@@ -71,6 +71,15 @@ page 53008 "SI Prod. Config. Values"
                         Rec."Value Type" =
                         Rec."Value Type"::"Controlled Value";
                     ToolTip = 'Визначає допустиме контрольоване значення параметра.';
+                    trigger OnLookup(var Text: Text): Boolean
+                    var
+                        Source: Codeunit "SI Dynamic Value Source";
+                        SelectedCode: Code[30];
+                    begin
+                        if not Source.Lookup(Rec."Parameter Code", SelectedCode) then exit(false);
+                        Text := SelectedCode;
+                        exit(true);
+                    end;
                 }
 
                 field("Decimal Value"; Rec."Decimal Value")

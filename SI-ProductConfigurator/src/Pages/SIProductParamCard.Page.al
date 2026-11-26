@@ -46,6 +46,12 @@ page 53003 "SI Product Param. Card"
                     ApplicationArea = All;
                     Importance = Promoted;
                     ToolTip = 'Визначає тип значень, які може приймати параметр.';
+
+                    trigger OnValidate()
+                    begin
+                        UpdateSourceVisibility();
+                        CurrPage.Update(false);
+                    end;
                 }
 
                 field("SI Semantic Code"; Rec."SI Semantic Code")
@@ -56,12 +62,22 @@ page 53003 "SI Product Param. Card"
                     ToolTip = 'Визначає стабільну бізнес-семантику параметра. Значення вибирається зі спільного довідника семантик атрибутів і параметрів продукту.';
                 }
 
+                field("Value Source"; Rec."Value Source")
+                {
+                    ApplicationArea = All;
+                    Visible = ShowValueSource;
+
+                    trigger OnValidate()
+                    begin
+                        UpdateSourceVisibility();
+                        CurrPage.Update(false);
+                    end;
+                }
                 field("Reference Type"; Rec."Reference Type")
                 {
                     ApplicationArea = All;
                     Caption = 'Джерело посилання';
-                    Visible = true;
-                    Editable = Rec."Value Type" = Rec."Value Type"::Reference;
+                    Visible = ShowReferenceSource;
                     ToolTip = 'Визначає кероване джерело, з якого вибирається значення посилального параметра.';
                 }
 
@@ -75,6 +91,21 @@ page 53003 "SI Product Param. Card"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Визначає порядок відображення параметра.';
+                }
+            }
+
+            group(SourceSettings)
+            {
+                Caption = 'Налаштування джерела значень';
+                Visible = ShowNominalSource;
+
+                field("Mapping Set Code"; Rec."Mapping Set Code")
+                {
+                    ApplicationArea = All;
+                }
+                field("Nominal Value Field"; Rec."Nominal Value Field")
+                {
+                    ApplicationArea = All;
                 }
             }
 
@@ -141,4 +172,20 @@ page 53003 "SI Product Param. Card"
         }
     }
 
+    trigger OnAfterGetCurrRecord()
+    begin
+        UpdateSourceVisibility();
+    end;
+
+    var
+        ShowValueSource: Boolean;
+        ShowNominalSource: Boolean;
+        ShowReferenceSource: Boolean;
+
+    local procedure UpdateSourceVisibility()
+    begin
+        ShowValueSource := Rec."Value Type" = Rec."Value Type"::"Controlled Value";
+        ShowNominalSource := ShowValueSource and (Rec."Value Source" = Rec."Value Source"::NominalSize);
+        ShowReferenceSource := Rec."Value Type" = Rec."Value Type"::Reference;
+    end;
 }

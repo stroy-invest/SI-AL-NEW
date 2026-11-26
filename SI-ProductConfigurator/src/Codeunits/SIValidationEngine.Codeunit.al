@@ -27,6 +27,7 @@ codeunit 53003 "SI Validation Engine"
                 BlockedFamilyErr,
                 ProductFamily.Code);
 
+        ValidateRequirementGroups(ConfigurationNo);
         ValidateMandatoryParameters(ProductConfig);
         ValidateExistingValues(ProductConfig);
         ValidateIdentityModel(ProductConfig);
@@ -141,6 +142,56 @@ codeunit 53003 "SI Validation Engine"
             Error(
                 ItemCategoryAlreadyExistsErr,
                 NewCategoryCode);
+    end;
+
+    procedure ValidateRequirementGroups(ConfigurationNo: Code[20])
+    var
+        Config: Record "SI Product Config.";
+        ReqGroup: Record "SI Family Req. Group";
+        Member: Record "SI Family Parameter";
+        Value: Record "SI Product Config. Value";
+        Role: Enum "SI ERP Projection Role";
+        Filled: Integer;
+        Available: Integer;
+    begin
+        Config.Get(ConfigurationNo);
+        if Config."Base Item No." = '' then
+            Role := Role::"Item Identity"
+        else
+            Role := Role::"Variant Identity";
+        // Detect stale group references or role changes before counting.
+        Member.SetRange("Family Code", Config."Family Code");
+        Member.SetFilter("Requirement Group Code", '<>%1', '');
+        if Member.FindSet() then
+            repeat
+                ReqGroup.Get(Member."Family Code", Member."Requirement Group Code");
+                ReqGroup.TestField("ERP Projection Role", Member."ERP Projection Role");
+            until Member.Next() = 0;
+        ReqGroup.Reset();
+        ReqGroup.SetRange("Family Code", Config."Family Code");
+        ReqGroup.SetRange("ERP Projection Role", Role);
+        if ReqGroup.FindSet() then
+            repeat
+                ReqGroup.CheckSetup();
+                Filled := 0;
+                Available := 0;
+                Member.Reset();
+                Member.SetRange("Family Code", Config."Family Code");
+                Member.SetRange("Requirement Group Code", ReqGroup.Code);
+                Member.SetRange(Blocked, false);
+                if Member.FindSet() then
+                    repeat
+                        Available += 1;
+                        if Value.Get(ConfigurationNo, Member."Parameter Code") then begin
+                            Value.ValidateCompleteValue();
+                            Filled += 1;
+                        end;
+                    until Member.Next() = 0;
+                if Available < ReqGroup."Min Filled" then
+                    Error('Група %1: недостатньо доступних параметрів (%2), мінімум %3.', ReqGroup.Code, Available, ReqGroup."Min Filled");
+                if (Filled < ReqGroup."Min Filled") or (Filled > ReqGroup."Max Filled") then
+                    Error('Група %1: заповнено %2 параметрів. Необхідно від %3 до %4.', ReqGroup.Code, Filled, ReqGroup."Min Filled", ReqGroup."Max Filled");
+            until ReqGroup.Next() = 0;
     end;
 
     local procedure ValidateMandatoryParameters(

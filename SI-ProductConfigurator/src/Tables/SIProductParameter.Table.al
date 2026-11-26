@@ -102,8 +102,12 @@ table 53001 "SI Product Parameter"
             DataClassification = CustomerContent;
             TableRelation = "SI Attribute Semantic".Code;
         }
+        field(100; "Value Source"; Enum "SI Value Source") { Caption = 'Джерело значень'; }
+        field(110; "Mapping Set Code"; Code[30]) { Caption = 'Код набору відповідностей'; }
+        field(120; "Nominal Value Field"; Enum "SI Nominal Value Field") { Caption = 'Поле джерела'; }
     }
 
+    // Dynamic source settings are stored on the parameter, not the family.
     keys
     {
         key(PK; Code)
@@ -135,12 +139,32 @@ table 53001 "SI Product Parameter"
     begin
         NormalizeCode();
         ValidateReferenceSetup();
+        if "Value Source" <> "Value Source"::Static then
+            TestField("Value Type", "Value Type"::"Controlled Value");
     end;
 
     trigger OnModify()
     begin
         NormalizeCode();
         ValidateReferenceSetup();
+        CheckSourceChange();
+    end;
+
+    local procedure CheckSourceChange()
+    var
+        V: Record "SI Parameter Value";
+        C: Record "SI Product Config. Value";
+    begin
+        if "Value Source" <> "Value Source"::Static then
+            TestField("Value Type", "Value Type"::"Controlled Value");
+        if (xRec."Value Source" = "Value Source") and
+           (xRec."Mapping Set Code" = "Mapping Set Code") and
+           (xRec."Nominal Value Field" = "Nominal Value Field") then
+            exit;
+        V.SetRange("Parameter Code", Code);
+        C.SetRange("Parameter Code", Code);
+        if not V.IsEmpty() or not C.IsEmpty() then
+            Error('Не можна змінити джерело параметра з наявними значеннями або конфігураціями.');
     end;
 
     trigger OnDelete()

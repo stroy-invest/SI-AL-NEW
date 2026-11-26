@@ -16,6 +16,12 @@ page 53033 "SI Product Family Tmpl. Card"
                 field(Description; Rec.Description) { ApplicationArea = All; Importance = Promoted; }
                 field(Blocked; Rec.Blocked) { ApplicationArea = All; }
             }
+            part(RequirementGroups; "SI Template Req. Groups")
+            {
+                ApplicationArea = All;
+                Caption = 'Групи обов’язковості';
+                SubPageLink = "Template Code" = field(Code);
+            }
             part(Parameters; "SI Family Template Parameters")
             {
                 ApplicationArea = All;

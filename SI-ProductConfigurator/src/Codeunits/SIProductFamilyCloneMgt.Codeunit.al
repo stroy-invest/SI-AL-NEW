@@ -7,6 +7,8 @@ codeunit 53017 "SI Product Family Clone Mgt."
     var
         SourceFamily: Record "SI Product Family";
         NewFamily: Record "SI Product Family";
+        SourceGroup: Record "SI Family Req. Group";
+        TargetGroup: Record "SI Family Req. Group";
     begin
         SourceFamily.Get(SourceFamilyCode);
 
@@ -42,6 +44,13 @@ codeunit 53017 "SI Product Family Clone Mgt."
         Clear(NewFamily."Family Template Code");
         NewFamily.Insert(true);
 
+        SourceGroup.SetRange("Family Code", SourceFamily.Code);
+        if SourceGroup.FindSet() then
+            repeat
+                TargetGroup := SourceGroup;
+                TargetGroup."Family Code" := NewFamily.Code;
+                TargetGroup.Insert(true);
+            until SourceGroup.Next() = 0;
         CopyFamilyParameters(SourceFamily.Code, NewFamily.Code);
 
         exit(NewFamily.Code);
@@ -72,6 +81,7 @@ codeunit 53017 "SI Product Family Clone Mgt."
                 TargetParameter."Recipe Relevant" := SourceParameter."Recipe Relevant";
                 TargetParameter."Default Value Code" := SourceParameter."Default Value Code";
                 TargetParameter.Blocked := SourceParameter.Blocked;
+                TargetParameter.Validate("Requirement Group Code", SourceParameter."Requirement Group Code");
                 TargetParameter.Insert(true);
             until SourceParameter.Next() = 0;
     end;

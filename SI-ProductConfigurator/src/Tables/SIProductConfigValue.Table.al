@@ -48,6 +48,8 @@ table 53005 "SI Product Config. Value"
                 "SI Parameter Value".Code
                 where("Parameter Code" = field("Parameter Code"));
 
+            ValidateTableRelation = false;
+
             trigger OnValidate()
             begin
                 CheckConfigurationEditable();
@@ -402,36 +404,16 @@ table 53005 "SI Product Config. Value"
 
     local procedure ValidateControlledValue()
     var
-        ParameterValue: Record "SI Parameter Value";
+        Resolver: Codeunit "SI Parameter Value Resolver";
     begin
         if "Parameter Value Code" = '' then begin
             Clear("Display Value");
             exit;
         end;
-
-        TestExpectedValueType(
-            "Value Type"::"Controlled Value");
-
+        TestExpectedValueType("Value Type"::"Controlled Value");
         TestField("Parameter Code");
-
-        ParameterValue.Get(
-            "Parameter Code",
-            "Parameter Value Code");
-
-        if ParameterValue.Blocked then
-            Error(
-                BlockedParameterValueErr,
-                "Parameter Value Code",
-                "Parameter Code");
-
-        ClearOtherValueFields(
-            FieldNo("Parameter Value Code"));
-
-        if ParameterValue."Display Value" <> '' then
-            "Display Value" :=
-                ParameterValue."Display Value"
-        else
-            "Display Value" := ParameterValue.Code;
+        ClearOtherValueFields(FieldNo("Parameter Value Code"));
+        "Display Value" := CopyStr(Resolver.ValidateCode("Parameter Code", "Parameter Value Code"), 1, MaxStrLen("Display Value"));
     end;
 
     local procedure TestExpectedValueType(

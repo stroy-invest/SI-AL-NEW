@@ -4,6 +4,12 @@ permissionset 53002 "SI MASTER DATA ADMIN"
     Caption = 'SI Master Data Administrator';
 
     Permissions =
+        tabledata "SI Template Req. Group" = RIMD,
+        table "SI Template Req. Group" = X,
+        page "SI Template Req. Groups" = X,
+        tabledata "SI Family Req. Group" = RIMD,
+        table "SI Family Req. Group" = X,
+        page "SI Family Req. Groups" = X,
         // ============================================================
         // STANDARD BC MASTER DATA
         // ============================================================
@@ -34,6 +40,8 @@ permissionset 53002 "SI MASTER DATA ADMIN"
         tabledata "SI Item ERP Projection" = RIMD,
         table "SI Item Package" = X,
         tabledata "SI Item Package" = RIMD,
+        table "SI Nominal Size Mapping" = X,
+        tabledata "SI Nominal Size Mapping" = R,
         table "SI Package Type" = X,
         //codeunit "SI Item Cat. Workspace Mgt." = X,
 
@@ -63,6 +71,8 @@ permissionset 53002 "SI MASTER DATA ADMIN"
         tabledata "Unit of Measure" = RIMD,
         codeunit "SI Configuration Engine" = X,
         codeunit "SI Derived UoM Calc." = X,
+        codeunit "SI Dynamic Value Source" = X,
+        codeunit "SI Parameter Value Resolver" = X,
         codeunit "SI ERP Context Resolver" = X,
         codeunit "SI ERP Item Materializer" = X,
         codeunit "SI ERP Orphan Cleanup Subs." = X,
@@ -105,6 +115,7 @@ permissionset 53002 "SI MASTER DATA ADMIN"
         page "SI Item Variants Part" = X,
         page "SI New Item Cat. Attrs" = X,
         page "SI New Item Category" = X,
+        page "SI Nominal Value Lookup" = X,
         page "SI Package Type Card" = X,
         page "SI Package Types" = X,
         page "SI Param. Values Part" = X,

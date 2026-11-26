@@ -58,6 +58,7 @@ page 53005 "SI Family Parameters"
                     ToolTip = 'Визначає загальний порядок параметра в конфігураторі.';
                 }
 
+                field("Requirement Group Code"; Rec."Requirement Group Code") { ApplicationArea = All; }
                 field(Mandatory; Rec.Mandatory)
                 {
                     ApplicationArea = All;
@@ -97,8 +98,17 @@ page 53005 "SI Family Parameters"
 
                 field("Default Value Code"; Rec."Default Value Code")
                 {
-                    ApplicationArea = All;
                     ToolTip = 'Визначає контрольоване значення параметра, яке підставляється за замовчуванням.';
+                    ApplicationArea = All;
+                    trigger OnLookup(var Text: Text): Boolean
+                    var Source: Codeunit "SI Dynamic Value Source"; SelectedCode: Code[30];
+                    begin
+                        if not Source.Lookup(Rec."Parameter Code", SelectedCode) then exit(false);
+                        Text := SelectedCode;
+                        exit(true);
+                    end;
+
+
                 }
 
                 field(Blocked; Rec.Blocked)

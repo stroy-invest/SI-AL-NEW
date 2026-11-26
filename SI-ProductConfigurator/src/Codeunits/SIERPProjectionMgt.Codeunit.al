@@ -359,11 +359,13 @@ codeunit 53001 "SI ERP Projection Mgt."
     local procedure TryBuildPreview(
         var PrevBuffer: Record "SI ERP Projection Prev Buffer" temporary)
     var
+        ValidationEngine: Codeunit "SI Validation Engine";
         ContextResolver: Codeunit "SI ERP Context Resolver";
         IdentityMgt: Codeunit "SI Product Identity Mgt.";
         NamingEngine: Codeunit "SI Naming Engine";
         ProjectionValidator: Codeunit "SI ERP Projection Validator";
     begin
+        ValidationEngine.ValidateRequirementGroups(PrevBuffer."Configuration No.");
         // Resolve and validate mandatory ERP context before identity/reuse logic.
         ContextResolver.ResolveContext(PrevBuffer);
         ProjectionValidator.ValidateResolvedContextOrError(PrevBuffer);
@@ -741,12 +743,14 @@ codeunit 53001 "SI ERP Projection Mgt."
     var
         ProjectionValidator: Codeunit "SI ERP Projection Validator";
         ErrorText: Text;
+        ValidationEngine: Codeunit "SI Validation Engine";
     begin
         if not ProjectionValidator.ValidatePreview(PrevBuffer) then begin
             PrevBuffer.Modify();
             Error(ProjectionNotReadyErr, PrevBuffer."Validation Message");
         end;
 
+        ValidationEngine.ValidateRequirementGroups(PrevBuffer."Configuration No.");
         CheckMaterializationValues(PrevBuffer."Configuration No.");
         ClearLastError();
 
@@ -768,6 +772,7 @@ codeunit 53001 "SI ERP Projection Mgt."
 
     local procedure CheckMaterializationValues(ConfigurationNo: Code[20])
     var
+        Resolver: Codeunit "SI Parameter Value Resolver";
         ConfigValue: Record "SI Product Config. Value";
         ParameterValue: Record "SI Parameter Value";
     begin
@@ -777,13 +782,13 @@ codeunit 53001 "SI ERP Projection Mgt."
         ConfigValue.SetFilter("Parameter Value Code", '<>%1', '');
         if ConfigValue.FindSet() then
             repeat
-                ParameterValue.Get(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code");
-                ParameterValue.TestField(Blocked, false);
+                Resolver.ValidateCode(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code");
             until ConfigValue.Next() = 0;
     end;
 
     internal procedure MarkValuesEverUsed(ConfigurationNo: Code[20])
     var
+        Source: Codeunit "SI Dynamic Value Source";
         ConfigValue: Record "SI Product Config. Value";
         ParameterValue: Record "SI Parameter Value";
     begin
@@ -792,7 +797,8 @@ codeunit 53001 "SI ERP Projection Mgt."
         ConfigValue.SetFilter("Parameter Value Code", '<>%1', '');
         if ConfigValue.FindSet() then
             repeat
-                if ParameterValue.Get(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code") then
+                if not Source.IsDynamic(ConfigValue."Parameter Code") then
+                    if ParameterValue.Get(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code") then
                     if not ParameterValue."Ever Used" then begin
                         ParameterValue."Ever Used" := true;
                         ParameterValue.Modify(false);

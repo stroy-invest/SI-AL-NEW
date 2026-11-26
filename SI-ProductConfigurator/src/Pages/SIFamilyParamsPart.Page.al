@@ -59,6 +59,7 @@ page 53010 "SI Family Params Part"
                     ToolTip = 'Визначає порядок параметра в конфігураторі.';
                 }
 
+                field("Requirement Group Code"; Rec."Requirement Group Code") { ApplicationArea = All; }
                 field(Mandatory; Rec.Mandatory)
                 {
                     ApplicationArea = All;

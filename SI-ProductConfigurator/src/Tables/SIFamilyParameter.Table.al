@@ -143,10 +143,11 @@ table 53003 "SI Family Parameter"
                 "SI Parameter Value".Code
                 where("Parameter Code" = field("Parameter Code"));
 
+            ValidateTableRelation = false;
             trigger OnValidate()
             var
                 ProductParameter: Record "SI Product Parameter";
-                ParameterValue: Record "SI Parameter Value";
+                Resolver: Codeunit "SI Parameter Value Resolver";
             begin
                 if "Default Value Code" = '' then
                     exit;
@@ -158,18 +159,25 @@ table 53003 "SI Family Parameter"
                     "Value Type",
                     ProductParameter."Value Type"::"Controlled Value");
 
-                ParameterValue.Get(
-                    "Parameter Code",
-                    "Default Value Code");
-
-                if ParameterValue.Blocked then
-                    Error(
-                        BlockedDefaultValueErr,
-                        "Default Value Code",
-                        "Parameter Code");
+                Resolver.ValidateCode("Parameter Code", "Default Value Code");
             end;
         }
 
+        field(130; "Requirement Group Code"; Code[30])
+        {
+            Caption = 'Група обов’язковості';
+            DataClassification = CustomerContent;
+            TableRelation = "SI Family Req. Group".Code where("Family Code" = field("Family Code"));
+            trigger OnValidate()
+            var
+                ReqGroup: Record "SI Family Req. Group";
+            begin
+                if "Requirement Group Code" = '' then
+                    exit;
+                ReqGroup.Get("Family Code", "Requirement Group Code");
+                ReqGroup.TestField("ERP Projection Role", "ERP Projection Role");
+            end;
+        }
         field(120; Blocked; Boolean)
         {
             Caption = 'Заблоковано';
@@ -291,8 +299,8 @@ table 53003 "SI Family Parameter"
 
     local procedure ValidateDefaultValue()
     var
+        Resolver: Codeunit "SI Parameter Value Resolver";
         ProductParameter: Record "SI Product Parameter";
-        ParameterValue: Record "SI Parameter Value";
     begin
         if "Default Value Code" = '' then
             exit;
@@ -306,15 +314,7 @@ table 53003 "SI Family Parameter"
                 DefaultForControlledOnlyErr,
                 "Parameter Code");
 
-        ParameterValue.Get(
-            "Parameter Code",
-            "Default Value Code");
-
-        if ParameterValue.Blocked then
-            Error(
-                BlockedDefaultValueErr,
-                "Default Value Code",
-                "Parameter Code");
+        Resolver.ValidateCode("Parameter Code", "Default Value Code");
     end;
 
     var

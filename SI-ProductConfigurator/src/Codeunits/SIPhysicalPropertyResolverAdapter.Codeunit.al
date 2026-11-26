@@ -94,7 +94,10 @@ codeunit 53019 "SI Physical Prop. Adapter"
     var
         ConfigValue: Record "SI Product Config. Value";
         ProductParameter: Record "SI Product Parameter";
-        ParameterValue: Record "SI Parameter Value";
+        Resolver: Codeunit "SI Parameter Value Resolver";
+        DisplayValue: Text;
+        HasNumericValue: Boolean;
+        SemanticCode: Code[50];
         UoMMgt: Codeunit "SI UoM Mgt.";
         CandidateValue: Decimal;
         CandidateUoMCode: Code[10];
@@ -124,17 +127,9 @@ codeunit 53019 "SI Physical Prop. Adapter"
                             end;
 
                         ConfigValue."Value Type"::"Controlled Value":
-                            if (ConfigValue."Parameter Value Code" <> '') and
-                               ParameterValue.Get(
-                                   ConfigValue."Parameter Code",
-                                   ConfigValue."Parameter Value Code")
-                            then
-                                if not ParameterValue.Blocked then begin
-                                    CandidateValue := ParameterValue."Numeric Value";
-                                    CandidateUoMCode := ParameterValue."Numeric UoM Code";
-                                    if CandidateUoMCode = '' then
-                                        CandidateUoMCode := ProductParameter."Unit of Measure Code";
-                                end;
+                            if Resolver.TryResolve(ConfigValue."Parameter Code", ConfigValue."Parameter Value Code", DisplayValue, HasNumericValue, CandidateValue, CandidateUoMCode, SemanticCode) then
+                                if not HasNumericValue then
+                                    Clear(CandidateUoMCode);
                     end;
 
                     if (CandidateUoMCode <> '') and

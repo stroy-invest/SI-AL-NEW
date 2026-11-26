@@ -889,6 +889,8 @@ page 53030 "SI Product Config. Wizard"
         ParameterValue: Record "SI Parameter Value";
         CurrentParameterValue: Record "SI Parameter Value";
         ParameterValuesPage: Page "SI Parameter Values";
+        Source: Codeunit "SI Dynamic Value Source";
+        SelectedCode: Code[30];
     begin
         TestDraftExists();
         ProductConfigValue.Get(CreatedConfigurationNo, ParameterCode);
@@ -896,6 +898,14 @@ page 53030 "SI Product Config. Wizard"
             "Value Type",
             ProductConfigValue."Value Type"::"Controlled Value");
 
+        if Source.IsDynamic(ParameterCode) then begin
+            if Source.Lookup(ParameterCode, SelectedCode) then begin
+                ProductConfigValue.Validate("Parameter Value Code", SelectedCode);
+                ProductConfigValue.Modify(true);
+                RefreshValuesStep();
+            end;
+            exit;
+        end;
         ParameterValue.SetRange("Parameter Code", ParameterCode);
         ParameterValue.SetRange(Blocked, false);
 

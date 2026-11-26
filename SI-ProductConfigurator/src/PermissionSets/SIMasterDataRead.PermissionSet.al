@@ -4,6 +4,12 @@ permissionset 53003 "SI MASTER DATA READ"
     Caption = 'SI Master Data: Read Only';
 
     Permissions =
+        tabledata "SI Template Req. Group" = R,
+        table "SI Template Req. Group" = X,
+        page "SI Template Req. Groups" = X,
+        tabledata "SI Family Req. Group" = R,
+        table "SI Family Req. Group" = X,
+        page "SI Family Req. Groups" = X,
         // ============================================================
         // STANDARD BC MASTER DATA — READ ONLY
         // No Item List / Item Categories page execution is granted.
@@ -34,6 +40,8 @@ permissionset 53003 "SI MASTER DATA READ"
         tabledata "SI Item ERP Projection" = R,
         table "SI Item Package" = X,
         tabledata "SI Item Package" = R,
+        table "SI Nominal Size Mapping" = X,
+        tabledata "SI Nominal Size Mapping" = R,
         table "SI Package Type" = X,
         // Create/Delete UI pages and management codeunit are NOT granted:
         // page "SI New Item Category"
@@ -65,6 +73,8 @@ permissionset 53003 "SI MASTER DATA READ"
         tabledata "SI Value Attr. Definition" = R,
         tabledata "Unit of Measure" = R,
         codeunit "SI Derived UoM Calc." = X,
+        codeunit "SI Dynamic Value Source" = X,
+        codeunit "SI Parameter Value Resolver" = X,
         // Read-only resolver/validation services only.
         codeunit "SI ERP Context Resolver" = X,
         codeunit "SI ERP Projection Validator" = X,
@@ -94,6 +104,7 @@ permissionset 53003 "SI MASTER DATA READ"
         page "SI Item Packages" = X,
         page "SI Item Packages Part" = X,
         page "SI Item Variants Part" = X,
+        page "SI Nominal Value Lookup" = X,
         page "SI Package Type Card" = X,
         page "SI Package Types" = X,
         page "SI Parameter Value Attrs" = X,

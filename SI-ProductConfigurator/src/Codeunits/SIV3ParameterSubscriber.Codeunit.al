@@ -89,9 +89,10 @@ codeunit 53093 "SI V3 Parameter Subscriber"
         Attr: Record "SI Parameter Value Attr.";
         Def: Record "SI Value Attr. Definition";
         Resolver: Codeunit "SI Value Attr. Resolver";
+        ValueResolver: Codeunit "SI Parameter Value Resolver";
         Row: JsonObject;
     begin
-        if not Resolver.GetAttributes(ParameterCode, ValueCode, Attr) then
+        if not ValueResolver.GetAttributes(ParameterCode, ValueCode, Attr) then
             exit;
         Def.SetRange("Parameter Code", ParameterCode);
         Def.SetCurrentKey("Parameter Code", "Sort Order", Code);

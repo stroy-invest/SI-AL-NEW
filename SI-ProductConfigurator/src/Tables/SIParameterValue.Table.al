@@ -148,6 +148,14 @@ table 53002 "SI Parameter Value"
     begin
         NormalizeCode();
         ValidateParameter();
+        CheckStaticSource();
+    end;
+
+    local procedure CheckStaticSource()
+    var P: Record "SI Product Parameter";
+    begin
+        P.Get("Parameter Code");
+        P.TestField("Value Source", P."Value Source"::Static);
     end;
 
     trigger OnModify()

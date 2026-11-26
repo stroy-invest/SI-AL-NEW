@@ -97,6 +97,12 @@ page 53001 "SI Product Family Card"
                 }
             }
 
+            part(RequirementGroups; "SI Family Req. Groups")
+            {
+                ApplicationArea = All;
+                Caption = 'Групи обов’язковості';
+                SubPageLink = "Family Code" = field(Code);
+            }
             group(Production)
             {
                 Caption = 'Виробництво';

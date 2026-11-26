@@ -4,6 +4,17 @@ permissionset 53001 "SI PROD CONFIG USER"
     Caption = 'SI Конфігуратор: користувач';
 
     Permissions =
+        tabledata "SI Template Req. Group" = R,
+        table "SI Template Req. Group" = X,
+        page "SI Template Req. Groups" = X,
+        tabledata "SI Family Req. Group" = R,
+        table "SI Family Req. Group" = X,
+        page "SI Family Req. Groups" = X,
+        tabledata "SI Nominal Size Mapping" = R,
+        table "SI Nominal Size Mapping" = X,
+        page "SI Nominal Value Lookup" = X,
+        codeunit "SI Dynamic Value Source" = X,
+        codeunit "SI Parameter Value Resolver" = X,
         tabledata "SI Value Attr. Definition" = R,
         tabledata "SI Parameter Value Attr." = R,
         table "SI Value Attr. Definition" = X,

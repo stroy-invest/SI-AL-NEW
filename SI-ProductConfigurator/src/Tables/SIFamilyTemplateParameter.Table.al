@@ -31,6 +31,29 @@ table 53011 "SI Family Template Parameter"
             Caption = 'Значення за замовчуванням';
             DataClassification = CustomerContent;
             TableRelation = "SI Parameter Value".Code where("Parameter Code" = field("Parameter Code"), Blocked = const(false));
+            ValidateTableRelation = false;
+            trigger OnValidate()
+            var
+                Resolver: Codeunit "SI Parameter Value Resolver";
+            begin
+                if "Default Value Code" = '' then exit;
+                Resolver.ValidateCode("Parameter Code", "Default Value Code");
+            end;
+        }
+        field(130; "Requirement Group Code"; Code[30])
+        {
+            Caption = 'Група обов’язковості';
+            DataClassification = CustomerContent;
+            TableRelation = "SI Template Req. Group".Code where("Template Code" = field("Template Code"));
+            trigger OnValidate()
+            var
+                ReqGroup: Record "SI Template Req. Group";
+            begin
+                if "Requirement Group Code" = '' then
+                    exit;
+                ReqGroup.Get("Template Code", "Requirement Group Code");
+                ReqGroup.TestField("ERP Projection Role", "ERP Projection Role");
+            end;
         }
         field(120; Blocked; Boolean) { Caption = 'Заблоковано'; DataClassification = CustomerContent; }
     }
