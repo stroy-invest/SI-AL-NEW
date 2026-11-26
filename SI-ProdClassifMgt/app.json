@@ -2,7 +2,7 @@
     "id": "9f7472a1-62e9-4595-ac66-0ff6d2f759fb",
     "name": "SI Product Classification Management",
     "publisher": "STROYINVEST",
-    "version": "1.0.0.4",
+    "version": "1.0.0.5",
     "brief": "Керування класифікаційними системами продукції",
     "description": "Універсальний компонент для ведення класифікаційних систем, мапінгу продукції, інтеграції з конфігуратором і формування регламентованої звітності.",
     "privacyStatement": "",
@@ -28,13 +28,13 @@
             "name": "IW Ukrainian Localization VAT",
             "publisher": "Innoware Ukraine LLC",
             "version": "27.6.6488.0"
-        },			
+        },		
         {
             "id": "e7e9d6bb-52d8-4f68-93ad-d8c390cbbf73",
             "name": "SI Construction Project",
             "publisher": "STROYINVEST",
-            "version": "1.0.0.13"
-        }        
+            "version": "1.0.0.27"
+        }		
     ],
     "screenshots": [],
     "platform": "1.0.0.0",
