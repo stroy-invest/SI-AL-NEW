@@ -4,6 +4,11 @@ permissionset 50199 "SI FOUNDATION ADMIN"
     Caption = 'SI Foundation: Адміністратор';
 
     Permissions =
+        tabledata "SI Nominal Size Mapping" = RIMD,
+        table "SI Nominal Size Mapping" = X,
+        codeunit "SI Nominal Size Resolver" = X,
+        page "SI Nominal Size Mappings" = X,
+        codeunit "SI Nominal Size Seed" = X,
         tabledata "SI Address Parse Log" = RIMD,
         tabledata "SI Country Currency" = RIMD,
         tabledata "SI Category Attribute Buffer" = RIMD,

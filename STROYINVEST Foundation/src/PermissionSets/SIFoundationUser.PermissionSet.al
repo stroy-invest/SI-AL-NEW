@@ -4,6 +4,9 @@ permissionset 50198 "SI FOUNDATION USER"
     Caption = 'SI Foundation: Користувач';
 
     Permissions =
+        tabledata "SI Nominal Size Mapping" = R,
+        table "SI Nominal Size Mapping" = X,
+        codeunit "SI Nominal Size Resolver" = X,
         // Corporate reference data: read-only for operational users.
         tabledata "SI Country Currency" = R,
         tabledata "SI Legal Form Group" = R,
